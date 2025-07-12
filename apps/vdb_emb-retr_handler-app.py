@@ -15,7 +15,7 @@ os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 # Add the parent directory to the path to import from src
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.assistant.rag_helpers import (
+from src.rag_helpers_v1_1 import (
     load_embed,
     get_tenant_vectorstore,
     get_tenant_collection_name,
@@ -30,9 +30,9 @@ from langchain_community.vectorstores import Chroma
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_core.documents import Document
-from src.assistant.prompts import SUMMARIZER_SYSTEM_PROMPT
+from src.prompts_v1_1 import SUMMARIZER_SYSTEM_PROMPT
 
-###Run command: streamlit run ./utilities/vdb_emb-retr_handler-app.py --server.port 8501  --server.headless False
+###Run command: uv run streamlit run apps/vdb_emb-retr_handler-app.py --server.port 8501 --server.headless False
 
 # Set page configuration
 st.set_page_config(
@@ -141,9 +141,9 @@ else:
 
 
 # Define paths
-DEFAULT_DATA_FOLDER = os.path.join(os.path.dirname(__file__), "insert_data")
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "database")
-DB_INSERTED_PATH = os.path.join(os.path.dirname(__file__), "db_inserted")
+DEFAULT_DATA_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), "kb", "insert_data")
+DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "kb", "database")
+DB_INSERTED_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "kb", "db_inserted")
 
 # Ensure the db_inserted directory exists
 os.makedirs(DB_INSERTED_PATH, exist_ok=True)

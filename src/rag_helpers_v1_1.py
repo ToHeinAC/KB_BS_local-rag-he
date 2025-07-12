@@ -20,6 +20,9 @@ import nltk
 from langchain_community.llms import Ollama
 from langchain_core.messages import SystemMessage, HumanMessage
 from pydantic import BaseModel
+import fitz  # PyMuPDF
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import DirectoryLoader
 
 # Try to download nltk data if not already downloaded
 try:
@@ -28,13 +31,54 @@ except LookupError:
     nltk.download('punkt')
 
 from nltk.tokenize import word_tokenize
-from src.assistant.v1_1.prompts_v1_1 import (
+from src.prompts_v1_1 import (
     # Document summarization prompts
     SUMMARIZER_HUMAN_PROMPT, SUMMARIZER_SYSTEM_PROMPT
 )
 
 # Define constants - must match the value in vector_db.py
 VECTOR_DB_PATH = "database"
+
+# Define clear_cuda_memory function
+def clear_cuda_memory():
+    """Clear CUDA memory if available"""
+    import torch
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+# Define extract_text_from_pdf function
+def extract_text_from_pdf(pdf_path):
+    """Extract text from a PDF file"""
+    doc = fitz.open(pdf_path)
+    text = ""
+    for page in doc:
+        text += page.get_text()
+    return text
+
+# Define clean_ function
+def clean_(text):
+    """Clean text by removing unwanted characters and extra whitespace"""
+    # Remove unwanted characters but preserve . , : § $ % &
+    text = re.sub(r'[^a-zA-Z0-9\s.,:§$%&€@-µ²³üöäßÄÖÜ]', '', text)
+    
+    # Remove extra whitespace
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    return text
+
+# Define calculate_chunk_ids function
+def calculate_chunk_ids(chunks):
+    """Calculate human-readable chunk IDs for documents"""
+    # This will create IDs like "data/monopoly.pdf:6:2"
+    # Page Source : Page Number : Chunk Index
+    for i, chunk in enumerate(chunks):
+        source = chunk.metadata.get('source', 'unknown')
+        page = chunk.metadata.get('page', 0)
+        chunk_id = f"{source}:{page}:{i}"
+        chunk.metadata['id'] = chunk_id
+        # Also store as chunk_id for easier retrieval display
+        chunk.metadata['chunk_id'] = i
+    return chunks
 
 
 def get_tenant_collection_name(tenant_id):
@@ -61,6 +105,88 @@ def get_tenant_vectorstore(tenant_id, embed_llm, persist_directory, similarity, 
     )
 
 
+def load_embed(folder, vdbdir, embed_llm, similarity="cosine", c_size=1000, c_overlap=200, normal=True, clean=True, tenant_id=None):    
+    # Clear CUDA memory before starting embedding process
+    clear_cuda_memory()
+    
+    dirname = vdbdir
+    # Now load and embed
+    print(f"Step: Check for new data and embed new data to new vector DB '{dirname}'")
+    # Load documents from the specified directory
+    directory = folder
+    documents = []
+    for filename in os.listdir(directory):
+        if filename.endswith('.pdf'):
+            pdf_path = os.path.join(directory, filename)
+            text = extract_text_from_pdf(pdf_path)
+            documents.append(Document(page_content=text, metadata={'source': filename, 'path': pdf_path}))
+        else:
+            loader = DirectoryLoader(directory, exclude="**/*.pdf")
+            loaded = loader.load()
+            if loaded:
+                # Add full path to metadata
+                for doc in loaded:
+                    if 'source' in doc.metadata:
+                        doc.metadata['path'] = os.path.join(directory, doc.metadata['source'])
+                documents.extend(loaded)
+    
+    docslen = len(documents)
+    
+    # multitenant
+    if tenant_id is None:
+        tenant_id = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')    
+    print(f"Using tenant ID: {tenant_id}")
+    vectorstore = get_tenant_vectorstore(tenant_id, embed_llm, persist_directory=dirname, similarity=similarity, normal=normal)
+    print(f"Collection name: {vectorstore._collection.name}")
+    print(f"Collection count before adding: {vectorstore._collection.count()}")
+    
+    # Split the documents into chunks
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=c_size, chunk_overlap=c_overlap)
+    chunks = []
+    for document in documents:
+        if clean:
+            doc_chunks = text_splitter.create_documents([clean_(document.page_content)])
+        else:
+            doc_chunks = text_splitter.create_documents([document.page_content])
+        for chunk in doc_chunks:
+            chunk.metadata['source'] = document.metadata['source']
+            chunk.metadata['page'] = document.metadata.get('page', 0)  # Assuming page metadata is available
+            chunk.metadata['path'] = document.metadata.get('path', '')
+        chunks.extend(doc_chunks)
+
+    # Calculate human-readable chunk IDs
+    chunks = calculate_chunk_ids(chunks)
+
+    # Extract vector IDs from chunks
+    vector_ids = [chunk.metadata['id'] for chunk in chunks]
+
+    # Check for existing vector IDs in the database
+    existing_ids = vectorstore.get()['ids']
+
+    # Filter out chunks that are already in the database
+    new_chunks = [chunk for chunk, vector_id in zip(chunks, vector_ids) if vector_id not in existing_ids]
+    new_vector_ids = [vector_id for vector_id in vector_ids if vector_id not in existing_ids]
+
+    newchunkslen = len(new_chunks)
+
+    if new_chunks:
+        # Clear CUDA memory before adding documents
+        clear_cuda_memory()
+        
+        # Add the new chunks to the vector store with their embeddings
+        vectorstore.add_documents(new_chunks, ids=new_vector_ids)
+        print(f"Collection count after adding: {vectorstore._collection.count()}")
+        vectorstore.persist()
+        print(f"#{docslen} files embedded via #{newchunkslen} chunks in vector database.")
+        
+        # Clear CUDA memory after adding documents
+        clear_cuda_memory()
+    else:
+        # Already existing
+        print(f"Chunks already available, no new chunks added to vector database.")
+
+    return dirname, tenant_id
+
 def similarity_search_for_tenant(tenant_id, embed_llm, persist_directory, similarity, normal, query, k=2, language="English", collection_name=None):
     """Perform similarity search for a tenant.
     
@@ -76,7 +202,12 @@ def similarity_search_for_tenant(tenant_id, embed_llm, persist_directory, simila
         collection_name: Optional specific collection name to use. If None, will generate from tenant_id
     """
     # Import necessary modules
-    from src.assistant.utils import clear_cuda_memory
+    # Define clear_cuda_memory function locally since src.assistant.utils is not available
+    def clear_cuda_memory():
+        """Clear CUDA memory if available"""
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
     import logging
     
     # Set up logging
@@ -115,11 +246,14 @@ def similarity_search_for_tenant(tenant_id, embed_llm, persist_directory, simila
         collections = client.list_collections()
         logger.info(f"Available collections in {tenant_vdb_dir}: {collections}")
         
-        if collection_name not in collections:
+        # Extract collection names from Collection objects for comparison
+        collection_names = [coll.name for coll in collections]
+        
+        if collection_name not in collection_names:
             logger.warning(f"Collection '{collection_name}' not found in available collections: {collections}")
             if collections:  # If there are any collections available
                 logger.info(f"Trying with first available collection: {collections[0]}")
-                collection_name = collections[0]
+                collection_name = collections[0].name  # Extract name from Collection object
             else:
                 logger.error(f"No collections found in {tenant_vdb_dir}")
                 return []  # Return empty results if no collections available
@@ -232,7 +366,7 @@ def source_summarizer_ollama(query, context_documents, language, system_message,
     print(f"Generating summary using language: {language}")
     print(f"  [DEBUG] Actually using summarization model in source_summarizer_ollama: {llm_model}")
     # Override system_message to ensure language is set properly
-    from src.assistant.v1_1.prompts_v1_1 import SUMMARIZER_SYSTEM_PROMPT
+    from src.prompts_v1_1 import SUMMARIZER_SYSTEM_PROMPT
     system_message = SUMMARIZER_SYSTEM_PROMPT.format(language=language)
     # Check if context_documents is already a formatted string
     if isinstance(context_documents, str):

@@ -1,7 +1,22 @@
 [project]
 name = "kb-bs-local-rag-he"
 version = "0.1.0"
-description = "Add your description here"
+description = "Vector Database Embedding and Retrieval Handler"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "streamlit>=1.43.2",
+    "pandas>=2.2.3",
+    "torch>=2.6.0",
+    "langchain-huggingface>=0.1.2",
+    "langchain-community>=0.3.20",
+    "langchain-core>=0.3.49",
+    "langchain>=0.3.21",
+    "langchain-text-splitters>=0.3.7",
+    "sentence-transformers>=3.4.1",
+    "Chroma>=0.2.0",
+    "chromadb>=0.6.3",
+    "PyMuPDF>=1.25.4",
+    "python-dotenv>=1.0.1",
+    "nltk>=3.9.1"
+]
