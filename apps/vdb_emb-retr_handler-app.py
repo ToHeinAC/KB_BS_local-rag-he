@@ -128,7 +128,7 @@ if torch.cuda.is_available():
     if use_gpu != st.session_state.use_gpu:
         st.session_state.use_gpu = use_gpu
         st.session_state.gpu_device = "cuda" if use_gpu else "cpu"
-        st.experimental_rerun()
+        st.rerun()
     
     if st.session_state.use_gpu:
         use_fp16 = st.sidebar.checkbox("Use FP16 precision (faster)", value=st.session_state.use_fp16)
@@ -1271,6 +1271,10 @@ with tab4:
                 # Get all documents in the database
                 all_docs = get_all_documents_in_vectordb(st.session_state.tenant_id, embed_model, st.session_state.vdb_dir)
                 
+                # Add a refresh button at the top of the section
+                if st.button("🔄 Refresh Document List"):
+                    st.rerun()
+                
                 if all_docs:
                     st.subheader("Documents Available for Deletion")
                     
@@ -1405,9 +1409,7 @@ with tab4:
                                     st.warning(f"⚠️ Document was deleted from vector database but file could not be renamed")
                                     
                                 # Refresh the page to update the document list
-                                st.info("Please refresh the page to update the document list")
-                                if st.button("Refresh Page"):
-                                    st.experimental_rerun()
+                                st.success("Document deleted successfully! Click the 'Refresh Document List' button above to update the list.")
                 else:
                     st.warning("No documents found in the database. Please insert documents in Step 2.")
             except Exception as e:
@@ -1455,12 +1457,12 @@ with tab4:
                         if st.button("Select All"):
                             for file in removed_files:
                                 st.session_state.selected_files_for_deletion[file] = True
-                            st.experimental_rerun()
+                            st.rerun()
                     with col2:
                         if st.button("Deselect All"):
                             for file in removed_files:
                                 st.session_state.selected_files_for_deletion[file] = False
-                            st.experimental_rerun()
+                            st.rerun()
                     
                     # Confirmation checkbox
                     confirm_permanent_delete = st.checkbox("I understand that this action will permanently delete the selected files and cannot be undone")
@@ -1488,7 +1490,7 @@ with tab4:
                             
                             # Refresh button
                             if st.button("Refresh List"):
-                                st.experimental_rerun()
+                                st.rerun()
                 else:
                     st.info("Select files to delete using the checkboxes above")
             else:
