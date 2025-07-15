@@ -6,10 +6,10 @@ from langgraph.constants import Send
 from langgraph.graph import START, END, StateGraph
 from langchain_core.runnables.config import RunnableConfig
 from langchain_core.documents import Document
-from src.assistant.v1_1.configuration_v1_1 import Configuration, get_config_instance
-from src.assistant.v1_1.vector_db_v1_1 import get_or_create_vector_db, search_documents, get_embedding_model_path
-from src.assistant.v1_1.state_v1_1 import ResearcherState
-from src.assistant.v1_1.prompts_v1_1 import (
+from src.configuration_v1_1 import Configuration, get_config_instance
+from src.vector_db_v1_1 import get_or_create_vector_db, search_documents, get_embedding_model_path
+from src.state_v1_1 import ResearcherState
+from src.prompts_v1_1 import (
     # Language detection prompts
     LANGUAGE_DETECTOR_SYSTEM_PROMPT, LANGUAGE_DETECTOR_HUMAN_PROMPT,
     # Research query generation prompts
@@ -19,8 +19,8 @@ from src.assistant.v1_1.prompts_v1_1 import (
     # Report writing prompts
     REPORT_WRITER_SYSTEM_PROMPT, REPORT_WRITER_HUMAN_PROMPT,
 )
-from src.assistant.v1_1.utils_v1_1 import format_documents_with_metadata, invoke_ollama, parse_output, tavily_search, DetectedLanguage, Queries
-from src.assistant.v1_1.rag_helpers_v1_1 import source_summarizer_ollama, format_documents_as_plain_text, parse_document_to_formatted_content
+from src.utils_v1_1 import format_documents_with_metadata, invoke_ollama, parse_output, tavily_search, DetectedLanguage, Queries
+from src.rag_helpers_v1_1 import source_summarizer_ollama, format_documents_as_plain_text, parse_document_to_formatted_content
 import re
 import time
 
@@ -179,7 +179,7 @@ def retrieve_rag_documents(state: ResearcherState, config: RunnableConfig):
     k_results = config["configurable"].get("k_results", 3)  # Default to 3 if not specified
     
     # Display embedding model information
-    from src.assistant.v1_1.configuration_v1_1 import get_config_instance
+    from src.configuration_v1_1 import get_config_instance
     config = get_config_instance()
     embedding_model = config.embedding_model
     
@@ -198,7 +198,7 @@ def retrieve_rag_documents(state: ResearcherState, config: RunnableConfig):
     
     # Import the special database configuration from vector_db_v1_1.py directly
     import sys
-    from src.assistant.v1_1.vector_db_v1_1 import VECTOR_DB_PATH  # Get the path
+    from src.vector_db_v1_1 import VECTOR_DB_PATH  # Get the path
     # Avoid circular imports
     
     print(f"  [DEBUG] Vector DB path: {VECTOR_DB_PATH}")
@@ -231,7 +231,7 @@ def retrieve_rag_documents(state: ResearcherState, config: RunnableConfig):
             print(f"  [DEBUG] Calling similarity_search_for_tenant directly with query: '{query}', k={k_results}, language={detected_language}")
             
             # Import the necessary functions and constants
-            from src.assistant.v1_1.rag_helpers_v1_1 import similarity_search_for_tenant
+            from src.rag_helpers_v1_1 import similarity_search_for_tenant
             import os
             
             # Use the exact same parameters that work in the UI
@@ -242,7 +242,7 @@ def retrieve_rag_documents(state: ResearcherState, config: RunnableConfig):
             collection_name = 'collection_2025-04-22_15-41-10'
             
             # Get the embedding model
-            from src.assistant.v1_1.vector_db_v1_1 import get_embedding_model
+            from src.vector_db_v1_1 import get_embedding_model
             embeddings = get_embedding_model()
             
             # Construct the database path

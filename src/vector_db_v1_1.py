@@ -22,7 +22,7 @@ SPECIAL_DB_CONFIG = {
 def get_embedding_model():
     """Get the embedding model."""
     # Import here to avoid circular imports
-    from src.assistant.v1_1.configuration_v1_1 import get_config_instance
+    from src.configuration_v1_1 import get_config_instance
     
     # Get the embedding model from the global configuration instance
     embedding_model_name = get_config_instance().embedding_model
@@ -37,7 +37,7 @@ def get_embedding_model():
 def get_embedding_model_path():
     """Get the sanitized embedding model name for use in paths."""
     # Import here to avoid circular imports
-    from src.assistant.v1_1.configuration_v1_1 import get_config_instance
+    from src.configuration_v1_1 import get_config_instance
     
     # Get the embedding model from the global configuration instance
     embedding_model_name = get_config_instance().embedding_model
@@ -56,7 +56,7 @@ def get_vector_db_path():
 def get_or_create_vector_db():
     """Get or create the vector DB."""
     # Import here to avoid circular imports
-    from src.assistant.v1_1.rag_helpers_v1_1 import load_embed, get_tenant_vectorstore
+    from src.rag_helpers_v1_1 import load_embed, get_tenant_vectorstore
     
     embeddings = get_embedding_model()
     
@@ -108,7 +108,7 @@ def get_or_create_vector_db():
 def add_documents(documents):
     """Add new documents to the existing vector store."""
     # Import here to avoid circular imports
-    from src.assistant.v1_1.rag_helpers_v1_1 import load_embed
+    from src.rag_helpers_v1_1 import load_embed
     
     embeddings = get_embedding_model()
     tenant_id = DEFAULT_TENANT_ID
@@ -148,8 +148,8 @@ def add_documents(documents):
 def search_documents(query, k=3, language="English"):
     """Search for documents in the vector store."""
     # Import clear_cuda_memory here to avoid circular imports
-    from src.assistant.v1_1.utils_v1_1 import clear_cuda_memory
-    from src.assistant.v1_1.rag_helpers_v1_1 import similarity_search_for_tenant
+    from src.utils_v1_1 import clear_cuda_memory
+    from src.rag_helpers_v1_1 import similarity_search_for_tenant
     import logging
     
     # Set up logging
@@ -163,7 +163,7 @@ def search_documents(query, k=3, language="English"):
     embeddings = get_embedding_model()
     
     # Get the embedding model path (for accessing the DB)
-    from src.assistant.v1_1.configuration_v1_1 import get_config_instance
+    from src.configuration_v1_1 import get_config_instance
     current_embedding_model = get_config_instance().embedding_model
     sanitized_model_name = current_embedding_model.replace('/', '--')
     

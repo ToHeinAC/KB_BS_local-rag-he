@@ -38,19 +38,19 @@ except ImportError:
     NETWORKX_AVAILABLE = False
 
 # Add project root to Python path to fix import issues
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Suppress specific PyTorch warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 logging.getLogger("streamlit").setLevel(logging.ERROR)
 
 # Import ResearcherState directly for better type hinting and consistency
-from src.assistant.v1_1.state_v1_1 import ResearcherState
-from src.assistant.v1_1.graph_v1_1 import researcher, researcher_graph
-from src.assistant.v1_1.utils_v1_1 import get_report_structures, process_uploaded_files, clear_cuda_memory
-from src.assistant.v1_1.rag_helpers_v1_1 import similarity_search_for_tenant, transform_documents, source_summarizer_ollama
-from src.assistant.v1_1.vector_db_v1_1 import get_or_create_vector_db, search_documents, get_embedding_model_path
-from src.assistant.v1_1.prompts_v1_1 import SUMMARIZER_SYSTEM_PROMPT
+from src.state_v1_1 import ResearcherState
+from src.graph_v1_1 import researcher, researcher_graph
+from src.utils_v1_1 import get_report_structures, process_uploaded_files, clear_cuda_memory
+from src.rag_helpers_v1_1 import similarity_search_for_tenant, transform_documents, source_summarizer_ollama
+from src.vector_db_v1_1 import get_or_create_vector_db, search_documents, get_embedding_model_path
+from src.prompts_v1_1 import SUMMARIZER_SYSTEM_PROMPT
 # Use updated import path to avoid deprecation warning
 try:
     from langchain_huggingface import HuggingFaceEmbeddings
@@ -71,7 +71,8 @@ load_dotenv()
 # Define paths
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
 DEFAULT_DATA_FOLDER = os.path.join(os.path.dirname(__file__), "data")
-DATABASE_PATH = os.path.join(PROJECT_ROOT, "database")
+# Update database path to use kb/database structure
+DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "kb", "database")
 
 # Define default tenant and collection settings
 DEFAULT_TENANT_ID = 'default'
@@ -227,7 +228,7 @@ def generate_workflow_visualization(researcher, return_mermaid_only=False):
         nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=10, font_weight='bold')
         
         # Add embedding model info
-        from src.assistant.v1_1.configuration_v1_1 import get_config_instance
+        from src.configuration_v1_1 import get_config_instance
         config = get_config_instance()
         embedding_model = config.embedding_model
         plt.figtext(0.5, 0.98, f"Embedding Model: {embedding_model}", ha="center", fontsize=12, 
@@ -342,7 +343,7 @@ def generate_langgraph_visualization():
         nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=10, font_weight='bold')
         
         # Add embedding and LLM info
-        from src.assistant.v1_1.configuration_v1_1 import get_config_instance
+        from src.configuration_v1_1 import get_config_instance
         config = get_config_instance()
         embedding_model = config.embedding_model
         summarization_llm = st.session_state.get('summarization_llm', 'llama3.2')
@@ -476,7 +477,7 @@ def generate_response(user_input, enable_web_search, report_structure, max_searc
             st.subheader("LangGraph Workflow Visualization")
             
             # Display embedding model information
-            from src.assistant.v1_1.configuration_v1_1 import get_config_instance
+            from src.configuration_v1_1 import get_config_instance
             config = get_config_instance()
             embedding_model = config.embedding_model
             st.info(f"**Embedding Model:** {embedding_model}")
@@ -615,7 +616,7 @@ def generate_response(user_input, enable_web_search, report_structure, max_searc
                     embed_model = get_embedding_model(embedding_model_name)
                     
                     # Update the global configuration to use this embedding model
-                    from src.assistant.v1_1.configuration_v1_1 import update_embedding_model
+                    from src.configuration_v1_1 import update_embedding_model
                     update_embedding_model(embedding_model_name)
                     
                     # Print confirmation of embedding model update
@@ -649,7 +650,7 @@ def generate_response(user_input, enable_web_search, report_structure, max_searc
                     st.write("### Retrieving Documents")
                     with st.spinner("Performing similarity search..."):
                         # Detect language for the query first
-                        from src.assistant.v1_1.graph_v1_1 import detect_language
+                        from src.graph_v1_1 import detect_language
                         language_result = detect_language({"user_query": user_input}, {"configurable": {"llm_model": report_llm}})
                         detected_language = language_result.get("detected_language", "English")
                         
@@ -732,8 +733,8 @@ def generate_response(user_input, enable_web_search, report_structure, max_searc
             st.write("### LangGraph Workflow Visualization")
             
             # Display embedding model information
-            from src.assistant.v1_1.utils_v1_1 import get_configured_llm_model
-            from src.assistant.v1_1.configuration_v1_1 import get_config_instance
+            from src.utils_v1_1 import get_configured_llm_model
+            from src.configuration_v1_1 import get_config_instance
             config = get_config_instance()
             embedding_model_name = config.embedding_model
             st.info(f"🤖 Using embedding model: **{embedding_model_name}**")
@@ -744,18 +745,18 @@ def generate_response(user_input, enable_web_search, report_structure, max_searc
                 if config.embedding_model != embedding_model_name:
                     st.warning(f"⚠️ Configuration embedding model ({config.embedding_model}) doesn't match database embedding model ({embedding_model_name}). Using database model.")
                     # Force update the embedding model again to ensure it's correct
-                    from src.assistant.v1_1.configuration_v1_1 import update_embedding_model
+                    from src.configuration_v1_1 import update_embedding_model
                     update_embedding_model(embedding_model_name)
                     embedding_model = embedding_model_name
             
             # Get the embedding model from the configuration
-            from src.assistant.v1_1.configuration_v1_1 import get_config_instance
+            from src.configuration_v1_1 import get_config_instance
             config_instance = get_config_instance()
             st.info(f"**Embedding Model:** {config_instance.embedding_model}")
             
             # Display the mermaid diagram
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            graph_img_path = os.path.join(current_dir, "mermaid_researcher_graph.png")
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            graph_img_path = os.path.join(project_root, "src", "mermaid_researcher_graph.png")
             st.image(graph_img_path, caption="LangGraph Workflow (Mermaid from graph structure)", use_container_width=False)
             
             # Display the actual langgraph visualization
@@ -1183,7 +1184,7 @@ def main():
             embedding_model_name = extract_embedding_model(selected_db)
             if embedding_model_name:
                 # Update the global configuration to use this embedding model
-                from src.assistant.v1_1.configuration_v1_1 import update_embedding_model
+                from src.configuration_v1_1 import update_embedding_model
                 update_embedding_model(embedding_model_name)
                 st.sidebar.info(f"Selected Database: {selected_db}")
                 st.sidebar.success(f"Updated embedding model to: {embedding_model_name}")

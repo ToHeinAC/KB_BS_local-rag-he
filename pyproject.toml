@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "streamlit>=1.43.2",
+    "streamlit-nested-layout>=0.1.1",
     "pandas>=2.2.3",
     "torch>=2.6.0",
     "langchain-huggingface>=0.1.2",
@@ -18,5 +19,10 @@ dependencies = [
     "chromadb>=0.6.3",
     "PyMuPDF>=1.25.4",
     "python-dotenv>=1.0.1",
-    "nltk>=3.9.1"
+    "nltk>=3.9.1",
+    "IPython>=8.18.1",
+    "langgraph>=0.0.27",
+    "ollama>=0.1.6",
+    "tavily-python>=0.2.8",
+    "matplotlib>=3.8.0"
 ]

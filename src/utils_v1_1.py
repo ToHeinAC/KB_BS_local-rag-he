@@ -284,8 +284,8 @@ def process_uploaded_files(uploaded_files):
                 f.write(uploaded_file.getvalue())
         
         # Process all files in the folder using the new embedding approach
-        from src.assistant.rag_helpers import load_embed
-        from src.assistant.vector_db import get_embedding_model, get_vector_db_path, DEFAULT_TENANT_ID
+        from src.rag_helpers import load_embed
+        from src.vector_db import get_embedding_model, get_vector_db_path, DEFAULT_TENANT_ID
         
         # Get the embedding model
         embeddings = get_embedding_model()
