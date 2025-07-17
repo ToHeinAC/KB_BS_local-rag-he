@@ -439,9 +439,9 @@ def summarize_query_research(state: ResearcherState, config: RunnableConfig):
             if re.search(r'\d+(?:\.\d+)?%?', doc_content):
                 score += 2.0
             
-            # Factor 2: Contains physical units (higher weight than dates)
-            if re.search(r'\b\d+(?:\.\d+)?\s*(?:kg|g|mg|µg|m|cm|mm|µm|nm|km|s|ms|µs|ns|h|min|J|kJ|MJ|W|kW|MW|N|Pa|kPa|MPa|V|kV|mV|A|mA|µA|Ω|kΩ|MΩ|Hz|kHz|MHz|GHz|°C|K|mol|L|mL|µL|m²|m³|rad|°|%|ppm|ppb)\b', doc_content, re.IGNORECASE):
-                score += 2.0  # Higher weight for physical measurements
+            # Factor 2: Contains dates
+            if re.search(r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4}\b', doc_content):
+                score += 1.5
             
             # Factor 3: Contains importance markers
             if re.search(r'\b(?:significant|critical|important|essential|key|crucial|vital)\b', doc_content, re.IGNORECASE):
@@ -675,9 +675,9 @@ def generate_final_answer(state: ResearcherState, config: RunnableConfig):
             if re.search(r'\d+(?:\.\d+)?%?', doc_content):
                 score += 2.0
 
-            # Factor 2: Contains physical units (higher weight than dates)
-            if re.search(r'\b\d+(?:\.\d+)?\s*(?:kg|g|mg|µg|m|cm|mm|µm|nm|km|s|ms|µs|ns|h|min|J|kJ|MJ|W|kW|MW|GW|Sv|mSv|µSv|N|Pa|kPa|MPa|V|kV|mV|A|mA|µA|Ω|kΩ|MΩ|Hz|kHz|MHz|GHz|°C|K|mol|L|mL|µL|m²|m³|rad|°|%|ppm|ppb)\b', doc_content, re.IGNORECASE):
-                score += 1.0  # Higher weight for physical measurements
+            # Factor 2: Contains dates
+            if re.search(r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4}\b', doc_content):
+                score += 1.5
 
             # Factor 3: Contains importance markers
             if re.search(r'\b(?:significant|critical|important|essential|key|crucial|vital)\b', doc_content, re.IGNORECASE):
@@ -1123,14 +1123,10 @@ def quality_checker(state: ResearcherState, config: RunnableConfig):
         
         print(f"  [INFO] Generated improved answer (length: {len(improved_content)})")
         
-        # Get the current reflection count and increment it
-        reflection_count = state.get("reflection_count", 0) + 1
-        
-        # Return quality check results, improved answer, and updated reflection count
+        # Return quality check results and improved answer
         return {
             "quality_check": quality_result,
-            "final_answer": improved_content,
-            "reflection_count": reflection_count
+            "final_answer": improved_content
         }
     
     # If no improvement needed, just return quality check results
@@ -1177,38 +1173,6 @@ def update_position(state: ResearcherState):
     print(f"  [INFO] Updated position to {current_position}")
     return {"current_position": current_position}
 
-# Router function to determine whether to loop back to generate_final_answer or proceed to END
-def quality_router(state: ResearcherState):
-    """
-    Determines whether to loop back to generate_final_answer for improvement or end the workflow
-    based on the quality check score.
-    
-    Args:
-        state (ResearcherState): The current state of the researcher.
-        
-    Returns:
-        str: The next node to route to ("generate_final_answer" or END)
-    """
-    # Get the quality check results
-    quality_check = state.get("quality_check", {})
-    
-    # Get the quality score (default to 0 if not found)
-    quality_score = quality_check.get("score", 0)
-    
-    # Get the reflection count to prevent infinite loops
-    reflection_count = state.get("reflection_count", 0)
-    
-    # Check if we need to loop back for improvement (score > 6 and fewer than 3 reflections)
-    if quality_score > 6 and reflection_count < 3:
-        print(f"  [INFO] Quality score {quality_score} > 6, looping back to generate_final_answer for improvement (reflection {reflection_count + 1}/3)")
-        return "generate_final_answer"
-    else:
-        if quality_score > 6:
-            print(f"  [INFO] Maximum reflections reached ({reflection_count}/3), ending workflow despite quality score {quality_score}")
-        else:
-            print(f"  [INFO] Quality score {quality_score} <= 6, ending workflow")
-        return END
-
 # Define transitions for the simplified graph - linear flow without router
 researcher_graph.add_edge(START, "display_embedding_model_info")
 researcher_graph.add_edge("display_embedding_model_info", "detect_language")
@@ -1217,15 +1181,7 @@ researcher_graph.add_edge("generate_research_queries", "retrieve_rag_documents")
 researcher_graph.add_edge("retrieve_rag_documents", "summarize_query_research")
 researcher_graph.add_edge("summarize_query_research", "generate_final_answer")
 researcher_graph.add_edge("generate_final_answer", "quality_checker")
-# Add conditional edge from quality_checker to either generate_final_answer or END
-researcher_graph.add_conditional_edges(
-    "quality_checker",
-    quality_router,
-    {
-        "generate_final_answer": "generate_final_answer",
-        END: END
-    }
-)
+researcher_graph.add_edge("quality_checker", END)
 
 # Since we're using the StateGraph with ResearcherState, state is preserved by default
 # But we'll explicitly ensure the required keys are preserved in the researcher state class

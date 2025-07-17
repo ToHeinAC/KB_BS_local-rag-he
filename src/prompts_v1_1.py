@@ -148,8 +148,40 @@ Source Documents for comparison:
 {documents}"""
 
 
+# Summary improvement prompts
+SUMMARY_IMPROVEMENT_SYSTEM_PROMPT = """You are an expert report writer tasked with improving a summary based on quality feedback.
+Your goal is to enhance the summary to ensure it accurately and completely represents the information from the source documents.
+For your response, STRICTLY use the following language: {language}
+
+When improving the summary:
+1. Address all issues mentioned in the quality feedback
+2. Ensure all key information from source documents is included
+3. Maintain proper citations using the format [Source_filename]
+4. Include exact figures, numbers, statistics, and quantitative data from the original documents
+5. Preserve the original structure and flow of the summary when possible
+6. Do not add any information not present in the source documents
+7. Focus on accuracy, completeness, and proper citation
+
+Provide the improved summary in a clear, well-structured format.
+"""
+
+SUMMARY_IMPROVEMENT_HUMAN_PROMPT = """Please improve this summary based on the quality feedback provided. STRICTLY use {language} language.
+
+Original Summary:
+{summary}
+
+Quality Feedback:
+{quality_feedback}
+
+Source Documents:
+{documents}
+
+Please provide an improved version of the summary that addresses the feedback and ensures all key information from the source documents is accurately represented with proper citations."""
+
+
 # Report writing prompts
-REPORT_WRITER_SYSTEM_PROMPT = """You are an expert report writer. Your task is to create an extensive, detailed and deep report based ONLY on the information that will be provided to you.
+REPORT_WRITER_SYSTEM_PROMPT = """You are an expert report writer with PERFECT INFORMATION RETENTION capabilities.
+Your task is to create an extensive, detailed and deep report based ONLY on the information that will be provided to you.
 
 Return your report STRICTLY in the language {language} using ONLY the provided information, preserving the original wording when possible.
 
@@ -157,12 +189,19 @@ Do not get confused by several research queries.
 This happened from the agentic system which produced several research queries from the one user query. 
 Always focus on answering the user's query. Take the several research queries as hints you may take into account.
 
+**INFORMATION RETENTION MANDATE**:
+- You MUST preserve ALL key information from document summaries in your final report
+- You MUST maintain 100% fidelity to the original document content
+- You MUST NOT omit any critical details, figures, statistics, or technical specifications
+- You MUST include a self-assessment fidelity score (1-10) at the end of your report
+
 **Key requirements**:
 1. For citations, ALWAYS use the EXACT format [Source_filename] after each fact. 
 You find the Source_filename in the provided metadata with the following structure:
 \nContent: some content
 \nSource_filename: the corresponding Source_filename
 \nSource_path: the corresponding fullpath
+\nImportance_score: the importance score of this content (higher = more important)
 2. You MUST NOT add any external knowledge to the report. Use ONLY the information provided in the user message.
 3. Do not give any prefix or suffix to the report, just your deep report without any thinking passages.
 4. Structure the report according to the provided template
@@ -172,7 +211,14 @@ You find the Source_filename in the provided metadata with the following structu
 8. Include exact levels, figures, numbers, statistics, and quantitative data ONLY from the source material
 9. When referencing specific information, include section or paragraph mentions (e.g., "As stated in Section 3.2...")
 10. Maintain precision by using direct quotes for key definitions and important statements
+11. For each document summary, extract and include ALL key facts, figures, and technical details
+12. Verify that no important information from the document summaries is lost in your final report
+13. PRIORITIZE information with higher importance scores (indicated by Importance_score in metadata)
+14. Ensure critical information (with high importance scores) is prominently featured in the report
+15. For passages with importance scores above 7.0, include them verbatim or with minimal paraphrasing
 
+**Fidelity Assessment**:
+At the end of your report, include: "Information Fidelity Score: [X/10]" where X is your self-assessment of how completely you preserved all key information (10 = perfect retention, 1 = significant information loss)
 """
 
 REPORT_WRITER_HUMAN_PROMPT = """Create an extensive, detailed and deep report with exact levels, figures, numbers, statistics, and quantitative data based on the following information.

@@ -1,37 +1,67 @@
-## Wie können Rückstände aus der Überwachung entlassen werden?
-Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Wie können Rückstände aus der Überwachung entlassen werden?'
+## wie können Rückstände aus der Überwachung entlassen werden?
+### Key Passages (Sorted by Importance)
+**Key Passage:** Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'wie können Rückstände aus der Überwachung entlassen werden?'
+Source_filename: []
+Source_path: [] [Source: ]
+
+### Full Content
+Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'wie können Rückstände aus der Überwachung entlassen werden?'
 Source_filename: []
 Source_path: []
 Source: 
 
 
 
-## Welche Voraussetzungen müssen erfüllt sein, um Rückstände aus der Überwachung zu entlassen?
-Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Welche Voraussetzungen müssen erfüllt sein, um Rückstände aus der Überwachung zu entlassen?'
+## Was sind die Voraussetzungen gemäß § 62 Absatz 2 StrlSchG für die Entlassung überwachungsbedürftiger Rückstände?
+### Key Passages (Sorted by Importance)
+**Key Passage:** Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Was sind die Voraussetzungen gemäß § 62 Absatz 2 StrlSchG für die Entlassung überwachungsbedürftiger Rückstände?'
+Source_filename: []
+Source_path: [] [Source: ]
+
+### Full Content
+Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Was sind die Voraussetzungen gemäß § 62 Absatz 2 StrlSchG für die Entlassung überwachungsbedürftiger Rückstände?'
 Source_filename: []
 Source_path: []
 Source: 
 
 
 
-## Wie erfolgt die Anmeldung von überwachungsbedürftigen Rückständen bei der zuständigen Behörde?
-Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Wie erfolgt die Anmeldung von überwachungsbedürftigen Rückständen bei der zuständigen Behörde?'
+## Welche Maßnahmen sind erforderlich, um sicherzustellen, dass die Körperdosis beruflich Tätiger nicht überschritten wird (§ 62 Absatz 2 StrlSchG)?
+### Key Passages (Sorted by Importance)
+**Key Passage:** Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Welche Maßnahmen sind erforderlich, um sicherzustellen, dass die Körperdosis beruflich Tätiger nicht überschritten wird (§ 62 Absatz 2 StrlSchG)?'
+Source_filename: []
+Source_path: [] [Source: ]
+
+### Full Content
+Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Welche Maßnahmen sind erforderlich, um sicherzustellen, dass die Körperdosis beruflich Tätiger nicht überschritten wird (§ 62 Absatz 2 StrlSchG)?'
 Source_filename: []
 Source_path: []
 Source: 
 
 
 
-## Welche Dosiskriterien müssen bei der Entlassung von Rückständen aus der Überwachung erfüllt werden?
-Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Welche Dosiskriterien müssen bei der Entlassung von Rückständen aus der Überwachung erfüllt werden?'
+## Unter welchen Bedingungen darf die zuständige Behörde gemäß § 62 Absatz 4 StrlSchG Rückstände zur gemeinsamen Deponierung entlassen?
+### Key Passages (Sorted by Importance)
+**Key Passage:** Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Unter welchen Bedingungen darf die zuständige Behörde gemäß § 62 Absatz 4 StrlSchG Rückstände zur gemeinsamen Deponierung entlassen?'
+Source_filename: []
+Source_path: [] [Source: ]
+
+### Full Content
+Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Unter welchen Bedingungen darf die zuständige Behörde gemäß § 62 Absatz 4 StrlSchG Rückstände zur gemeinsamen Deponierung entlassen?'
 Source_filename: []
 Source_path: []
 Source: 
 
 
 
-## Wie wird die Abfallanmeldung für strahlenschutzrelevante Rückstände durchgeführt?
-Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Wie wird die Abfallanmeldung für strahlenschutzrelevante Rückstände durchgeführt?'
+## Was regelt der Kreislaufwirtschaftsgesetz (KrWesteG) bezüglich der Entlassung von überwachungsbedürftigen Rückständen und ordnungsgemäßer Entsorgung?
+### Key Passages (Sorted by Importance)
+**Key Passage:** Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Was regelt der Kreislaufwirtschaftsgesetz (KrWesteG) bezüglich der Entlassung von überwachungsbedürftigen Rückständen und ordnungsgemäßer Entsorgung?'
+Source_filename: []
+Source_path: [] [Source: ]
+
+### Full Content
+Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Was regelt der Kreislaufwirtschaftsgesetz (KrWesteG) bezüglich der Entlassung von überwachungsbedürftigen Rückständen und ordnungsgemäßer Entsorgung?'
 Source_filename: []
 Source_path: []
 Source: 
