@@ -27,9 +27,7 @@ class InitState(TypedDict):
     user_query: str  # The initial user query
     current_position: int  # Current position in the workflow
     detected_language: str  # Detected language of the query
-    additional_context: list[Document]  # Additional context from human feedback
+    additional_context: list[str]  # Additional context from human feedback
     human_feedback: Optional[list[str]] = []  # Storing human feedback messages
-    ai_message: Optional[str] = ""  # Storing AI generated questions
-    # Persist user-selected LLM models throughout the graph workflow
     report_llm: str  # LLM model used for report writing
     summarization_llm: str  # LLM model used for document summarization
