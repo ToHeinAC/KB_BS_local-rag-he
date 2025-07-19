@@ -123,12 +123,31 @@ def detect_language(state: InitState):
     query = state["user_query"]
     model = state.get("report_llm", "deepseek-r1:latest")
     # Format the system prompt for language detection
-    system_prompt = """You are a language detection assistant. Your task is to identify the language of the given text.
-    Respond with the language name in English (e.g., "English", "German", "Spanish", "French", "Chinese", etc.).
-    Only provide the language name, nothing else. Be precise and accurate."""
+    system_prompt = """# ROLE
+You are an expert language detection specialist.
+
+# GOAL
+Identify the primary language of the provided text with high accuracy.
+
+# CONTEXT
+- You will receive a user query or text snippet
+- The text may contain technical terms, proper nouns, or mixed content
+- Focus on the grammatical structure and core vocabulary to determine the language
+
+# OUTPUT FORMAT
+Respond with ONLY the language name in English.
+Examples of valid responses: "English", "German", "Spanish", "French", "Chinese", "Japanese", "Arabic"
+
+# CONSTRAINTS
+- Provide only the language name, no additional text
+- Be precise and confident in your detection
+- If uncertain between similar languages, choose the most likely one"""
     
     # Format the human prompt
-    human_prompt = f"Identify the language of the following text:\n\n{query}"
+    human_prompt = f"""TEXT TO ANALYZE:
+{query}
+
+LANGUAGE:"""
     
     # Using local model with Ollama
     result = invoke_ollama(
@@ -138,11 +157,8 @@ def detect_language(state: InitState):
     )
     
     # Parse the result to get just the language name
-    if isinstance(result, dict) and "language" in result:
-        detected_language = result["language"]
-    else:
-        # If we received a string directly, use it as the language
-        detected_language = str(result).strip()
+    parsed_result = parse_output(result)
+    detected_language = parsed_result["response"].strip()
     
     # Log the detected language
     print(f"Detected language: {detected_language}")
@@ -168,25 +184,47 @@ def analyse_user_feedback(state: InitState):
     model_to_use = state.get("report_llm", "deepseek-r1:latest")
     
     # Format system prompt for analysis
-    system_prompt = f"""You are an AI assistant helping to analyze a human's feedback thoroughly.
-    Your task is to analyze the contextual meaning of the feedback and provide a detailed analysis.
-    
-    Focus on the DOMAIN CONTEXT of the conversation - identify what technical or specialized domain this relates to.
-    The DOMAIN CONTEXT is: {additional_context}
-    
-    The latest HUMAN FEEDBACK is given to you.
-    
-    Return ONLY a brief contextual analysis describing the domain or technical area this feedback relates to.
-    ONLY provide your contextual domain analysis, nothing else (no prefix, no explanation, no additional text).
-    Do NOT return JSON, dictionaries, or structured data. Return ONLY plain text analysis. Keep your response concise and to the point, maximum 2-3 sentences.
+    system_prompt = f"""# ROLE
+You are an expert domain analysis specialist for human-in-the-loop conversations.
 
-    CRITICAL LANGUAGE REQUIREMENT: You MUST respond EXCLUSIVELY in {detected_language} language. 
+# GOAL
+Analyze the human's feedback to identify the specific technical or specialized domain context.
+
+# AVAILABLE INFORMATION
+- Initial user query: Available for context
+- Conversation history: {additional_context if additional_context else "None yet"}
+- Latest human feedback: Will be provided in the user prompt
+- Detected language: {detected_language}
+
+# ANALYSIS TASK
+1. Identify the technical/specialized domain (e.g., "Nuclear safety and regulatory compliance", "Software engineering", "Medical diagnostics")
+2. Determine the specific sub-area or context within that domain
+3. Note any technical terminology or concepts that indicate expertise level
+
+# OUTPUT FORMAT
+Provide a concise domain analysis in 1-3 sentences.
+Example: "This relates to nuclear waste management and regulatory compliance, specifically focusing on radioactive residue disposal protocols."
+
+# CRITICAL CONSTRAINTS
+- Respond EXCLUSIVELY in {detected_language} language
+- Provide ONLY the domain analysis, no prefixes or explanations
+- Do NOT return JSON, dictionaries, or structured data
+- Maximum 3 sentences
+- Focus on technical/domain context, not linguistic aspects
     """
     
     # Format the human prompt with context from previous interactions
-    human_prompt = f"Initial Query: {query}\n\n"
-    
-    human_prompt += f"\nBased on this information, provide a detailed analysis of the human feedback. CRITICALLY: You MUST respond ONLY in {detected_language} language. Do not switch to any other language. YOU MUST focus on understanding the full context plus the latest HUMAN FEEDBACK: {human_feedback}."
+    human_prompt = f"""# CONVERSATION CONTEXT
+Initial Query: {query}
+
+# CONVERSATION HISTORY
+{additional_context if additional_context else "No previous conversation history."}
+
+# LATEST HUMAN FEEDBACK TO ANALYZE
+{human_feedback}
+
+# DOMAIN ANALYSIS
+Based on the above information, provide your domain analysis in {detected_language}:"""
     
     # Using local model with Ollama
     result = invoke_ollama(
@@ -197,7 +235,8 @@ def analyse_user_feedback(state: InitState):
     
     # Parse the result
     parsed_result = parse_output(result)
-    additional_context += "\n\n" + f"Human Feedback: {human_feedback}\n AI-Analysis: {parsed_result['response']}"
+    # Update additional_context with the new feedback and analysis
+    additional_context += "\n\n" + f"Human Feedback: {human_feedback}\nAI Analysis: {parsed_result['response']}"
     return {"analysis": parsed_result["response"], "additional_context": additional_context, "current_position": "analyse_user_feedback"}
 
 def generate_follow_up_questions(state: InitState):
@@ -220,37 +259,54 @@ def generate_follow_up_questions(state: InitState):
     model_to_use = state.get("report_llm", "deepseek-r1:latest")
     
     # Format system prompt for question generation
-    system_prompt = f"""You are an AI assistant helping to gather information from a human to answer their query.
-    Your task is to ask 1-3 clarifying questions that will help you better understand what they're looking for.
-    
-    CRITICAL LANGUAGE REQUIREMENT: You MUST respond EXCLUSIVELY in {detected_language} language. 
-    Do NOT use English or any other language. Every single word must be in {detected_language}.
-    If the detected language is German, write EVERYTHING in German.
-    If the detected language is French, write EVERYTHING in French.
-    This is absolutely mandatory - NO EXCEPTIONS.
-    
-    Focus on the DOMAIN CONTEXT of the conversation - these should be technical/domain-specific questions
-    related to the user's query, not questions about language or clarification of terms.
-    The DOMAIN CONTEXT is: {additional_context}
-    The ANALYSIS of the latest human feedback is: {analysis}
-    Make use of the DOMAIN CONTEXT and ANALYSIS to ask more specific and relevant questions.
-    
-    Format your response in markdown as follows:
-    1. First question
-    2. Second question
-    3. Third question
-    
-    Only include questions that are truly necessary for understanding the user's needs better.
-    DO NOT repeat questions that have already been asked and answered.
-    Build upon the information you've already received to ask more specific and relevant questions.
-    Do NOT return JSON, dictionaries, or structured data. Return ONLY plain text. 
-    REMEMBER: Write EVERYTHING in {detected_language} language. ONLY provide the questions, nothing else.
+    system_prompt = f"""# ROLE
+You are an expert information gathering specialist for technical consultations.
+
+# GOAL
+Generate 1-3 strategic clarifying questions to deepen understanding of the user's specific needs within their domain.
+
+# AVAILABLE INFORMATION
+- Initial user query: Available for context
+- Conversation history: {additional_context if additional_context else "None yet"}
+- Latest domain analysis: {analysis if analysis else "Not yet available"}
+- Detected language: {detected_language}
+- Human feedback received: Available in user prompt
+
+# QUESTION GENERATION STRATEGY
+1. Build upon the domain analysis to ask more specific technical questions
+2. Focus on clarifying technical requirements, constraints, or specifications
+3. Avoid repeating information already provided by the human
+4. Progress from general domain understanding to specific implementation details
+5. Ask questions that will help generate better knowledge base search queries
+
+# OUTPUT FORMAT
+Generate 1-3 questions in numbered markdown format:
+1. [First specific question]
+2. [Second specific question]
+3. [Third specific question]
+
+# CRITICAL CONSTRAINTS
+- Write EXCLUSIVELY in {detected_language} language - NO EXCEPTIONS
+- Every single word must be in {detected_language}
+- Focus on technical/domain-specific aspects, not linguistic clarification
+- Do NOT repeat previously asked questions
+- Do NOT return JSON, dictionaries, or structured data
+- Provide ONLY the numbered questions, no additional text
+- Maximum 3 questions, minimum 1 question
     """
     
     # Format the human prompt with context from previous interactions
-    human_prompt = f"Initial Query: {query}\n\n"
-    
-    human_prompt += f"\nBased on this information, what 1-3 NEW clarifying questions should you ask? DO MUST NOT repeat previous questions. CRITICALLY: You MUST respond ONLY in {detected_language} language. Do not switch to any other language."
+    human_prompt = f"""# CONVERSATION CONTEXT
+Initial Query: {query}
+
+# DOMAIN ANALYSIS
+{analysis if analysis else "Domain analysis not yet available."}
+
+# CONVERSATION HISTORY
+{additional_context if additional_context else "No previous conversation history."}
+
+# TASK
+Based on the above context, generate 1-3 NEW clarifying questions in {detected_language} that will help you better understand the user's specific technical needs:"""
     
     # Using local model with Ollama
     result = invoke_ollama(
@@ -261,7 +317,8 @@ def generate_follow_up_questions(state: InitState):
     
     # Parse the result
     parsed_result = parse_output(result)
-    additional_context += "\n" + f"Follow-up Questions: {parsed_result['response']}"
+    # Update additional_context with the generated questions
+    additional_context += "\n" + f"AI Follow-up Questions: {parsed_result['response']}"
     return {"follow_up_questions": parsed_result["response"], "additional_context": additional_context, "current_position": "generate_follow_up_questions"}
 
 def generate_knowledge_base_questions(state: InitState):
@@ -283,42 +340,63 @@ def generate_knowledge_base_questions(state: InitState):
     model_to_use = state.get("report_llm", "deepseek-r1:latest")
     
     # Format system prompt for KB question generation
-    system_prompt = f"""You are an AI assistant tasked with generating targeted questions for a knowledge base search.
-    Based on the initial user query and subsequent conversation, generate 5 specific questions that would help retrieve the most relevant information from a knowledge base.
-    
-    These questions should:
-    1. Be specific and focused
-    2. Cover different aspects of the user's information need
-    3. Use terminology likely to match knowledge base content
-    4. Avoid redundancy
-    5. Be phrased as search queries, not conversational questions
-    
-    EXTREMELY IMPORTANT: You MUST respond ONLY in {detected_language} language. Do not switch to any other language.
-    
-    Focus on the DOMAIN CONTEXT of the conversation - these should be technical/domain-specific questions
-    related to the user's query, not questions about language or clarification of terms.
-    The DOMAIN CONTEXT is: {additional_context}
-    
-    Format your response in markdown as follows:
-    1. First knowledge base question
-    2. Second knowledge base question
-    3. Third knowledge base question
-    4. Fourth knowledge base question
-    5. Fifth knowledge base question
+    system_prompt = f"""# ROLE
+You are an expert knowledge base search query specialist.
 
-    ONLY provide the questions, nothing else (no prefix, no explanation, no additional text).
-    Do NOT return JSON, dictionaries, or structured data. Return ONLY plain text.
+# GOAL
+Generate 5 highly targeted, searchable questions optimized for knowledge base retrieval based on the completed human-in-the-loop conversation.
+
+# AVAILABLE INFORMATION
+- Initial user query: Available for context
+- Complete conversation history: {additional_context if additional_context else "Limited conversation history"}
+- Human feedback exchanges: Will be provided in user prompt
+- Detected language: {detected_language}
+- Domain context: Extracted from conversation analysis
+
+# SEARCH QUERY OPTIMIZATION STRATEGY
+1. Use specific technical terminology likely to match knowledge base content
+2. Focus on different aspects of the user's information need
+3. Frame as search queries, not conversational questions
+4. Cover both broad concepts and specific implementation details
+5. Avoid redundancy between questions
+6. Include relevant keywords and domain-specific terms
+7. Consider different search angles (what, how, why, when, where)
+
+# OUTPUT FORMAT
+Generate exactly 5 questions in numbered markdown format:
+1. [First targeted search question]
+2. [Second targeted search question]
+3. [Third targeted search question]
+4. [Fourth targeted search question]
+5. [Fifth targeted search question]
+
+# CRITICAL CONSTRAINTS
+- Write EXCLUSIVELY in {detected_language} language - NO EXCEPTIONS
+- Every single word must be in {detected_language}
+- Focus on technical/domain-specific search terms
+- Phrase as search queries optimized for knowledge retrieval
+- Do NOT return JSON, dictionaries, or structured data
+- Provide ONLY the numbered questions, no additional text
+- Exactly 5 questions required, formulated as full questions
     """
     
     # Format the human prompt with context from all interactions
-    human_prompt = f"Initial Query: {query}\n\n"
+    human_prompt = f"""# CONVERSATION SUMMARY
+Initial Query: {query}
+
+# COMPLETE CONVERSATION HISTORY
+{additional_context if additional_context else "No detailed conversation history available."}
+
+# HUMAN FEEDBACK EXCHANGES
+"""
     
     if human_feedback:
-        human_prompt += "Conversation history:\n"
         for i, feedback in enumerate(human_feedback):
             human_prompt += f"Exchange {i+1}: {feedback}\n"
+    else:
+        human_prompt += "No additional human feedback exchanges.\n"
     
-    human_prompt += "\nBased on this information, generate 5 targeted knowledge base search questions:"
+    human_prompt += f"\n# TASK\nBased on the complete conversation above, generate 5 targeted knowledge base search questions in {detected_language} that will help retrieve the most relevant information:"
     
     # Using local model with Ollama
     result = invoke_ollama(
