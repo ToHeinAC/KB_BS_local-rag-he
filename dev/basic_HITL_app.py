@@ -108,18 +108,20 @@ def display_conversation(history):
         else:
             # Format AI messages with markdown
             st.markdown(f'<div class="ai-message"><strong>AI:</strong> {message["content"]}</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-def detect_language(query: str, model: str) -> str:
+def detect_language(state: InitState):
     """
     Detect language of user query.
     
     Args:
-        query (str): The user query.
-        model (str): The LLM model to use.
+        state (InitState): The current state.
     
     Returns:
-        str: The detected language.
+        state (InitState): The updated state with the detected language.
     """
+    query = state["user_query"]
+    model = state.get("report_llm", "deepseek-r1:latest")
     # Format the system prompt for language detection
     system_prompt = """You are a language detection assistant. Your task is to identify the language of the given text.
     Respond with the language name in English (e.g., "English", "German", "Spanish", "French", "Chinese", etc.).
@@ -145,59 +147,46 @@ def detect_language(query: str, model: str) -> str:
     # Log the detected language
     print(f"Detected language: {detected_language}")
     
-    return detected_language
+    return {"detected_language": detected_language, "current_position": "detect_language"}
 
-def generate_follow_up_questions(state: InitState) -> str:
+def analyse_user_feedback(state: InitState):
     """
-    Generate follow-up questions based on the current state.
+    Analyze user feedback.
     
     Args:
         state (InitState): The current state.
     
     Returns:
-        str: Generated follow-up questions.
+        str: Analyzed user feedback.
     """
     query = state["user_query"]
     detected_language = state["detected_language"]
-    human_feedback = state.get("human_feedback", [])
+    human_feedback = state.get("human_feedback", "")
     additional_context = state.get("additional_context", [])
     
     # Use the configured LLM model
     model_to_use = state.get("report_llm", "deepseek-r1:latest")
     
-    # Format system prompt for question generation
-    system_prompt = f"""You are an AI assistant helping to gather information from a human to answer their query.
-    Your task is to ask 1-3 clarifying questions that will help you better understand what they're looking for.
+    # Format system prompt for analysis
+    system_prompt = f"""You are an AI assistant helping to analyze a human's feedback thoroughly.
+    Your task is to analyze the contextual meaning of the feedback and provide a detailed analysis.
     
-    EXTREMELY IMPORTANT: You MUST respond ONLY in {detected_language} language. Do not switch to any other language.
-    
-    Focus on the DOMAIN CONTEXT of the conversation - these should be technical/domain-specific questions
-    related to the user's query, not questions about language or clarification of terms.
+    Focus on the DOMAIN CONTEXT of the conversation - identify what technical or specialized domain this relates to.
     The DOMAIN CONTEXT is: {additional_context}
-    Make use of the DOMAIN CONTEXT to ask more specific and relevant questions.
     
-    Format your response in markdown as follows:
-    1. First question
-    2. Second question
-    3. Third question
+    The latest HUMAN FEEDBACK is given to you.
     
-    Only include questions that are truly necessary for understanding the user's needs better.
-    DO NOT repeat questions that have already been asked and answered.
-    Build upon the information you've already received to ask more specific and relevant questions.
+    Return ONLY a brief contextual analysis describing the domain or technical area this feedback relates to.
+    ONLY provide your contextual domain analysis, nothing else (no prefix, no explanation, no additional text).
+    Do NOT return JSON, dictionaries, or structured data. Return ONLY plain text analysis. Keep your response concise and to the point, maximum 2-3 sentences.
 
-    ONLY provide the questions, nothing else (no prefix, no explanation, no additional text).
+    CRITICAL LANGUAGE REQUIREMENT: You MUST respond EXCLUSIVELY in {detected_language} language. 
     """
     
     # Format the human prompt with context from previous interactions
     human_prompt = f"Initial Query: {query}\n\n"
     
-    # Include the full conversation history from additional_context
-    if additional_context:
-        human_prompt += "Conversation history:\n"
-        for i, context in enumerate(additional_context):
-            human_prompt += f"{context}\n\n"
-    
-    human_prompt += f"\nBased on this information, what 1-3 NEW clarifying questions should you ask? DO NOT repeat previous questions. REMEMBER: Respond ONLY in {detected_language} language and focus on understanding the DOMAIN CONTEXT, not linguistic clarification."
+    human_prompt += f"\nBased on this information, provide a detailed analysis of the human feedback. CRITICALLY: You MUST respond ONLY in {detected_language} language. Do not switch to any other language. YOU MUST focus on understanding the full context plus the latest HUMAN FEEDBACK: {human_feedback}."
     
     # Using local model with Ollama
     result = invoke_ollama(
@@ -208,9 +197,74 @@ def generate_follow_up_questions(state: InitState) -> str:
     
     # Parse the result
     parsed_result = parse_output(result)
-    return parsed_result["response"]
+    additional_context += "\n\n" + f"Human Feedback: {human_feedback}\n AI-Analysis: {parsed_result['response']}"
+    return {"analysis": parsed_result["response"], "additional_context": additional_context, "current_position": "analyse_user_feedback"}
 
-def generate_knowledge_base_questions(state: InitState) -> str:
+def generate_follow_up_questions(state: InitState):
+    """
+    Generate follow-up questions based on the current state.
+    
+    Args:
+        state (InitState): The current state.
+    
+    Returns:
+        state (InitState): The updated state with generated follow-up questions.
+    """
+    query = state["user_query"]
+    detected_language = state["detected_language"]
+    human_feedback = state.get("human_feedback", "")
+    analysis = state.get("analysis", "")
+    additional_context = state.get("additional_context", "")
+    
+    # Use the configured LLM model
+    model_to_use = state.get("report_llm", "deepseek-r1:latest")
+    
+    # Format system prompt for question generation
+    system_prompt = f"""You are an AI assistant helping to gather information from a human to answer their query.
+    Your task is to ask 1-3 clarifying questions that will help you better understand what they're looking for.
+    
+    CRITICAL LANGUAGE REQUIREMENT: You MUST respond EXCLUSIVELY in {detected_language} language. 
+    Do NOT use English or any other language. Every single word must be in {detected_language}.
+    If the detected language is German, write EVERYTHING in German.
+    If the detected language is French, write EVERYTHING in French.
+    This is absolutely mandatory - NO EXCEPTIONS.
+    
+    Focus on the DOMAIN CONTEXT of the conversation - these should be technical/domain-specific questions
+    related to the user's query, not questions about language or clarification of terms.
+    The DOMAIN CONTEXT is: {additional_context}
+    The ANALYSIS of the latest human feedback is: {analysis}
+    Make use of the DOMAIN CONTEXT and ANALYSIS to ask more specific and relevant questions.
+    
+    Format your response in markdown as follows:
+    1. First question
+    2. Second question
+    3. Third question
+    
+    Only include questions that are truly necessary for understanding the user's needs better.
+    DO NOT repeat questions that have already been asked and answered.
+    Build upon the information you've already received to ask more specific and relevant questions.
+    Do NOT return JSON, dictionaries, or structured data. Return ONLY plain text. 
+    REMEMBER: Write EVERYTHING in {detected_language} language. ONLY provide the questions, nothing else.
+    """
+    
+    # Format the human prompt with context from previous interactions
+    human_prompt = f"Initial Query: {query}\n\n"
+    
+    human_prompt += f"\nBased on this information, what 1-3 NEW clarifying questions should you ask? DO MUST NOT repeat previous questions. CRITICALLY: You MUST respond ONLY in {detected_language} language. Do not switch to any other language."
+    
+    # Using local model with Ollama
+    result = invoke_ollama(
+        model=model_to_use,
+        system_prompt=system_prompt,
+        user_prompt=human_prompt,
+    )
+    
+    # Parse the result
+    parsed_result = parse_output(result)
+    additional_context += "\n" + f"Follow-up Questions: {parsed_result['response']}"
+    return {"follow_up_questions": parsed_result["response"], "additional_context": additional_context, "current_position": "generate_follow_up_questions"}
+
+def generate_knowledge_base_questions(state: InitState):
     """
     Generate knowledge base questions based on the completed interaction.
     
@@ -218,7 +272,7 @@ def generate_knowledge_base_questions(state: InitState) -> str:
         state (InitState): The current state with all human feedback.
     
     Returns:
-        str: Generated knowledge base questions.
+        state (InitState): The updated state with generated knowledge base questions.
     """
     query = state["user_query"]
     detected_language = state["detected_language"]
@@ -253,6 +307,7 @@ def generate_knowledge_base_questions(state: InitState) -> str:
     5. Fifth knowledge base question
 
     ONLY provide the questions, nothing else (no prefix, no explanation, no additional text).
+    Do NOT return JSON, dictionaries, or structured data. Return ONLY plain text.
     """
     
     # Format the human prompt with context from all interactions
@@ -274,7 +329,7 @@ def generate_knowledge_base_questions(state: InitState) -> str:
     
     # Parse the result
     parsed_result = parse_output(result)
-    return parsed_result["response"]
+    return {"knowledge_base_questions": parsed_result["response"], "current_position": "generate_knowledge_base_questions"}
 
 def create_hitl_graph():
     """
@@ -288,12 +343,14 @@ def create_hitl_graph():
     
     # Add nodes
     workflow.add_node("detect_language", detect_language)
+    workflow.add_node("analyse_user_feedback", analyse_user_feedback)
     workflow.add_node("generate_follow_up_questions", generate_follow_up_questions)
     workflow.add_node("generate_knowledge_base_questions", generate_knowledge_base_questions)
     
     # Add edges
     workflow.add_edge(START, "detect_language")
-    workflow.add_edge("detect_language", "generate_follow_up_questions")
+    workflow.add_edge("detect_language", "analyse_user_feedback")
+    workflow.add_edge("analyse_user_feedback", "generate_follow_up_questions")
     workflow.add_edge("generate_follow_up_questions", END)
     
     # Compile the graph
@@ -341,8 +398,10 @@ def main():
                 "user_query": user_query,
                 "current_position": 0,
                 "detected_language": "",
-                "additional_context": [],  # Will store annotated conversation history
-                "human_feedback": [],
+                "additional_context": "",  # Will store annotated conversation history
+                "human_feedback": "",
+                "analysis": "",
+                "follow_up_questions": "",
                 "report_llm": selected_model,
                 "summarization_llm": selected_model
             }
@@ -358,21 +417,28 @@ def main():
             
             # Detect language
             with st.spinner("Detecting language..."):
-                detected_language = detect_language(user_query, selected_model)
+                detected_language = detect_language(st.session_state.state)
                 st.session_state.state["detected_language"] = detected_language
             
             # Generate initial follow-up questions
             with st.spinner("Generating follow-up questions..."):
-                follow_up_questions = generate_follow_up_questions(st.session_state.state)
+                follow_up_result = generate_follow_up_questions(st.session_state.state)
+                st.session_state.state["follow_up_questions"] = follow_up_result["follow_up_questions"]
             
-            # Add AI message to conversation history
+            # For initial query, we don't have analysis yet, so use empty string
+            st.session_state.state["analysis"] = ""
+            
+            # Format the combined response for initial query
+            combined_response = f"FOLLOW-UP: {st.session_state.state['follow_up_questions']}"
+            
+            # Add AI message to conversation history with formatted content
             st.session_state.conversation_history.append({
                 "role": "assistant",
-                "content": follow_up_questions
+                "content": combined_response
             })
             
             # Store initial AI questions in additional_context
-            st.session_state.state["additional_context"].append(f"Initial AI Question(s):\n{follow_up_questions}")
+            st.session_state.state["additional_context"] += f"Initial AI Question(s):\n{st.session_state.state['follow_up_questions']}"
             
             # Set waiting for human input
             st.session_state.waiting_for_human_input = True
@@ -400,14 +466,15 @@ def main():
     
     # Handle human feedback
     if st.session_state.waiting_for_human_input and not st.session_state.conversation_ended:
-        # Use a fixed key for the text area
-        if "human_feedback_input" not in st.session_state:
-            st.session_state.human_feedback_input = ""
+        # Initialize input counter for dynamic keys
+        if "input_counter" not in st.session_state:
+            st.session_state.input_counter = 0
             
+        # Use a dynamic key that changes after each submission to force widget reset
         human_feedback = st.text_area("Your response (type /end to finish):", 
-                                    value=st.session_state.human_feedback_input, 
+                                    value="", 
                                     height=100, 
-                                    key="human_feedback_area")
+                                    key=f"human_feedback_area_{st.session_state.input_counter}")
         submit_feedback_button = st.button("Submit Response")
         
         if submit_feedback_button and human_feedback:
@@ -423,23 +490,24 @@ def main():
                 
                 # Generate knowledge base questions
                 with st.spinner("Generating knowledge base questions..."):
-                    kb_questions = generate_knowledge_base_questions(st.session_state.state)
+                    kb_questions_result = generate_knowledge_base_questions(st.session_state.state)
+                    kb_questions_content = kb_questions_result["knowledge_base_questions"]
                 
                 # Add AI message to conversation history
                 st.session_state.conversation_history.append({
                     "role": "assistant",
-                    "content": f"Based on our conversation, here are targeted knowledge base search questions:\n\n{kb_questions}"
+                    "content": f"Based on our conversation, here are targeted knowledge base search questions:\n\n{kb_questions_content}"
                 })
                 
                 # Add final KB questions to additional_context
-                st.session_state.state["additional_context"].append(
-                    f"Final Knowledge Base Questions:\n{kb_questions}"
+                st.session_state.state["additional_context"] += (
+                    f"Final Knowledge Base Questions:\n{kb_questions_content}"
                 )
                 
                 st.session_state.kb_questions_generated = True
                 
-                # Clear the input after processing
-                st.session_state.human_feedback_input = ""
+                # Increment counter to force new text area widget and clear input
+                st.session_state.input_counter += 1
                 st.rerun()
             else:
                 # Add user message to conversation history
@@ -449,24 +517,33 @@ def main():
                 })
                 
                 # Update state with human feedback
-                st.session_state.state["human_feedback"].append(human_feedback)
+                st.session_state.state["human_feedback"] += human_feedback
+                
+                # Analyze user feedback first
+                with st.spinner("Analyzing feedback..."):
+                    analysis_result = analyse_user_feedback(st.session_state.state)
+                    st.session_state.state["analysis"] = analysis_result["analysis"]
                 
                 # Generate follow-up questions
                 with st.spinner("Generating follow-up questions..."):
-                    follow_up_questions = generate_follow_up_questions(st.session_state.state)
+                    follow_up_result = generate_follow_up_questions(st.session_state.state)
+                    st.session_state.state["follow_up_questions"] = follow_up_result["follow_up_questions"]
+                
+                # Format the combined response using state values as requested
+                combined_response = f"ANALYSIS: {st.session_state.state['analysis']}\n\nFOLLOW-UP: {st.session_state.state['follow_up_questions']}"
                 
                 # Add AI message to conversation history
                 st.session_state.conversation_history.append({
                     "role": "assistant",
-                    "content": follow_up_questions
+                    "content": combined_response
                 })
                 
                 # Store the conversation turn in additional_context
-                conversation_turn = f"AI Question(s):\n{follow_up_questions}\n\nHuman Answer:\n{human_feedback}"
-                st.session_state.state["additional_context"].append(conversation_turn)
+                conversation_turn = f"AI Question(s):\n{st.session_state.state['follow_up_questions']}\n\nHuman Answer:\n{human_feedback}"
+                st.session_state.state["additional_context"] += conversation_turn
                 
-                # Clear the input after processing
-                st.session_state.human_feedback_input = ""
+                # Increment counter to force new text area widget and clear input
+                st.session_state.input_counter += 1
                 st.rerun()
     
     # Show a reset button
