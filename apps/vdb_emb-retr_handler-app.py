@@ -21,8 +21,9 @@ from src.rag_helpers_v1_1 import (
     get_tenant_collection_name,
     calculate_chunk_ids,
     extract_text_from_pdf,
-    transform_documents,
+    clean_,
     source_summarizer_ollama,
+    get_license_content,
     similarity_search_for_tenant
 )
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -73,6 +74,8 @@ if 'chunk_overlap' not in st.session_state:
 
 # Title and description
 st.title("Vector Database Handler App")
+st.markdown('<p style="font-size:12px; font-weight:bold; color:darkorange; margin-top:-10px;">LICENCE</p>', 
+           unsafe_allow_html=True, help=get_license_content())
 st.markdown("Use this app to manage your vector databases and search for similar documents.")
 
 # (Memory clearing button moved to sidebar)

@@ -71,7 +71,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.graph_v2 import briefing_app, researcher_app
 from src.state_v1_1 import InitState, ResearcherState
 from src.configuration_v1_1 import get_config_instance
-from src.rag_helpers_v1_1 import get_report_llm_models, get_summarization_llm_models
+from src.rag_helpers_v1_1 import get_report_llm_models, get_summarization_llm_models, get_license_content
 
 # Function to clear CUDA memory
 def clear_cuda_memory():
@@ -718,6 +718,8 @@ def main():
     
     # App title
     st.title("🔍 Local RAG Researcher with Human Feedback")
+    st.markdown('<p style="font-size:12px; font-weight:bold; color:darkorange; margin-top:-10px;">LICENCE</p>', 
+               unsafe_allow_html=True, help=get_license_content())
     st.markdown("A research assistant that uses local LLMs and RAG with a human-in-the-loop feedback mechanism.")
     
     # Sidebar configuration

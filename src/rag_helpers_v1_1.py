@@ -572,6 +572,24 @@ def get_all_available_models() -> List[str]:
     return all_models
 
 
+def get_license_content() -> str:
+    """
+    Get the content of the LICENSE file for display in the applications.
+    
+    Returns:
+        str: The content of the LICENSE file
+    """
+    # Get the path to the LICENSE file (one level up from src)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    license_path = os.path.join(os.path.dirname(current_dir), 'LICENCE')
+    
+    try:
+        with open(license_path, 'r', encoding='utf-8') as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return "Apache License 2.0 - License file not found"
+
+
 def parse_document_to_formatted_content(document_text):
     """
     Parse a document text that contains Content, Source_filename, and Source_path

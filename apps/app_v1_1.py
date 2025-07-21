@@ -48,7 +48,7 @@ logging.getLogger("streamlit").setLevel(logging.ERROR)
 from src.state_v1_1 import ResearcherState
 from src.graph_v1_1 import researcher, researcher_graph
 from src.utils_v1_1 import get_report_structures, process_uploaded_files, clear_cuda_memory
-from src.rag_helpers_v1_1 import similarity_search_for_tenant, transform_documents, source_summarizer_ollama, get_report_llm_models, get_summarization_llm_models
+from src.rag_helpers_v1_1 import similarity_search_for_tenant, transform_documents, source_summarizer_ollama, get_report_llm_models, get_summarization_llm_models, get_license_content
 from src.vector_db_v1_1 import get_or_create_vector_db, search_documents, get_embedding_model_path
 from src.prompts_v1_1 import SUMMARIZER_SYSTEM_PROMPT
 # Use updated import path to avoid deprecation warning
@@ -1041,6 +1041,8 @@ def main():
     header_col1, header_col2 = st.columns([0.6, 0.4])
     with header_col1:
         st.title("RAG Deep Researcher")
+        st.markdown('<p style="font-size:12px; font-weight:bold; color:darkorange; margin-top:-10px;">LICENCE</p>', 
+                   unsafe_allow_html=True, help=get_license_content())
     with header_col2:
         st.image("Header für Chatbot.png", use_container_width=True)
 

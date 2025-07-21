@@ -16,7 +16,7 @@ from langgraph.checkpoint.memory import MemorySaver
 # Import project components
 from src.state_v1_1 import InitState
 from src.utils_v1_1 import invoke_ollama, parse_output, get_configured_llm_model, DetectedLanguage
-from src.rag_helpers_v1_1 import get_all_available_models
+from src.rag_helpers_v1_1 import get_all_available_models, get_license_content
 
 # Configure Streamlit page
 st.set_page_config(
@@ -436,6 +436,8 @@ def create_hitl_graph():
 
 def main():
     st.title("Human-in-the-Loop AI Assistant")
+    st.markdown('<p style="font-size:12px; font-weight:bold; color:darkorange; margin-top:-10px;">LICENCE</p>', 
+               unsafe_allow_html=True, help=get_license_content())
     st.markdown("""
     This application demonstrates a human-in-the-loop approach where the AI asks clarifying questions 
     to better understand your needs before providing final knowledge base search questions.
