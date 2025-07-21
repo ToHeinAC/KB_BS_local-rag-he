@@ -12,56 +12,56 @@ Source:
 
 
 
-## Was sind die Grundsätze für die Ermittlung von Expositionen bei Rückständen gemäß § 61 Absatz 2 StrlSchG?
+## Welche Voraussetzungen müssen erfüllt sein, um überwachungsbedürftige Rückstände aus der Überwachung zu entlassen?
 ### Key Passages (Sorted by Importance)
-**Key Passage:** Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Was sind die Grundsätze für die Ermittlung von Expositionen bei Rückständen gemäß § 61 Absatz 2 StrlSchG?'
+**Key Passage:** Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Welche Voraussetzungen müssen erfüllt sein, um überwachungsbedürftige Rückstände aus der Überwachung zu entlassen?'
 Source_filename: []
 Source_path: [] [Source: ]
 
 ### Full Content
-Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Was sind die Grundsätze für die Ermittlung von Expositionen bei Rückständen gemäß § 61 Absatz 2 StrlSchG?'
+Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Welche Voraussetzungen müssen erfüllt sein, um überwachungsbedürftige Rückstände aus der Überwachung zu entlassen?'
 Source_filename: []
 Source_path: []
 Source: 
 
 
 
-## Welche Bedingungen müssen erfüllt sein, um einen schriftlichen Bescheid zur Entlassung aus der Überwachung zu erhalten?
+## Welche Sicherheitsmaßnahmen sind bei der Entlassung von Rückständen aus der Überwachung erforderlich?
 ### Key Passages (Sorted by Importance)
-**Key Passage:** Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Welche Bedingungen müssen erfüllt sein, um einen schriftlichen Bescheid zur Entlassung aus der Überwachung zu erhalten?'
+**Key Passage:** Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Welche Sicherheitsmaßnahmen sind bei der Entlassung von Rückständen aus der Überwachung erforderlich?'
 Source_filename: []
 Source_path: [] [Source: ]
 
 ### Full Content
-Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Welche Bedingungen müssen erfüllt sein, um einen schriftlichen Bescheid zur Entlassung aus der Überwachung zu erhalten?'
+Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Welche Sicherheitsmaßnahmen sind bei der Entlassung von Rückständen aus der Überwachung erforderlich?'
 Source_filename: []
 Source_path: []
 Source: 
 
 
 
-## Wie werden die Schutzmaßnahmen für die Bevölkerung und die Körperdosis von beruflich Exponierten bei Rückständen überprüft?
+## Wie wird die Exposition bei Rückständen gemäß der Rechtsverordnung nach § 62 Absatz 4 Nummer 1 ermittelt?
 ### Key Passages (Sorted by Importance)
-**Key Passage:** Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Wie werden die Schutzmaßnahmen für die Bevölkerung und die Körperdosis von beruflich Exponierten bei Rückständen überprüft?'
+**Key Passage:** Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Wie wird die Exposition bei Rückständen gemäß der Rechtsverordnung nach § 62 Absatz 4 Nummer 1 ermittelt?'
 Source_filename: []
 Source_path: [] [Source: ]
 
 ### Full Content
-Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Wie werden die Schutzmaßnahmen für die Bevölkerung und die Körperdosis von beruflich Exponierten bei Rückständen überprüft?'
+Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Wie wird die Exposition bei Rückständen gemäß der Rechtsverordnung nach § 62 Absatz 4 Nummer 1 ermittelt?'
 Source_filename: []
 Source_path: []
 Source: 
 
 
 
-## Was sind die Anforderungen an den Abtransport überwachungsbedürftiger Rückstände aus dem Ausland gemäß § 62 Absatz 5 StrlSchG?
+## Welche rechtlichen Folgen hat die grenzüberschreitende Verbringung von Rückständen ins Inland zur Beseitigung?
 ### Key Passages (Sorted by Importance)
-**Key Passage:** Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Was sind die Anforderungen an den Abtransport überwachungsbedürftiger Rückstände aus dem Ausland gemäß § 62 Absatz 5 StrlSchG?'
+**Key Passage:** Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Welche rechtlichen Folgen hat die grenzüberschreitende Verbringung von Rückständen ins Inland zur Beseitigung?'
 Source_filename: []
 Source_path: [] [Source: ]
 
 ### Full Content
-Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Was sind die Anforderungen an den Abtransport überwachungsbedürftiger Rückstände aus dem Ausland gemäß § 62 Absatz 5 StrlSchG?'
+Content: Content: Keine relevanten Dokumente wurden in der Datenbank gefunden für die Anfrage: 'Welche rechtlichen Folgen hat die grenzüberschreitende Verbringung von Rückständen ins Inland zur Beseitigung?'
 Source_filename: []
 Source_path: []
 Source: 

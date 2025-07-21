@@ -463,10 +463,17 @@ def main():
     
     # Model selection - load from global configuration
     available_models = get_all_available_models()
+    # Prefer qwen3:1.7b as default, fallback to qwen3:30b-a3b, then index 0
+    default_index = 0
+    if "qwen3:1.7b" in available_models:
+        default_index = available_models.index("qwen3:1.7b")
+    elif "qwen3:30b-a3b" in available_models:
+        default_index = available_models.index("qwen3:30b-a3b")
+    
     selected_model = st.selectbox(
         "Select LLM Model", 
         available_models, 
-        index=0 if not available_models else (1 if len(available_models) > 1 else 0),
+        index=default_index,
         help="Select LLM model; loaded from global report_llms.md and summarization_llms.md configuration"
     )
     

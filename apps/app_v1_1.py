@@ -1059,8 +1059,8 @@ def main():
         st.session_state.max_search_queries = 3  # Default value of 3
     if "files_ready" not in st.session_state:
         st.session_state.files_ready = False  # Tracks if files are uploaded but not processed
-    if "llm_model" not in st.session_state:
-        st.session_state.llm_model = "deepseek-r1:latest"  # Default LLM model
+    if "report_llm" not in st.session_state:
+        st.session_state.report_llm = "qwen3:30b-a3b"  # Default report writing LLM model
     if "enable_web_search" not in st.session_state:
         st.session_state.enable_web_search = True  # Default web search setting
     if "enable_quality_checker" not in st.session_state:
@@ -1074,9 +1074,7 @@ def main():
     if "k_results" not in st.session_state:
         st.session_state.k_results = 3  # Default number of results to retrieve
     if "summarization_llm" not in st.session_state:
-        st.session_state.summarization_llm = "llama3.2"  # Default summarization LLM
-    if "report_llm" not in st.session_state:
-        st.session_state.report_llm = "qwq"  # Default report writing LLM
+        st.session_state.summarization_llm = "qwen3:1.7b"  # Default summarization LLM
     if "detected_language" not in st.session_state:
         st.session_state.detected_language = ""  # Will be populated by language detection
 
@@ -1093,7 +1091,7 @@ def main():
     st.session_state.report_llm = st.sidebar.selectbox(
         "Report Writing LLM",
         options=report_llm_models,
-        index=report_llm_models.index(st.session_state.report_llm) if st.session_state.report_llm in report_llm_models else 0,
+        index=report_llm_models.index(st.session_state.report_llm) if st.session_state.report_llm in report_llm_models else (report_llm_models.index("qwen3:30b-a3b") if "qwen3:30b-a3b" in report_llm_models else 0),
         help="Choose the LLM model to use for final report generation; loaded from global report_llms.md configuration"
     )
     
@@ -1101,7 +1099,7 @@ def main():
     st.session_state.summarization_llm = st.sidebar.selectbox(
         "Summarization LLM",
         options=summarization_llm_models,
-        index=summarization_llm_models.index(st.session_state.summarization_llm) if st.session_state.summarization_llm in summarization_llm_models else 0,
+        index=summarization_llm_models.index(st.session_state.summarization_llm) if st.session_state.summarization_llm in summarization_llm_models else (summarization_llm_models.index("qwen3:1.7b") if "qwen3:1.7b" in summarization_llm_models else 0),
         help="Choose the LLM model to use for document summarization; loaded from global summarization_llms.md configuration"
     )
     
