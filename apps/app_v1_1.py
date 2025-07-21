@@ -48,7 +48,7 @@ logging.getLogger("streamlit").setLevel(logging.ERROR)
 from src.state_v1_1 import ResearcherState
 from src.graph_v1_1 import researcher, researcher_graph
 from src.utils_v1_1 import get_report_structures, process_uploaded_files, clear_cuda_memory
-from src.rag_helpers_v1_1 import similarity_search_for_tenant, transform_documents, source_summarizer_ollama
+from src.rag_helpers_v1_1 import similarity_search_for_tenant, transform_documents, source_summarizer_ollama, get_report_llm_models, get_summarization_llm_models
 from src.vector_db_v1_1 import get_or_create_vector_db, search_documents, get_embedding_model_path
 from src.prompts_v1_1 import SUMMARIZER_SYSTEM_PROMPT
 # Use updated import path to avoid deprecation warning
@@ -1082,26 +1082,25 @@ def main():
     st.sidebar.title("Research Settings")
 
     # Add Report LLM model selector to sidebar
-    llm_models = ["qwq", "deepseek-r1:latest", "deepseek-r1:70b", "gemma3:27b", "mistral-small:latest", 
-                 "deepseek-r1:1.5b", "llama3.1:8b-instruct-q4_0", "llama3.2", "llama3.3", "llama3.3:70b-instruct-q4_K_M", "gemma3:4b", "phi4-mini", 
-                 "mistral:instruct", "mistrallite", "qwen3:30b-a3b"]
+    report_llm_models = get_report_llm_models()
+    summarization_llm_models = get_summarization_llm_models()
     
     st.sidebar.subheader("LLM Models")
     
     # Report writing LLM
     st.session_state.report_llm = st.sidebar.selectbox(
         "Report Writing LLM",
-        options=llm_models,
-        index=llm_models.index(st.session_state.report_llm) if st.session_state.report_llm in llm_models else 0,
-        help="Choose the LLM model to use for final report generation; good options: deepseek-r1:latest (fast), qwq or mistral-small:latest (medium), llama3.3 or deepseek-r1:70b (deep but slow)"
+        options=report_llm_models,
+        index=report_llm_models.index(st.session_state.report_llm) if st.session_state.report_llm in report_llm_models else 0,
+        help="Choose the LLM model to use for final report generation; loaded from global report_llms.md configuration"
     )
     
     # Summarization LLM
     st.session_state.summarization_llm = st.sidebar.selectbox(
         "Summarization LLM",
-        options=llm_models,
-        index=llm_models.index(st.session_state.summarization_llm) if st.session_state.summarization_llm in llm_models else 0,
-        help="Choose the LLM model to use for document summarization; good options: llama3.2 (fast and accurate), qwq (deep but slow)"
+        options=summarization_llm_models,
+        index=summarization_llm_models.index(st.session_state.summarization_llm) if st.session_state.summarization_llm in summarization_llm_models else 0,
+        help="Choose the LLM model to use for document summarization; loaded from global summarization_llms.md configuration"
     )
     
 

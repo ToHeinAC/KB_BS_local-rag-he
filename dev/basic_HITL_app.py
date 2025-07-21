@@ -16,6 +16,7 @@ from langgraph.checkpoint.memory import MemorySaver
 # Import project components
 from src.state_v1_1 import InitState
 from src.utils_v1_1 import invoke_ollama, parse_output, get_configured_llm_model, DetectedLanguage
+from src.rag_helpers_v1_1 import get_all_available_models
 
 # Configure Streamlit page
 st.set_page_config(
@@ -371,8 +372,7 @@ Generate exactly 5 questions in numbered markdown format:
 5. [Fifth targeted search question]
 
 # CRITICAL CONSTRAINTS
-- Write EXCLUSIVELY in {detected_language} language - NO EXCEPTIONS
-- Every single word must be in {detected_language}
+- You MUST Write EXCLUSIVELY in {detected_language} language, both your prefix and your questions - NO EXCEPTIONS
 - Focus on technical/domain-specific search terms
 - Phrase as search queries optimized for knowledge retrieval
 - Do NOT return JSON, dictionaries, or structured data
@@ -459,11 +459,14 @@ def main():
     if "kb_questions_generated" not in st.session_state:
         st.session_state.kb_questions_generated = False
     
-    # Model selection
-    available_models = ["qwq", "deepseek-r1:latest", "deepseek-r1:70b", "gemma3:27b", "mistral-small:latest", 
-                 "deepseek-r1:1.5b", "llama3.1:8b-instruct-q4_0", "llama3.2", "llama3.3", "llama3.3:70b-instruct-q4_K_M", "gemma3:4b", "phi4-mini", 
-                 "mistral:instruct", "mistrallite", "qwen3:30b-a3b"]
-    selected_model = st.selectbox("Select LLM Model", available_models, index=1)
+    # Model selection - load from global configuration
+    available_models = get_all_available_models()
+    selected_model = st.selectbox(
+        "Select LLM Model", 
+        available_models, 
+        index=0 if not available_models else (1 if len(available_models) > 1 else 0),
+        help="Select LLM model; loaded from global report_llms.md and summarization_llms.md configuration"
+    )
     
     # Initial query input
     if not st.session_state.state:

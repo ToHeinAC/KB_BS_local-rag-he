@@ -1,0 +1,16 @@
+[theme]
+primaryColor = "#1E88E5"  # Blue
+backgroundColor = "#000000"  # Black
+secondaryBackgroundColor = "#4F4F4F"  # Grey
+textColor = "#FFFFFF"  # White text
+font = "sans serif"
+
+# Server settings (from previous memory)
+[server]
+enableCORS = false
+enableXsrfProtection = false
+headless = true
+
+[browser]
+serverAddress = "0.0.0.0"
+serverPort = 8501

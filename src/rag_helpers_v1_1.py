@@ -482,6 +482,96 @@ def format_content_with_sources(content, source_filenames, source_paths):
     return formatted_content
 
 
+def load_models_from_file(file_path: str) -> List[str]:
+    """
+    Load model names from a markdown file.
+    
+    Args:
+        file_path (str): Path to the markdown file containing model names
+        
+    Returns:
+        List[str]: List of model names, one per line
+    """
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Model file not found: {file_path}")
+    
+    models = []
+    with open(file_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#'):  # Skip empty lines and comments
+                models.append(line)
+    
+    return models
+
+
+def get_report_llm_models() -> List[str]:
+    """
+    Get the list of available report LLM models from the global configuration.
+    
+    Returns:
+        List[str]: List of report LLM model names
+    """
+    # Get the path to the report_llms.md file
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    report_llms_path = os.path.join(current_dir, 'report_llms.md')
+    
+    try:
+        return load_models_from_file(report_llms_path)
+    except FileNotFoundError:
+        # Fallback to default models if file not found
+        return [
+            "deepseek-r1:latest",
+            "deepseek-r1:70b", 
+            "qwen3:latest",
+            "mistral-small3.2:latest"
+        ]
+
+
+def get_summarization_llm_models() -> List[str]:
+    """
+    Get the list of available summarization LLM models from the global configuration.
+    
+    Returns:
+        List[str]: List of summarization LLM model names
+    """
+    # Get the path to the summarization_llms.md file
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    summarization_llms_path = os.path.join(current_dir, 'summarization_llms.md')
+    
+    try:
+        return load_models_from_file(summarization_llms_path)
+    except FileNotFoundError:
+        # Fallback to default models if file not found
+        return [
+            "deepseek-r1:latest",
+            "qwen3:latest",
+            "mistral-small3.2:latest"
+        ]
+
+
+def get_all_available_models() -> List[str]:
+    """
+    Get a combined list of all available models from both report and summarization files.
+    
+    Returns:
+        List[str]: Combined list of unique model names
+    """
+    report_models = get_report_llm_models()
+    summarization_models = get_summarization_llm_models()
+    
+    # Combine and deduplicate while preserving order
+    all_models = []
+    seen = set()
+    
+    for model in report_models + summarization_models:
+        if model not in seen:
+            all_models.append(model)
+            seen.add(model)
+    
+    return all_models
+
+
 def parse_document_to_formatted_content(document_text):
     """
     Parse a document text that contains Content, Source_filename, and Source_path

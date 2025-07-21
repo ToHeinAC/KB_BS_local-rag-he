@@ -71,6 +71,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.graph_v2 import briefing_app, researcher_app
 from src.state_v1_1 import InitState, ResearcherState
 from src.configuration_v1_1 import get_config_instance
+from src.rag_helpers_v1_1 import get_report_llm_models, get_summarization_llm_models
 
 # Function to clear CUDA memory
 def clear_cuda_memory():
@@ -726,23 +727,24 @@ def main():
         # LLM Model Selection
         st.subheader("LLM Model Selection")
         
-        # Get available models
-        available_models = ["deepseek-r1:latest", "deepseek-r1:7b", "llama3:8b", "llama3:70b", "mistral:7b", "mixtral:8x7b"]
+        # Get available models from global configuration
+        report_models = get_report_llm_models()
+        summarization_models = get_summarization_llm_models()
         
         # Report LLM selection
         report_llm = st.selectbox(
             "Report Generation LLM",
-            available_models,
+            report_models,
             index=0,
-            help="Select the LLM to use for generating the final report"
+            help="Select the LLM to use for generating the final report; loaded from global report_llms.md configuration"
         )
         
         # Summarization LLM selection
         summarization_llm = st.selectbox(
             "Summarization LLM",
-            available_models,
+            summarization_models,
             index=0,
-            help="Select the LLM to use for summarization tasks"
+            help="Select the LLM to use for summarization tasks; loaded from global summarization_llms.md configuration"
         )
         
         # Store the selected models in session state
