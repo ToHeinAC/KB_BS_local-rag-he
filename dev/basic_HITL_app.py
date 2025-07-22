@@ -334,8 +334,8 @@ def generate_knowledge_base_questions(state: InitState):
     """
     query = state["user_query"]
     detected_language = state["detected_language"]
-    human_feedback = state.get("human_feedback", [])
-    additional_context = state.get("additional_context", [])
+    human_feedback = state.get("human_feedback", "")
+    additional_context = state.get("additional_context", "")
     
     # Use the configured LLM model
     model_to_use = state.get("report_llm", "deepseek-r1:latest")

@@ -1,0 +1,1129 @@
+import streamlit as st
+import streamlit_nested_layout
+import warnings
+import logging
+import os
+import re
+import sys
+import time
+import tempfile
+from datetime import datetime, timedelta
+from pathlib import Path
+from IPython.display import Image, display
+
+# Add a workaround for the Streamlit/torch module path extraction issue
+# This needs to be done before importing torch
+class PathHack:
+    def __init__(self, path):
+        self.path = path
+    def _path(self):
+        return [self.path]
+    def __getattr__(self, name):
+        if name == '_path':
+            return self._path
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+
+sys.modules['torch._classes.__path__'] = PathHack(os.path.dirname(os.path.abspath(__file__)))
+
+# Now import torch after the workaround
+import torch
+
+# Import visualization libraries (with fallback if not available)
+try:
+    import networkx as nx
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyBboxPatch
+    NETWORKX_AVAILABLE = True
+except ImportError:
+    NETWORKX_AVAILABLE = False
+
+# Add project root to Python path to fix import issues
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Suppress specific PyTorch warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+logging.getLogger("streamlit").setLevel(logging.ERROR)
+
+# Import ResearcherStateV2 and InitState for the enhanced workflow with HITL
+from src.state_v2_0 import ResearcherStateV2, InitState
+from src.graph_v2_1 import hitl_graph, main_graph, create_hitl_graph, researcher_main
+from src.utils_v1_1 import get_report_structures, process_uploaded_files, clear_cuda_memory
+from src.rag_helpers_v1_1 import (
+    get_report_llm_models, 
+    get_summarization_llm_models, 
+    get_all_available_models,
+    get_license_content
+)
+
+# Set page configuration
+st.set_page_config(
+    page_title="RAG Deep Researcher v2.0 - Human-in-the-Loop",
+    page_icon="🔍",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Function to clean model names for display
+def clean_model_name(model_name):
+    """Clean model name by removing common prefixes and suffixes for better display"""
+    return model_name.replace(":latest", "").replace("_", " ").title()
+
+# Function to extract embedding model name from database directory
+def extract_embedding_model(db_dir_name):
+    """
+    Extract the embedding model name from the database directory name.
+    
+    This function properly handles various database naming conventions, including:
+    - Standard format: "organization/model_name"
+    - Directory format with separators: "Qwen/Qwen--Qwen3-Embedding-0.6B--3000--600"
+    - Legacy format: "model_name/chunk_size/overlap"
+    
+    Args:
+        db_dir_name (str): The database directory name (e.g., "Qwen/Qwen--Qwen3-Embedding-0.6B--3000--600")
+        
+    Returns:
+        str: The extracted embedding model name (e.g., "Qwen/Qwen3-Embedding-0.6B")
+    """
+    # Handle the specific case of database names with '--' separators
+    # Example: "Qwen--Qwen3-Embedding-0.6B--3000--600" -> "Qwen/Qwen3-Embedding-0.6B"
+    if '--' in db_dir_name:
+        parts = db_dir_name.split('--')
+        
+        if len(parts) >= 2:
+            # The first part should contain the model organization and name
+            first_part = parts[0]  # "Qwen"
+            second_part = parts[1]  # "Qwen3-Embedding-0.6B"
+            
+            if '/' in first_part:
+                # Extract organization from first part
+                org = first_part.split('/')[0]  # "Qwen"
+                result = f"{org}/{second_part}"  # "Qwen/Qwen3-Embedding-0.6B"
+                return result
+            else:
+                # Fallback: use first part as org
+                result = f"{first_part}/{second_part}"
+                return result
+    
+    # Fallback to original logic if the new parsing fails
+    model_name = db_dir_name.replace("vectordb_", "")
+    model_name = model_name.replace("--", "/")
+
+    return model_name
+
+# Function to get embedding model
+def get_embedding_model(model_name):
+    """Get the embedding model path from the model name"""
+    return model_name.replace("/", "_")
+
+def create_mermaid_png_representation(researcher):
+    """
+    Create a Mermaid PNG diagram representation of the workflow.
+    
+    Returns:
+        PNG bytes of the Mermaid diagram
+    """
+    return researcher.get_graph().draw_mermaid_png()
+
+def generate_workflow_visualization_legacy(researcher, workflow_type="main", return_mermaid_only=False):
+    """
+    Generate a visualization of the LangGraph workflow using NetworkX
+    
+    Args:
+        researcher: The researcher graph to visualize
+        workflow_type (str): Type of workflow - "hitl" or "main"
+        return_mermaid_only (bool): If True, only return the Mermaid representation
+        
+    Returns:
+        str: Path to the visualization image or Mermaid representation
+    """
+    if return_mermaid_only:
+        return create_mermaid_representation(researcher)
+    
+    if not NETWORKX_AVAILABLE:
+        st.warning("NetworkX and matplotlib are not available. Cannot generate workflow visualization.")
+        return create_mermaid_representation(researcher)
+    
+    try:
+        # Create a directed graph
+        G = nx.DiGraph()
+        
+        # Define nodes and edges based on workflow type
+        if workflow_type == "hitl":
+            # HITL workflow nodes
+            nodes = [
+                ("START", "Start"),
+                ("analyse_user_feedback", "Analyze User\nFeedback"),
+                ("generate_follow_up_questions", "Generate Follow-up\nQuestions"),
+                ("generate_knowledge_base_questions", "Generate KB\nQuestions"),
+                ("END", "To Main Workflow")
+            ]
+            
+            # HITL workflow edges
+            edges = [
+                ("START", "analyse_user_feedback"),
+                ("analyse_user_feedback", "generate_follow_up_questions"),
+                ("generate_follow_up_questions", "generate_knowledge_base_questions"),
+                ("generate_knowledge_base_questions", "END")
+            ]
+        elif workflow_type == "integrated":
+            # Integrated workflow nodes (HITL + Main)
+            nodes = [
+                ("START", "Start"),
+                ("analyse_user_feedback", "Analyze User\nFeedback (HITL)"),
+                ("generate_follow_up_questions", "Generate Follow-up\nQuestions (HITL)"),
+                ("generate_knowledge_base_questions", "Generate KB\nQuestions (HITL)"),
+                ("display_embedding_model_info", "Display Embedding\nModel Info"),
+                ("detect_language", "Detect Language"),
+                ("generate_research_queries", "Generate Research\nQueries"),
+                ("retrieve_rag_documents", "Retrieve RAG\nDocuments"),
+                ("summarize_query_research", "Summarize Query\nResearch"),
+                ("generate_final_answer", "Generate Final\nAnswer"),
+                ("quality_checker", "Quality Checker"),
+                ("END", "End")
+            ]
+            
+            # Integrated workflow edges
+            edges = [
+                ("START", "analyse_user_feedback"),
+                ("analyse_user_feedback", "generate_follow_up_questions"),
+                ("generate_follow_up_questions", "generate_knowledge_base_questions"),
+                ("generate_knowledge_base_questions", "display_embedding_model_info"),
+                ("display_embedding_model_info", "detect_language"),
+                ("detect_language", "generate_research_queries"),
+                ("generate_research_queries", "retrieve_rag_documents"),
+                ("retrieve_rag_documents", "summarize_query_research"),
+                ("summarize_query_research", "generate_final_answer"),
+                ("generate_final_answer", "quality_checker"),
+                ("quality_checker", "generate_final_answer"),  # Quality loop
+                ("generate_final_answer", "END"),
+                ("quality_checker", "END")
+            ]
+        else:  # main workflow
+            # Main workflow nodes
+            nodes = [
+                ("START", "From HITL"),
+                ("display_embedding_model_info", "Display Embedding\nModel Info"),
+                ("detect_language", "Detect Language"),
+                ("generate_research_queries", "Generate Research\nQueries"),
+                ("retrieve_rag_documents", "Retrieve RAG\nDocuments"),
+                ("summarize_query_research", "Summarize Query\nResearch"),
+                ("generate_final_answer", "Generate Final\nAnswer"),
+                ("quality_checker", "Quality Checker"),
+                ("END", "End")
+            ]
+            
+            # Main workflow edges
+            edges = [
+                ("START", "display_embedding_model_info"),
+                ("display_embedding_model_info", "detect_language"),
+                ("detect_language", "generate_research_queries"),
+                ("generate_research_queries", "retrieve_rag_documents"),
+                ("retrieve_rag_documents", "summarize_query_research"),
+                ("summarize_query_research", "generate_final_answer"),
+                ("generate_final_answer", "quality_checker"),
+                ("quality_checker", "generate_final_answer"),  # Quality loop
+                ("generate_final_answer", "END"),
+                ("quality_checker", "END")
+            ]
+        
+        # Add nodes to graph
+        for node_id, label in nodes:
+            G.add_node(node_id, label=label)
+        
+        # Add edges to graph
+        G.add_edges_from(edges)
+        
+        # Create layout
+        pos = nx.spring_layout(G, k=3, iterations=50)
+        
+        # Create figure
+        plt.figure(figsize=(16, 12))
+        plt.clf()
+        
+        # Define colors for different node types based on workflow type
+        node_colors = []
+        for node_id, _ in nodes:
+            if node_id in ["START", "END"]:
+                node_colors.append('#FF6B6B')  # Red for start/end
+            elif workflow_type == "hitl":
+                # HITL workflow coloring
+                if node_id == "analyse_user_feedback":
+                    node_colors.append('#4ECDC4')  # Teal for user feedback analysis
+                elif node_id == "generate_follow_up_questions":
+                    node_colors.append('#6EC4DB')  # Light blue for follow-up questions
+                elif node_id == "generate_knowledge_base_questions":
+                    node_colors.append('#56B870')  # Green for KB questions
+                else:
+                    node_colors.append('#95E1D3')  # Default for HITL nodes
+            elif workflow_type == "integrated":
+                # Integrated workflow coloring (HITL + Main)
+                if node_id in ["analyse_user_feedback", "generate_follow_up_questions", "generate_knowledge_base_questions"]:
+                    node_colors.append('#4ECDC4')  # Teal for HITL nodes
+                elif node_id == "quality_checker":
+                    node_colors.append('#FFE66D')  # Yellow for quality checker
+                elif node_id in ["generate_research_queries", "generate_final_answer"]:
+                    node_colors.append('#78C3FB')  # Blue for generation nodes
+                elif node_id == "retrieve_rag_documents":
+                    node_colors.append('#F8B195')  # Orange for retrieval
+                elif node_id == "summarize_query_research":
+                    node_colors.append('#C06C84')  # Purple for summarization
+                else:
+                    node_colors.append('#95E1D3')  # Light green for regular nodes
+            else:
+                # Main workflow coloring
+                if node_id == "quality_checker":
+                    node_colors.append('#FFE66D')  # Yellow for quality checker
+                elif node_id in ["generate_research_queries", "generate_final_answer"]:
+                    node_colors.append('#78C3FB')  # Blue for generation nodes
+                elif node_id == "retrieve_rag_documents":
+                    node_colors.append('#F8B195')  # Orange for retrieval
+                elif node_id == "summarize_query_research":
+                    node_colors.append('#C06C84')  # Purple for summarization
+                else:
+                    node_colors.append('#95E1D3')  # Light green for regular nodes
+        
+        # Draw nodes
+        nx.draw_networkx_nodes(G, pos, node_color=node_colors, 
+                              node_size=3000, alpha=0.9)
+        
+        # Draw edges
+        nx.draw_networkx_edges(G, pos, edge_color='gray', 
+                              arrows=True, arrowsize=20, 
+                              arrowstyle='->', alpha=0.6)
+        
+        # Draw labels
+        labels = {node_id: data['label'] for node_id, data in G.nodes(data=True)}
+        nx.draw_networkx_labels(G, pos, labels, font_size=8, font_weight='bold')
+        
+        # Set title based on workflow type
+        if workflow_type == "hitl":
+            plt.title("RAG Deep Researcher v2.0 - Human-in-the-Loop Initial Workflow", 
+                     fontsize=16, fontweight='bold', pad=20)
+        elif workflow_type == "integrated":
+            plt.title("RAG Deep Researcher v2.0 - Complete Integrated Workflow", 
+                     fontsize=16, fontweight='bold', pad=20)
+        else:
+            plt.title("RAG Deep Researcher v2.0 - Main Research Workflow", 
+                     fontsize=16, fontweight='bold', pad=20)
+        plt.axis('off')
+        plt.tight_layout()
+        
+        # Save to temporary file
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+        plt.savefig(temp_file.name, dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        return temp_file.name
+        
+    except Exception as e:
+        st.error(f"Error generating workflow visualization: {str(e)}")
+        return create_mermaid_representation(researcher)
+
+def generate_langgraph_visualization():
+    """
+    Generate PNG visualizations of the HITL and main LangGraph workflows using draw_mermaid_png().
+    """
+    try:
+        from IPython.display import Image, display
+        
+        # Get graph instances
+        hitl_graph = create_hitl_graph()
+        main_graph = researcher_main
+        integrated_graph = researcher_v2
+        
+        # Display in Streamlit
+        st.subheader("🔄 Workflow Visualization")
+        
+        # Create tabs for different workflow visualizations
+        tab1, tab2 = st.tabs(["HITL Workflow", "Main Research Workflow"])
+        
+        # HITL workflow tab
+        with tab1:
+            st.markdown("### Human-in-the-Loop (HITL) Workflow")
+            st.markdown("This is the initial workflow that gathers human feedback before starting the main research process.")
+            try:
+                hitl_png = hitl_graph.get_graph().draw_mermaid_png()
+                st.image(hitl_png)
+            except Exception as e:
+                st.error(f"Could not generate HITL workflow PNG: {str(e)}")
+        
+        # Main workflow tab
+        with tab2:
+            st.markdown("### Main Research Workflow")
+            st.markdown("This is the main workflow that executes after the HITL process completes.")
+            try:
+                main_png = main_graph.get_graph().draw_mermaid_png()
+                st.image(main_png)
+            except Exception as e:
+                st.error(f"Could not generate main workflow PNG: {str(e)}")
+                
+    except Exception as e:
+        st.error(f"Error generating workflow visualization: {str(e)}")
+
+def generate_workflow_visualization(researcher, return_mermaid_only=False):
+    """
+    Generate a visualization of the LangGraph workflow.
+    If return_mermaid_only is True, it will only return the Mermaid representation.
+    Otherwise, it returns the Mermaid representation.
+    """
+    return create_mermaid_representation(researcher)
+
+def generate_response(user_input, enable_web_search, report_structure, max_search_queries, 
+                     report_llm, enable_quality_checker, quality_check_loops=1, 
+                     use_ext_database=False, selected_database=None, k_results=3,
+                     human_feedback="", additional_context=""):
+    """
+    Generate response using the researcher agent with HITL capabilities and stream steps
+    If use_ext_database is True, it will use an external database for document retrieval
+    The original workflow is always enabled with HITL integration
+    """
+    
+    # Clear CUDA memory before starting
+    clear_cuda_memory()
+    
+    # Configuration for the graphs
+    config = {
+        "configurable": {
+            "report_structure": report_structure,
+            "max_search_queries": max_search_queries,
+            "report_llm": report_llm,
+            "summarization_llm": st.session_state.summarization_llm,
+            "enable_web_search": enable_web_search,
+            "enable_quality_checker": enable_quality_checker,
+            "quality_check_loops": quality_check_loops,
+            "use_ext_database": use_ext_database,
+            "selected_database": selected_database,
+            "k_results": k_results
+        }
+    }
+    
+    # Create containers for different sections
+    progress_container = st.container()
+    hitl_container = st.container()
+    results_container = st.container()
+    
+    with progress_container:
+        st.subheader("🔄 Research Progress")
+        
+        # Create separate progress bars for HITL and Main workflows
+        st.markdown("**Human-in-the-Loop Phase:**")
+        hitl_progress_bar = st.progress(0)
+        hitl_status_text = st.empty()
+        
+        st.markdown("**Main Research Workflow:**")
+        main_progress_bar = st.progress(0)
+        main_status_text = st.empty()
+        
+        step_details = st.empty()
+    
+    # Define workflow steps for progress tracking
+    hitl_steps = ["analyse_user_feedback", "generate_follow_up_questions", "generate_knowledge_base_questions"]
+    main_steps = ["retrieve_rag_documents", "update_position", "summarize_query_research", "generate_final_answer"]
+    if enable_quality_checker:
+        main_steps.append("quality_checker")
+    
+    try:
+        # Phase 1: Execute HITL workflow
+        st.markdown("### 🤝 Human-in-the-Loop Phase")
+        hitl_status_text.text("🚀 Starting HITL workflow...")
+        
+        # Initialize HITL state
+        hitl_state = InitState(
+            user_query=user_input,
+            current_position=0,
+            detected_language="",
+            additional_context=additional_context,
+            human_feedback=human_feedback,
+            analysis="",
+            follow_up_questions="",
+            report_llm=report_llm,
+            summarization_llm=st.session_state.summarization_llm
+        )
+        
+        # Execute HITL graph
+        hitl_current_step = 0
+        hitl_final_state = None
+        for step_output in hitl_graph.stream(hitl_state, config):
+            # Update progress
+            hitl_current_step += 1
+            hitl_progress = min(hitl_current_step / len(hitl_steps), 1.0)
+            hitl_progress_bar.progress(hitl_progress)
+            
+            # Update status based on current step
+            if hitl_current_step == 1:
+                hitl_status_text.text("🧠 Analyzing user feedback...")
+            elif hitl_current_step == 2:
+                hitl_status_text.text("❓ Generating follow-up questions...")
+            elif hitl_current_step == 3:
+                hitl_status_text.text("📝 Generating knowledge base questions...")
+            
+            # Get the latest state from the step output
+            for node_name, node_state in step_output.items():
+                hitl_final_state = node_state
+            
+            # Display step details
+            step_details.info(f"HITL Step {hitl_current_step}/{len(hitl_steps)} completed")
+            time.sleep(0.1)
+        
+        # Complete HITL phase
+        hitl_progress_bar.progress(1.0)
+        hitl_status_text.text("✅ HITL phase completed")
+        
+        # Display HITL results
+        with hitl_container:
+            st.subheader("🤝 HITL Results")
+            if hitl_final_state and hitl_final_state.get('analysis'):
+                st.markdown("**Analysis:**")
+                st.info(hitl_final_state['analysis'])
+            
+            if hitl_final_state and hitl_final_state.get('follow_up_questions'):
+                st.markdown("**Follow-up Questions:**")
+                st.info(hitl_final_state['follow_up_questions'])
+        
+        # Phase 2: Prepare and execute Main workflow
+        st.markdown("### 🔬 Main Research Workflow")
+        main_status_text.text("🚀 Starting main research workflow...")
+        
+        # Transfer state from HITL to main workflow
+        main_state = ResearcherStateV2(
+            user_query=user_input,
+            current_position=0,
+            detected_language=hitl_final_state.get('detected_language', '') if hitl_final_state else '',
+            research_queries=hitl_final_state.get('research_queries', []) if hitl_final_state else [],  # Key transfer from HITL
+            retrieved_documents={},
+            search_summaries={},
+            final_answer="",
+            quality_check=None,
+            additional_context=hitl_final_state.get('additional_context', '') if hitl_final_state else additional_context,
+            report_llm=report_llm,
+            summarization_llm=st.session_state.summarization_llm,
+            query_mapping=None,
+            enable_quality_checker=enable_quality_checker,
+            # Transfer HITL fields
+            human_feedback=hitl_final_state.get('human_feedback', '') if hitl_final_state else human_feedback,
+            analysis=hitl_final_state.get('analysis', '') if hitl_final_state else '',
+            follow_up_questions=hitl_final_state.get('follow_up_questions', '') if hitl_final_state else ''
+        )
+        
+        # Execute main graph
+        main_current_step = 0
+        main_final_state = None
+        for step_output in main_graph.stream(main_state, config):
+            # Update progress
+            main_current_step += 1
+            main_progress = min(main_current_step / len(main_steps), 1.0)
+            main_progress_bar.progress(main_progress)
+            
+            # Update status based on current step
+            if main_current_step == 1:
+                main_status_text.text("🔍 Retrieving relevant documents...")
+            elif main_current_step == 2:
+                main_status_text.text("📍 Updating research position...")
+            elif main_current_step == 3:
+                main_status_text.text("📋 Summarizing research findings...")
+            elif main_current_step == 4:
+                main_status_text.text("✍️ Generating final answer...")
+            elif main_current_step == 5 and enable_quality_checker:
+                main_status_text.text("✅ Checking answer quality...")
+            
+            # Get the latest state from the step output
+            for node_name, node_state in step_output.items():
+                main_final_state = node_state
+            
+            # Display step details
+            step_details.info(f"Main Step {main_current_step}/{len(main_steps)} completed")
+            time.sleep(0.1)
+        
+        # Complete main phase
+        main_progress_bar.progress(1.0)
+        main_status_text.text("✅ Research completed")
+        
+        # Use the final state from main workflow
+        final_state = main_final_state if main_final_state else main_state
+        
+        # Display results
+        with results_container:
+            st.subheader("📋 Research Results")
+            
+            # Display the final answer
+            if "final_answer" in final_state and final_state["final_answer"]:
+                st.markdown("### 📄 Final Report")
+                st.markdown(final_state["final_answer"])
+                
+                # Add copy to clipboard functionality
+                if st.button("📋 Copy Report to Clipboard", key="copy_report"):
+                    copy_to_clipboard(final_state["final_answer"])
+                    st.success("Report copied to clipboard!")
+            
+            # Display quality check results if available
+            if enable_quality_checker and "quality_check" in final_state and final_state["quality_check"]:
+                st.markdown("### 🔍 Quality Check Results")
+                quality_data = final_state["quality_check"]
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Quality Score", f"{quality_data.get('score', 0):.2f}")
+                with col2:
+                    st.metric("Information Retention", f"{quality_data.get('retention_score', 0):.2f}")
+                with col3:
+                    st.metric("Completeness", f"{quality_data.get('completeness_score', 0):.2f}")
+                
+                if quality_data.get('feedback'):
+                    st.markdown("**Quality Feedback:**")
+                    st.info(quality_data['feedback'])
+            
+            # Display additional context if available
+            if "additional_context" in final_state and final_state["additional_context"]:
+                with st.expander("🤝 Human-in-the-Loop Context", expanded=False):
+                    st.markdown(final_state["additional_context"])
+        
+        progress_bar.progress(1.0)
+        status_text.text("✅ Research completed successfully!")
+        
+        return final_state
+        
+    except Exception as e:
+        st.error(f"An error occurred during research: {str(e)}")
+        st.exception(e)
+        return None
+
+def clear_chat():
+    """Clear the chat history and reset session state"""
+    keys_to_clear = [
+        'messages', 'research_results', 'current_query', 'hitl_feedback',
+        'hitl_analysis', 'hitl_questions', 'hitl_context'
+    ]
+    for key in keys_to_clear:
+        if key in st.session_state:
+            del st.session_state[key]
+    st.rerun()
+
+def copy_to_clipboard(text):
+    """Safely copy text to clipboard if pyperclip is available"""
+    try:
+        import pyperclip
+        pyperclip.copy(text)
+        return True
+    except ImportError:
+        st.warning("pyperclip not available. Please install it for clipboard functionality.")
+        return False
+
+def main():
+    # Initialize session state
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    
+    if "research_results" not in st.session_state:
+        st.session_state.research_results = None
+    
+    if "current_query" not in st.session_state:
+        st.session_state.current_query = ""
+    
+    # HITL session state
+    if "hitl_feedback" not in st.session_state:
+        st.session_state.hitl_feedback = ""
+    
+    if "hitl_analysis" not in st.session_state:
+        st.session_state.hitl_analysis = ""
+    
+    if "hitl_questions" not in st.session_state:
+        st.session_state.hitl_questions = ""
+    
+    if "hitl_context" not in st.session_state:
+        st.session_state.hitl_context = ""
+    
+    # Model selection session state
+    if "report_llm" not in st.session_state:
+        report_llm_models = get_report_llm_models()
+        # Set default to qwen3:30b-a3b if available, otherwise first model
+        if "qwen3:30b-a3b" in report_llm_models:
+            st.session_state.report_llm = "qwen3:30b-a3b"
+        else:
+            st.session_state.report_llm = report_llm_models[0] if report_llm_models else "deepseek-r1:latest"
+    
+    if "summarization_llm" not in st.session_state:
+        summarization_llm_models = get_summarization_llm_models()
+        # Set default to qwen3:1.7b if available, otherwise first model
+        if "qwen3:1.7b" in summarization_llm_models:
+            st.session_state.summarization_llm = "qwen3:1.7b"
+        else:
+            st.session_state.summarization_llm = summarization_llm_models[0] if summarization_llm_models else "deepseek-r1:latest"
+    
+    # Create header with two columns (matching app_v1_1.py)
+    header_col1, header_col2 = st.columns([0.6, 0.4])
+    with header_col1:
+        st.title("🔍 RAG Deep Researcher v2.0 - Human-in-the-Loop")
+        # Add license information under the title (exact implementation from basic_HITL_app.py)
+        st.markdown('<p style="font-size:12px; font-weight:bold; color:darkorange; margin-top:-10px;">LICENCE</p>', 
+                    unsafe_allow_html=True, help=get_license_content())
+    with header_col2:
+        st.image("Header für Chatbot.png", use_container_width=True)
+    
+    st.markdown("""
+    **Enhanced RAG-based research assistant with Human-in-the-Loop capabilities**
+    
+    This version includes interactive feedback analysis and follow-up question generation to improve research quality.
+    """)
+    
+    # Load model options from global configuration
+    report_llm_models = get_report_llm_models()
+    summarization_llm_models = get_summarization_llm_models()
+    
+    # Sidebar configuration
+    with st.sidebar:
+        st.header("⚙️ Configuration")
+        
+        # Model Selection
+        st.subheader("🤖 Model Selection")
+        
+        # Report writing LLM
+        st.session_state.report_llm = st.sidebar.selectbox(
+            "Report Writing LLM",
+            options=report_llm_models,
+            index=report_llm_models.index(st.session_state.report_llm) if st.session_state.report_llm in report_llm_models else (report_llm_models.index("qwen3:30b-a3b") if "qwen3:30b-a3b" in report_llm_models else 0),
+            help="Choose the LLM model to use for final report generation; loaded from global report_llms.md configuration"
+        )
+        
+        # Summarization LLM
+        st.session_state.summarization_llm = st.sidebar.selectbox(
+            "Summarization LLM",
+            options=summarization_llm_models,
+            index=summarization_llm_models.index(st.session_state.summarization_llm) if st.session_state.summarization_llm in summarization_llm_models else (summarization_llm_models.index("qwen3:1.7b") if "qwen3:1.7b" in summarization_llm_models else 0),
+            help="Choose the LLM model to use for document summarization; loaded from global summarization_llms.md configuration"
+        )
+        
+        st.divider()
+        
+        # Research Configuration
+        st.subheader("🔬 Research Settings")
+        
+        # Report structure
+        report_structures = get_report_structures()
+        report_structure = st.selectbox(
+            "Report Structure",
+            options=list(report_structures.keys()),
+            index=0,
+            help="Choose the structure for the final report"
+        )
+        
+        # Max search queries
+        max_search_queries = st.slider(
+            "Max Research Queries",
+            min_value=1,
+            max_value=10,
+            value=5,
+            help="Maximum number of research queries to generate"
+        )
+        
+        # Enable web search
+        enable_web_search = st.checkbox(
+            "Enable Web Search",
+            value=False,
+            help="Enable web search in addition to local document retrieval"
+        )
+        
+        # Quality checker settings
+        enable_quality_checker = st.checkbox(
+            "Enable Quality Checker",
+            value=False,
+            help="Enable quality checking and improvement of the final report"
+        )
+        
+        if enable_quality_checker:
+            quality_check_loops = st.slider(
+                "Quality Check Iterations",
+                min_value=1,
+                max_value=3,
+                value=1,
+                help="Number of quality check and improvement iterations"
+            )
+        else:
+            quality_check_loops = 1
+        
+        st.divider()
+        
+        # External Database Configuration (matching app_v1_1.py)
+        st.subheader("🗄️ External Database")
+        
+        # Define DATABASE_PATH like in app_v1_1.py
+        DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "kb", "database")
+        
+        # Initialize session state for external database
+        if "use_ext_database" not in st.session_state:
+            st.session_state.use_ext_database = False
+        if "selected_database" not in st.session_state:
+            st.session_state.selected_database = ""
+        if "k_results" not in st.session_state:
+            st.session_state.k_results = 3
+        
+        # Enable external database checkbox
+        st.session_state.use_ext_database = st.sidebar.checkbox(
+            "Use ext. Database", 
+            value=st.session_state.use_ext_database,
+            help="Use an existing database for document retrieval"
+        )
+        
+        # Database selection
+        if st.session_state.use_ext_database:
+            # Get available databases
+            database_dir = Path(DATABASE_PATH)
+            database_options = [d.name for d in database_dir.iterdir() if d.is_dir()] if database_dir.exists() else []
+            
+            if database_options:
+                # Select database
+                selected_db = st.sidebar.selectbox(
+                    "Select Database",
+                    options=database_options,
+                    index=database_options.index(st.session_state.selected_database) if st.session_state.selected_database in database_options else 0,
+                    help="Choose a database to use for retrieval"
+                )
+                st.session_state.selected_database = selected_db
+                
+                # Extract and update embedding model from database name
+                embedding_model_name = extract_embedding_model(selected_db)
+                if embedding_model_name:
+                    # Update the global configuration to use this embedding model
+                    from src.configuration_v1_1 import update_embedding_model
+                    update_embedding_model(embedding_model_name)
+                    st.sidebar.info(f"Selected Database: {selected_db}")
+                    st.sidebar.success(f"Updated embedding model to: {embedding_model_name}")
+                
+                # Number of results to retrieve
+                st.session_state.k_results = st.sidebar.slider(
+                    "Number of results to retrieve", 
+                    min_value=1, 
+                    max_value=10, 
+                    value=st.session_state.k_results
+                )
+                
+                selected_database = st.session_state.selected_database
+                k_results = st.session_state.k_results
+            else:
+                st.sidebar.warning("No databases found. Please upload documents first.")
+                st.session_state.use_ext_database = False
+                selected_database = None
+                k_results = 3
+        else:
+            selected_database = None
+            k_results = 3
+            
+        use_ext_database = st.session_state.use_ext_database
+        
+        st.divider()
+        
+        # Clear chat button
+        if st.button("🗑️ Clear Chat", help="Clear all chat history and reset the session"):
+            clear_chat()
+    
+    # Main interface
+    st.subheader("💬 Research Interface with Human-in-the-Loop")
+    
+    # Initialize HITL session state
+    if "hitl_state" not in st.session_state:
+        st.session_state.hitl_state = None
+    if "hitl_conversation_history" not in st.session_state:
+        st.session_state.hitl_conversation_history = []
+    if "waiting_for_human_input" not in st.session_state:
+        st.session_state.waiting_for_human_input = False
+    if "conversation_ended" not in st.session_state:
+        st.session_state.conversation_ended = False
+    if "input_counter" not in st.session_state:
+        st.session_state.input_counter = 0
+    
+    # Initial query input (matching basic_HITL_app.py)
+    if not st.session_state.hitl_state:
+        st.markdown("""
+        **Enhanced RAG-based research with Human-in-the-Loop capabilities**
+        
+        This system will first ask you clarifying questions to better understand your research needs,
+        then proceed with enhanced document retrieval and report generation.
+        """)
+        
+        user_query = st.text_area(
+            "Enter your initial research query:", 
+            height=100,
+            placeholder="e.g., 'What are the latest developments in quantum computing and their potential applications in cryptography?'"
+        )
+        submit_button = st.button("🚀 Submit Query", type="primary")
+        
+        if submit_button and user_query:
+            # Initialize the HITL state
+            st.session_state.hitl_state = {
+                "user_query": user_query,
+                "current_position": 0,
+                "detected_language": "",
+                "additional_context": "",  # Will store annotated conversation history
+                "human_feedback": "",
+                "analysis": "",
+                "follow_up_questions": "",
+                "report_llm": st.session_state.report_llm,
+                "summarization_llm": st.session_state.summarization_llm
+            }
+            
+            # Add user message to conversation history
+            st.session_state.hitl_conversation_history.append({
+                "role": "user",
+                "content": user_query
+            })
+            
+            # Detect language
+            with st.spinner("Detecting language..."):
+                # Use the detect_language function from our graph
+                config = {
+                    "configurable": {
+                        "report_llm": st.session_state.report_llm,
+                        "summarization_llm": st.session_state.summarization_llm
+                    }
+                }
+                
+                # Convert to ResearcherStateV2 format
+                temp_state = ResearcherStateV2(
+                    user_query=user_query,
+                    current_position=0,
+                    detected_language="",
+                    research_queries=[],
+                    retrieved_documents={},
+                    search_summaries={},
+                    final_answer="",
+                    quality_check=None,
+                    additional_context="",
+                    report_llm=st.session_state.report_llm,
+                    summarization_llm=st.session_state.summarization_llm,
+                    query_mapping=None,
+                    enable_quality_checker=False,
+                    human_feedback="",
+                    analysis="",
+                    follow_up_questions=""
+                )
+                
+                # Import detect_language from our graph
+                from src.graph_v2_0 import detect_language
+                result = detect_language(temp_state, config)
+                st.session_state.hitl_state["detected_language"] = result["detected_language"]
+            
+            # Generate initial follow-up questions
+            with st.spinner("Generating follow-up questions..."):
+                # Convert HITL state to ResearcherStateV2 format
+                temp_state = ResearcherStateV2(
+                    user_query=user_query,
+                    current_position=0,
+                    detected_language=st.session_state.hitl_state["detected_language"],
+                    research_queries=[],
+                    retrieved_documents={},
+                    search_summaries={},
+                    final_answer="",
+                    quality_check=None,
+                    additional_context=st.session_state.hitl_state["additional_context"],
+                    report_llm=st.session_state.report_llm,
+                    summarization_llm=st.session_state.summarization_llm,
+                    query_mapping=None,
+                    enable_quality_checker=False,
+                    human_feedback=st.session_state.hitl_state["human_feedback"],
+                    analysis=st.session_state.hitl_state["analysis"],
+                    follow_up_questions=""
+                )
+                
+                # Import generate_follow_up_questions from our graph
+                from src.graph_v2_0 import generate_follow_up_questions
+                follow_up_result = generate_follow_up_questions(temp_state, config)
+                st.session_state.hitl_state["follow_up_questions"] = follow_up_result["follow_up_questions"]
+            
+            # For initial query, we don't have analysis yet
+            st.session_state.hitl_state["analysis"] = ""
+            
+            # Format the combined response for initial query
+            combined_response = f"FOLLOW-UP: {st.session_state.hitl_state['follow_up_questions']}"
+            
+            # Add AI message to conversation history with formatted content
+            st.session_state.hitl_conversation_history.append({
+                "role": "assistant",
+                "content": combined_response
+            })
+            
+            # Store initial AI questions in additional_context
+            st.session_state.hitl_state["additional_context"] += f"Initial AI Question(s):\n{st.session_state.hitl_state['follow_up_questions']}"
+            
+            # Set waiting for human input
+            st.session_state.waiting_for_human_input = True
+            
+            # Force a rerun to update the UI
+            st.rerun()
+    
+    # Display conversation history (matching basic_HITL_app.py)
+    if st.session_state.hitl_conversation_history:
+        st.subheader("💬 Conversation History")
+        for message in st.session_state.hitl_conversation_history:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+    
+    # Display debug information about the current state
+    if st.session_state.hitl_state:
+        with st.expander("Debug: Current HITL State", expanded=False):
+            # Create a deep copy of the state to display
+            display_state = {}
+            for key, value in st.session_state.hitl_state.items():
+                display_state[key] = value
+            st.json(display_state)
+    
+    # Handle human feedback (matching basic_HITL_app.py)
+    if st.session_state.waiting_for_human_input and not st.session_state.conversation_ended:
+        # Use a dynamic key that changes after each submission to force widget reset
+        human_feedback = st.text_area(
+            "Your response (type /end to finish and start research):", 
+            value="", 
+            height=100, 
+            key=f"human_feedback_area_{st.session_state.input_counter}"
+        )
+        submit_feedback_button = st.button("Submit Response")
+        
+        if submit_feedback_button and human_feedback:
+            # Check if the user wants to end the conversation
+            if human_feedback.strip().lower() == "/end":
+                st.session_state.conversation_ended = True
+                
+                # Add user message to conversation history
+                st.session_state.hitl_conversation_history.append({
+                    "role": "user",
+                    "content": "/end - Conversation ended"
+                })
+                
+                # Start the research process with collected HITL context
+                st.success("✅ HITL conversation completed. Starting research process...")
+                
+                # Execute the full research workflow with HITL context
+                with st.spinner("Executing research with HITL context..."):
+                    results = generate_response(
+                        user_input=st.session_state.hitl_state["user_query"],
+                        enable_web_search=enable_web_search,
+                        report_structure=report_structure,
+                        max_search_queries=max_search_queries,
+                        report_llm=st.session_state.report_llm,
+                        enable_quality_checker=enable_quality_checker,
+                        quality_check_loops=quality_check_loops,
+                        use_ext_database=use_ext_database,
+                        selected_database=selected_database,
+                        k_results=k_results,
+                        human_feedback=st.session_state.hitl_state["additional_context"],
+                        additional_context=st.session_state.hitl_state["additional_context"]
+                    )
+                    
+                    if results:
+                        st.session_state.research_results = results
+                
+                # Increment input counter to reset widgets
+                st.session_state.input_counter += 1
+                st.rerun()
+            else:
+                # Process the human feedback
+                st.session_state.hitl_state["human_feedback"] = human_feedback
+                
+                # Add user message to conversation history
+                st.session_state.hitl_conversation_history.append({
+                    "role": "user",
+                    "content": human_feedback
+                })
+                
+                # Analyze the feedback
+                with st.spinner("Analyzing your feedback..."):
+                    # Convert HITL state to ResearcherStateV2 format
+                    temp_state = ResearcherStateV2(
+                        user_query=st.session_state.hitl_state["user_query"],
+                        current_position=0,
+                        detected_language=st.session_state.hitl_state["detected_language"],
+                        research_queries=[],
+                        retrieved_documents={},
+                        search_summaries={},
+                        final_answer="",
+                        quality_check=None,
+                        additional_context=st.session_state.hitl_state["additional_context"],
+                        report_llm=st.session_state.report_llm,
+                        summarization_llm=st.session_state.summarization_llm,
+                        query_mapping=None,
+                        enable_quality_checker=False,
+                        human_feedback=human_feedback,
+                        analysis=st.session_state.hitl_state["analysis"],
+                        follow_up_questions=st.session_state.hitl_state["follow_up_questions"]
+                    )
+                    
+                    config = {
+                        "configurable": {
+                            "report_llm": st.session_state.report_llm,
+                            "summarization_llm": st.session_state.summarization_llm
+                        }
+                    }
+                    
+                    # Import analyse_user_feedback from our graph
+                    from src.graph_v2_0 import analyse_user_feedback
+                    analysis_result = analyse_user_feedback(temp_state, config)
+                    st.session_state.hitl_state["analysis"] = analysis_result["analysis"]
+                    st.session_state.hitl_state["additional_context"] = analysis_result["additional_context"]
+                
+                # Generate new follow-up questions
+                with st.spinner("Generating follow-up questions..."):
+                    # Update temp_state with new analysis
+                    temp_state = ResearcherStateV2(
+                        user_query=st.session_state.hitl_state["user_query"],
+                        current_position=0,
+                        detected_language=st.session_state.hitl_state["detected_language"],
+                        research_queries=[],
+                        retrieved_documents={},
+                        search_summaries={},
+                        final_answer="",
+                        quality_check=None,
+                        additional_context=st.session_state.hitl_state["additional_context"],
+                        report_llm=st.session_state.report_llm,
+                        summarization_llm=st.session_state.summarization_llm,
+                        query_mapping=None,
+                        enable_quality_checker=False,
+                        human_feedback=human_feedback,
+                        analysis=st.session_state.hitl_state["analysis"],
+                        follow_up_questions=""
+                    )
+                    
+                    # Import generate_follow_up_questions from our graph
+                    from src.graph_v2_0 import generate_follow_up_questions
+                    follow_up_result = generate_follow_up_questions(temp_state, config)
+                    st.session_state.hitl_state["follow_up_questions"] = follow_up_result["follow_up_questions"]
+                    st.session_state.hitl_state["additional_context"] = follow_up_result["additional_context"]
+                
+                # Format the combined response
+                combined_response = f"ANALYSIS: {st.session_state.hitl_state['analysis']}\n\nFOLLOW-UP: {st.session_state.hitl_state['follow_up_questions']}"
+                
+                # Add AI message to conversation history
+                st.session_state.hitl_conversation_history.append({
+                    "role": "assistant",
+                    "content": combined_response
+                })
+                
+                # Increment input counter to reset widgets
+                st.session_state.input_counter += 1
+                st.rerun()
+    
+    # Workflow Visualization Expander (matching app_v1_1.py)
+    with st.expander("🔄 Show Workflow", expanded=False):
+        st.markdown("### RAG Deep Researcher v2.0 - Workflow with Human-in-the-Loop")
+        
+        # Display embedding model information
+        from src.configuration_v1_1 import get_config_instance
+        config_instance = get_config_instance()
+        st.info(f"**Embedding Model:** {config_instance.embedding_model}")
+
+        
+        # Always generate a new visualization
+        try:
+            # Generate the visualization and save to a fixed location
+            generate_langgraph_visualization()
+        except Exception as e:
+            st.warning(f"Could not generate new visualization: {str(e)}")
+        
+        # Removed the static LangGraph workflow visualization image as requested
+    
+    # Display chat history
+    if st.session_state.messages:
+        st.subheader("📝 Research History")
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+if __name__ == "__main__":
+    main()

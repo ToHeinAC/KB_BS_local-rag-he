@@ -9,7 +9,7 @@ from langchain_community.document_loaders import DirectoryLoader, CSVLoader, Tex
 
 # Base path for vector database
 VECTOR_DB_PATH = "database"
-DEFAULT_TENANT_ID = "2025-04-22_15-41-10"  # Updated to match the correct tenant ID
+DEFAULT_TENANT_ID = "default"  # Use default to match vdb_emb-retr_handler-app.py
 
 # Define the special database configuration
 SPECIAL_DB_CONFIG = {

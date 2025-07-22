@@ -235,18 +235,22 @@ def retrieve_rag_documents(state: ResearcherState, config: RunnableConfig):
             import os
             
             # Use the exact same parameters that work in the UI
-            # Hard-code the known working values
-            database_name = 'sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2--2000--400'
-            tenant_id = '2025-04-22_15-41-10'
-            # Try with the collection_prefix since we see both collections in the logs
-            collection_name = 'collection_2025-04-22_15-41-10'
+            # Use the correct database as specified by user
+            database_name = 'Qwen--Qwen3-Embedding-0.6B--3000--600'
+            # Import and use the default tenant ID
+            from src.vector_db_v1_1 import DEFAULT_TENANT_ID
+            tenant_id = DEFAULT_TENANT_ID  # This will be 'default_tenant'
+            # Use the collection name based on the default tenant
+            collection_name = f'collection_{DEFAULT_TENANT_ID}'
             
             # Get the embedding model
             from src.vector_db_v1_1 import get_embedding_model
             embeddings = get_embedding_model()
             
-            # Construct the database path
-            database_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'database', database_name)
+            # Construct the database path to match vdb_emb-retr_handler-app.py
+            # This should resolve to ~/ai/dev/langgraph/KB_BS_local-rag-he/kb/database/database_name
+            project_root = os.path.dirname(os.path.dirname(__file__))  # Go up 2 levels: src/ -> KB_BS_local-rag-he/
+            database_path = os.path.join(project_root, 'kb', 'database', database_name)
             print(f"  [DEBUG] Using database path: {database_path}")
             print(f"  [DEBUG] Using tenant ID: {tenant_id}")
             print(f"  [DEBUG] Using collection name: {collection_name}")

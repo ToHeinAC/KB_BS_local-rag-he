@@ -71,8 +71,23 @@ def get_config_instance() -> Configuration:
 def update_embedding_model(model_name: str) -> None:
     """Update the embedding model in the global configuration."""
     config = get_config_instance()
-    config.embedding_model = model_name
-    print(f"Updated global embedding model to: {model_name}")
+
+    
+    # Validate and clean the model name to avoid invalid model paths
+    if model_name and model_name.strip():
+        # Check for valid HuggingFace model format (org/model-name)
+        if '/' in model_name and not model_name.startswith('sentence-transformers/'):
+            # This is a valid HuggingFace model name like "Qwen/Qwen3-Embedding-0.6B"
+            config.embedding_model = model_name
+            print(f"Updated global embedding model to: {model_name}")
+        elif model_name in ['jinaai/jina-embeddings-v2-base-de', 'sentence-transformers/all-MiniLM-L6-v2']:
+            # Allow known good models
+            config.embedding_model = model_name
+            print(f"Updated global embedding model to: {model_name}")
+        else:
+            print(f"Warning: Invalid embedding model name '{model_name}', keeping current model: {config.embedding_model}")
+    else:
+        print(f"Warning: Empty embedding model name '{model_name}', keeping current model: {config.embedding_model}")
 
 
     @classmethod
