@@ -149,11 +149,15 @@ def display_graph_image(graph, title):
 classifier_graph = create_classifier_graph()
 answerer_graph = create_answerer_graph()
 
+# Initialize session state for storing classifier result
+if 'classifier_result' not in st.session_state:
+    st.session_state.classifier_result = None
+
 # Streamlit UI layout
 st.markdown("### Enter your query below:")
-query = st.text_input("Query", key="query_input")
+query = st.text_input("Query for classification", key="query_input")
 
-if st.button("Submit") and query:
+if st.button("Classify") and query:
     # Create two columns for results display
     col1, col2 = st.columns(2)
     
@@ -161,14 +165,10 @@ if st.button("Submit") and query:
         # Execute classifier graph
         classifier_result = classifier_graph.invoke({"query": query})
         
-        # Execute answerer graph with classifier result
-        answerer_input = {
-            "query": classifier_result["query"],
-            "category": classifier_result["category"]
-        }
-        answerer_result = answerer_graph.invoke(answerer_input)
+        # Store the classifier result in session state
+        st.session_state.classifier_result = classifier_result
         
-        # Display results
+        # Display classification results
         with col1:
             st.subheader("Classification Result")
             st.write(f"**Category:** {classifier_result['category']}")
@@ -176,7 +176,24 @@ if st.button("Submit") and query:
             
             # Display classifier graph
             display_graph_image(classifier_graph, "Classifier Graph")
+
+# Separate input for generating answer
+st.markdown("### Generate answer based on classification:")
+generate_answer = st.text_input("Type '/go-on' to generate an answer", key="generate_answer")
+
+# Check if the generate_answer is '/go-on' and we have a classifier result to work with
+if generate_answer == '/go-on' and st.session_state.classifier_result is not None:
+    col1, col2 = st.columns(2)
+    
+    with st.spinner("Generating answer..."):
+        # Execute answerer graph with stored classifier result
+        answerer_input = {
+            "query": st.session_state.classifier_result["query"],
+            "category": st.session_state.classifier_result["category"]
+        }
+        answerer_result = answerer_graph.invoke(answerer_input)
         
+        # Display answer
         with col2:
             st.subheader("Answer")
             st.write(answerer_result["answer"])
