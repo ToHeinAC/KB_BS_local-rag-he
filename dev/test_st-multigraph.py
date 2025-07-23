@@ -22,6 +22,8 @@ from langchain_community.llms import Ollama
 from langgraph.graph import StateGraph, START, END
 from langchain_core.runnables.graph import CurveStyle, MermaidDrawMethod, NodeStyles
 
+#uv run streamlit run dev/test_st-multigraph.py --server.port 8501 --server.headless False --server.fileWatcherType none
+
 # Set page title and configuration
 st.set_page_config(page_title="LangGraph Multi-Graph Showcase", layout="wide")
 st.title("LangGraph Multi-Graph Showcase")

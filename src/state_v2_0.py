@@ -16,12 +16,9 @@ class ResearcherStateV2(TypedDict):
     search_summaries: dict[str, list[Document]]
     final_answer: str
     quality_check: Optional[dict[str, Any]]  # Added field to store quality check results
-    additional_context: Optional[list[Document]]  # Added field to store additional context from document retrieval
     # Persist user-selected LLM models throughout the graph workflow
     report_llm: str  # LLM model used for report writing
     summarization_llm: str  # LLM model used for document summarization
-    # For handling duplicate research queries
-    query_mapping: Optional[dict[str, str]]  # Maps indexed queries to original queries
     enable_quality_checker: bool = False  # Flag to enable/disable quality checker
     
     # New HITL fields (extending from InitState in basic_HITL_app.py)
@@ -43,3 +40,4 @@ class InitState(TypedDict):
     follow_up_questions: str  # Follow-up questions generated based on last human feedback
     report_llm: str  # LLM model used for report writing
     summarization_llm: str  # LLM model used for document summarization
+    research_queries: list[str] # List of research queries for the handover to the main graph

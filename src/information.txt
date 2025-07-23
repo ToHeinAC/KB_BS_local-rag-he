@@ -1,1 +1,222 @@
-No search summaries were found. Please try again with a different query.
+## Wie können Rückstände aus der Überwachung entlassen werden?
+### Key Passages (Sorted by Importance)
+**Key Passage:** Content: [Strahlenschutzgesetz (SSG)]  
+**Entlassung von Rückständen aus der Überwachung:**  
+- Der Verpflichtete muss **schriftlichen Bescheid** erteilen, sobald er die Überwachungsbedürftigkeit festgestellt hat. [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+- Die Entlassung ist nur zulässig, wenn:  
+  1. [Source: StrlSchG.pdf--250712]
+**Key Passage:** effektive Dosis ≤ 1 mSv). [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+  2. [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+
+[Strahlenschutzgesetz, §62 Absatz 3 Satz 1]  
+- Die Behörde muss **innerhalb von 30 Kalendertagen** Einvernehmen mit der für die Entlassung zuständigen Behörde über den Verwertungs-/Beseitigungsweg erhalten. [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+
+**Voraussetzungen für gemeinsame Deponierung:**  
+- Die Behörde darf davon ausgehen, dass **keine Exposition über 1 mSv** entsteht, wenn die Verwertungs-/Beseitigung abfallrechtlich zulässig ist. [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+
+[Strahlenschutzgesetz, §62 Absatz 3 Satz 2]  
+- Die Behörde muss **innerhalb von 30 Kalendertagen** Einvernehmen mit der für die Entlassung zuständigen Behörde über den Verwertungs-/Beseitigungsweg erhalten. [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+
+[Strahlenschutzgesetz, §61 Absatz 2]  
+- Die Überwachungsbedürftigkeit muss **festgestellt** werden, um eine Entlassung zu ermöglichen. [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+
+[Kreislaufwirtschaftsgesetz, §30]  
+- Bei Verwertung als Bauprodukt ist die Behörde verpflichtet, **Einvernehmen über den Verwertungs-/Beseitigungsweg** einzuholen. [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+
+[Allgemeine Vorschriften (Anlage 7)]  
+- Die Entlassung aus der Überwachung zur gemeinsamen Deponierung ist nur unter **vorausgesetzter Zulässigkeit des Verwertungs-/Beseitigungsweges** zulässig. [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+
+### Wichtige Hinweise:  
+1. [Source: StrlSchG.pdf--250712]
+**Key Passage:** **Risikobewertungen:** Die Behörden müssen sicherstellen, dass die effektive Dosis bei der Entlassung ≤ 1 mSv ist (§62 Absatz 3 Satz 1). [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+2. [Source: StrlSchG.pdf--250712]
+**Key Passage:** **Zulässigkeit des Weges:** Der Verwertungs-/Beseitigungsweg muss abfallrechtlich zulässig sein (§62 Absatz 2). [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+3. [Source: StrlSchG.pdf--250712]
+**Key Passage:** **Kontrolle durch Behörden:** Die Entlassung ist nur unter Einwilligung der für die Entlassung zuständigen Behörde möglich (§61 Absatz 2). [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+
+[Quellen]  
+- [Strahlenschutzgesetz, §62 Absatz 3 Satz 1]  
+- [Kreislaufwirtschaftsgesetz, §30]  
+- [Strahlenschutzgesetz, §61 Absatz 2]
+Importance_score: 5.80
+Source_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchV.pdf--250712
+Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchV.pdf [Source: StrlSchG.pdf--250712]
+
+### Full Content
+Content: Content: [Strahlenschutzgesetz (SSG)]  
+**Entlassung von Rückständen aus der Überwachung:**  
+- Der Verpflichtete muss **schriftlichen Bescheid** erteilen, sobald er die Überwachungsbedürftigkeit festgestellt hat.  
+- Die Entlassung ist nur zulässig, wenn:  
+  1. Das Risiko für die Bevölkerung durch Exposition sichergestellt ist (z.B. effektive Dosis ≤ 1 mSv).  
+  2. Der Verwertungs-/Beseitigungsweg abfallrechtlich zulässig und einhaltbar ist.  
+
+[Strahlenschutzgesetz, §62 Absatz 3 Satz 1]  
+- Die Behörde muss **innerhalb von 30 Kalendertagen** Einvernehmen mit der für die Entlassung zuständigen Behörde über den Verwertungs-/Beseitigungsweg erhalten.  
+
+[Kreislaufwirtschaftsgesetz (KSG)]  
+**Verwertung als Bauprodukt:**  
+- Der Antragsteller muss **Erklärungen und Nachweise** vorlegen:  
+  - Erklärung des Verbleibs der Rückstände.  
+  - Annahmeerklärung des Verwerters/Beseitigers.  
+  - Nachweis, dass die Kopie der Annahmeerklärung der zuständigen Behörde zugeliefert wurde.  
+
+**Voraussetzungen für gemeinsame Deponierung:**  
+- Die Behörde darf davon ausgehen, dass **keine Exposition über 1 mSv** entsteht, wenn die Verwertungs-/Beseitigung abfallrechtlich zulässig ist.  
+
+[Strahlenschutzgesetz, §62 Absatz 3 Satz 2]  
+- Die Behörde muss **innerhalb von 30 Kalendertagen** Einvernehmen mit der für die Entlassung zuständigen Behörde über den Verwertungs-/Beseitigungsweg erhalten.  
+
+[Strahlenschutzgesetz, §61 Absatz 2]  
+- Die Überwachungsbedürftigkeit muss **festgestellt** werden, um eine Entlassung zu ermöglichen.  
+
+[Kreislaufwirtschaftsgesetz, §30]  
+- Bei Verwertung als Bauprodukt ist die Behörde verpflichtet, **Einvernehmen über den Verwertungs-/Beseitigungsweg** einzuholen.  
+
+[Allgemeine Vorschriften (Anlage 7)]  
+- Die Entlassung aus der Überwachung zur gemeinsamen Deponierung ist nur unter **vorausgesetzter Zulässigkeit des Verwertungs-/Beseitigungsweges** zulässig.  
+
+### Wichtige Hinweise:  
+1. **Risikobewertungen:** Die Behörden müssen sicherstellen, dass die effektive Dosis bei der Entlassung ≤ 1 mSv ist (§62 Absatz 3 Satz 1).  
+2. **Zulässigkeit des Weges:** Der Verwertungs-/Beseitigungsweg muss abfallrechtlich zulässig sein (§62 Absatz 2).  
+3. **Kontrolle durch Behörden:** Die Entlassung ist nur unter Einwilligung der für die Entlassung zuständigen Behörde möglich (§61 Absatz 2).  
+
+[Quellen]  
+- [Strahlenschutzgesetz, §62 Absatz 3 Satz 1]  
+- [Kreislaufwirtschaftsgesetz, §30]  
+- [Strahlenschutzgesetz, §61 Absatz 2]
+Importance_score: 5.80
+Source_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchV.pdf--250712
+Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchV.pdf
+Source: StrlSchG.pdf--250712
+
+
+
+## Welcher spezifische Kontext oder Typ von Rückständen und Überwachungssystemen wird im Zusammenhang mit der Entlassung betrachtet?
+### Key Passages (Sorted by Importance)
+**Key Passage:** Content: [Source: Strahlenschutzgesetz (SSG)]  
+Die **Strahlenschutzverordnung** legt fest, dass bei der Entlassung von überwachungsbedürftigen Rückständen aus der Überwachung die Exposition einer effektiven Dosis von 1 mSv/Jahr nicht überschreiten darf. [Source: StrlSchG.pdf--250712]
+**Key Passage:** Die **Summenformel** (CM_U238max + CM_Th232max ≤ CM) wird angewendet, um die Gesamtaktivität der Radionuklide zu kontrollieren. [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+
+[Source: Anlage 6 zur SSG]  
+Die Ermittlung von Expositionen bei Rückständen berücksichtigt **realistische Expositionswege** und **Expositionsannahmen**, insbesondere für Abfälle aus Kernkraftwerken. [Source: StrlSchG.pdf--250712]
+**Key Passage:** Die **Dosiskoeffizienten** von Anlage 18 Teil B sind für Einzelpersonen und Beruflich Tätige festgelegt. [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+
+[Source: Strahlenschutzgesetz Verordnung (SSGv)]  
+Die **Strahlenschutzverordnung** regelt die Vorgaben zur Entlassung von Rückständen aus der Überwachung, insbesondere bei gemeinsamer Deponierung mit anderen Abfällen. [Source: StrlSchG.pdf--250712]
+**Key Passage:** Bei der Entscheidung über eine solche Deponie muss sichergestellt werden, dass keine Exposition einer effektiven Dosis über 1 mSv/Jahr entsteht. [Source: StrlSchG.pdf--250712]
+**Key Passage:** Die **Summenformel** (CM_U238max + CM_Th232max ≤ CM) wird hier ebenfalls angewendet. [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+
+[Source: Kreislaufwirtschaftsgesetz (KKG)]  
+Bei der Entlassung von Abfällen zur Verwertung als Bauprodukt muss die **Antragstellerin** eine Erklärung über den Verbleib, eine Annahmeerklärung des Verwerters und einen Nachweis über die Kopie der Annahmeerklärung vorlegt. [Source: StrlSchG.pdf--250712]
+**Key Passage:** Die zuständige Behörde kann innerhalb von 30 Kalendertagen einvernehmen hinsichtlich des Verwertungs- oder Beseitigungswegs verlangen, wobei das Dosiskriterium nach § 62 Absatz 3 Satz 1 der SSG beachtet werden muss. [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+
+[Source: Anlage 7 zur SSGv]  
+Bei gemeinsamer Deponierung von Rückständen mit anderen Abfällen darf die zuständige Behörde davon ausgehen, dass keine Exposition einer effektiven Dosis über 1 mSv/Jahr entsteht, wenn die **Summenformel** erfüllt ist. [Source: StrlSchG.pdf--250712]
+**Key Passage:** Dies gilt für alle Fälle, wobei der Verwertungs- oder Beseitigungsweg durch eine koordinierte Entscheidung gewährleistet wird.
+Importance_score: 5.85
+Source_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchV.pdf--250712, StrlSchV.pdf--250712
+Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchV.pdf, kb/insert_data/StrlSchV.pdf [Source: StrlSchG.pdf--250712]
+
+### Full Content
+Content: Content: [Source: Strahlenschutzgesetz (SSG)]  
+Die **Strahlenschutzverordnung** legt fest, dass bei der Entlassung von überwachungsbedürftigen Rückständen aus der Überwachung die Exposition einer effektiven Dosis von 1 mSv/Jahr nicht überschreiten darf. Dies gilt für alle Abfälle, einschließlich solcher im Zusammenhang mit Kernkraftwerken. Die **Summenformel** (CM_U238max + CM_Th232max ≤ CM) wird angewendet, um die Gesamtaktivität der Radionuklide zu kontrollieren.  
+
+[Source: Anlage 6 zur SSG]  
+Die Ermittlung von Expositionen bei Rückständen berücksichtigt **realistische Expositionswege** und **Expositionsannahmen**, insbesondere für Abfälle aus Kernkraftwerken. Bei der Verwertung oder Beseitigung solcher Rückstände müssen alle potentiellen Expositionen (z.B. durch Erzeugnisse, Lagerung oder Ablagerung) berücksichtigt werden. Die **Dosiskoeffizienten** von Anlage 18 Teil B sind für Einzelpersonen und Beruflich Tätige festgelegt.  
+
+[Source: Strahlenschutzgesetz Verordnung (SSGv)]  
+Die **Strahlenschutzverordnung** regelt die Vorgaben zur Entlassung von Rückständen aus der Überwachung, insbesondere bei gemeinsamer Deponierung mit anderen Abfällen. Bei der Entscheidung über eine solche Deponie muss sichergestellt werden, dass keine Exposition einer effektiven Dosis über 1 mSv/Jahr entsteht. Die **Summenformel** (CM_U238max + CM_Th232max ≤ CM) wird hier ebenfalls angewendet.  
+
+[Source: Kreislaufwirtschaftsgesetz (KKG)]  
+Bei der Entlassung von Abfällen zur Verwertung als Bauprodukt muss die **Antragstellerin** eine Erklärung über den Verbleib, eine Annahmeerklärung des Verwerters und einen Nachweis über die Kopie der Annahmeerklärung vorlegt. Die zuständige Behörde kann innerhalb von 30 Kalendertagen einvernehmen hinsichtlich des Verwertungs- oder Beseitigungswegs verlangen, wobei das Dosiskriterium nach § 62 Absatz 3 Satz 1 der SSG beachtet werden muss.  
+
+[Source: Anlage 7 zur SSGv]  
+Bei gemeinsamer Deponierung von Rückständen mit anderen Abfällen darf die zuständige Behörde davon ausgehen, dass keine Exposition einer effektiven Dosis über 1 mSv/Jahr entsteht, wenn die **Summenformel** erfüllt ist. Dies gilt für alle Fälle, wobei der Verwertungs- oder Beseitigungsweg durch eine koordinierte Entscheidung gewährleistet wird.
+Importance_score: 5.85
+Source_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchV.pdf--250712, StrlSchV.pdf--250712
+Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchV.pdf, kb/insert_data/StrlSchV.pdf
+Source: StrlSchG.pdf--250712
+
+
+
+## In welchem Anwendungsbereich oder Industrie erfolgt die Erfassung der Rückstände, und welche besonderen Anforderungen bestehen dort?
+### Key Passages (Sorted by Importance)
+**Key Passage:** Die Hauptanforderungen sind:
+
+1. [Source: StrlSchG.pdf--250712]
+**Key Passage:** **Ort der Verarbeitung**:  
+   - Überwachungsbedürftige Rückstände dürfen **nicht im Ausland** verbringen, wobei die **Verbringung ins Inland zur Beseitigung verboten ist** (§ 62 Absatz 7). [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+   - Bei Lagerung auf dem Betriebsgelände des Verpflichteten muss dies **unverzüglich an der zuständigen Behörde gemeldet werden** (§ 64 Absatz 4).
+
+2. [Source: StrlSchG.pdf--250712]
+**Key Passage:** **Vorschriften zur Abgabe**:  
+   - Wenn die Entlassung aus der Überwachung nicht möglich ist, müssen Verpflichtete **Art, Masse und spezifische Aktivität der Rückstände sowie ihre geplante Beseitigung oder Verwertung** an die Behörde melden (§ 62 Absatz 3). [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+   - Die Abgabe muss innerhalb einer Frist nach Satz 2 erfolgen, wobei **die Überwachungsgrenzen und Verwertungswege durch Rechtsverordnung festgelegt sind** (§ 61 Absatz 2).
+
+3. [Source: StrlSchG.pdf--250712]
+**Key Passage:** **Technische Anforderungen**:  
+   - Die Beseitigung oder Verwertung von Rückständen ist nur unter bestimmten Voraussetzungen zulässig, wie:  
+     - Einhaltung der durch Rechtsverordnung festgelegten Überwachungs- und Verwertungswege (§ 62 Absatz 1). [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+     - Die **Ermittlung repräsentativer Messwerte** für spezifische Aktivität ist vorgesehen (§ 65).
+
+4. [Source: StrlSchG.pdf--250712]
+**Key Passage:** **Zusätzliche Vorschriften**:  
+   - Rückstände, die nicht überwachungsbedürftig sind, müssen nachweisen, dass sie den durch Rechtsverordnung festgelegten Grenzen und Wegern entsprechen (§ 62 Absatz 5). [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+   - Bei der Entlassung von Rückständen aus der Überwachung ist eine **gemeinsame Deponierung mit anderen Abfällen** zulässig, wenn die Exposition ohne weitere Maßnahmen unter dem Schutzgrenzwert (1 Millisievert) bleibt (§ 62 Absatz 3).
+
+[Source: StrlSchG.pdf]  
+Zusammenfassung: Überwachungsbedürftige Rückstände müssen **nicht im Ausland** verbringen und auf dem Betriebsgelände der Verpflichteten gelagert werden. [Source: StrlSchG.pdf--250712]
+**Key Passage:** Bei Lagerung oder vor Beseitigung/Verwertung muss die Behörde über Art, Masse, Aktivität sowie geplante Maßnahmen informiert werden (§ 62 Absatz 3). [Source: StrlSchG.pdf--250712]
+**Key Passage:** Rückstände, die nicht überwachungsbedürftig sind, müssen nachweisen, dass sie den festgelegten Grenzen entsprechen (§ 62 Absatz 5).
+Importance_score: 5.67
+Source_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712
+Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf [Source: StrlSchG.pdf--250712]
+
+### Full Content
+Content: Content: [Source: StrlSchG.pdf]  
+Die Verbringung und Behandlung überwachungsbedürftiger Rückstände unterliegen strengen Vorschriften des **Strahlenschutzgesetzes (SSG)**. Die Hauptanforderungen sind:
+
+1. **Ort der Verarbeitung**:  
+   - Überwachungsbedürftige Rückstände dürfen **nicht im Ausland** verbringen, wobei die **Verbringung ins Inland zur Beseitigung verboten ist** (§ 62 Absatz 7).  
+   - Bei Lagerung auf dem Betriebsgelände des Verpflichteten muss dies **unverzüglich an der zuständigen Behörde gemeldet werden** (§ 64 Absatz 4).
+
+2. **Vorschriften zur Abgabe**:  
+   - Wenn die Entlassung aus der Überwachung nicht möglich ist, müssen Verpflichtete **Art, Masse und spezifische Aktivität der Rückstände sowie ihre geplante Beseitigung oder Verwertung** an die Behörde melden (§ 62 Absatz 3).  
+   - Die Abgabe muss innerhalb einer Frist nach Satz 2 erfolgen, wobei **die Überwachungsgrenzen und Verwertungswege durch Rechtsverordnung festgelegt sind** (§ 61 Absatz 2).
+
+3. **Technische Anforderungen**:  
+   - Die Beseitigung oder Verwertung von Rückständen ist nur unter bestimmten Voraussetzungen zulässig, wie:  
+     - Einhaltung der durch Rechtsverordnung festgelegten Überwachungs- und Verwertungswege (§ 62 Absatz 1).  
+     - Die **Ermittlung repräsentativer Messwerte** für spezifische Aktivität ist vorgesehen (§ 65).
+
+4. **Zusätzliche Vorschriften**:  
+   - Rückstände, die nicht überwachungsbedürftig sind, müssen nachweisen, dass sie den durch Rechtsverordnung festgelegten Grenzen und Wegern entsprechen (§ 62 Absatz 5).  
+   - Bei der Entlassung von Rückständen aus der Überwachung ist eine **gemeinsame Deponierung mit anderen Abfällen** zulässig, wenn die Exposition ohne weitere Maßnahmen unter dem Schutzgrenzwert (1 Millisievert) bleibt (§ 62 Absatz 3).
+
+[Source: StrlSchG.pdf]  
+Zusammenfassung: Überwachungsbedürftige Rückstände müssen **nicht im Ausland** verbringen und auf dem Betriebsgelände der Verpflichteten gelagert werden. Bei Lagerung oder vor Beseitigung/Verwertung muss die Behörde über Art, Masse, Aktivität sowie geplante Maßnahmen informiert werden (§ 62 Absatz 3). Die Entlassung ist nur unter spezifischen Voraussetzungen zulässig und erfordert technische Anforderungen wie die Messung von Spektralaktivitäten. Rückstände, die nicht überwachungsbedürftig sind, müssen nachweisen, dass sie den festgelegten Grenzen entsprechen (§ 62 Absatz 5).
+Importance_score: 5.67
+Source_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712
+Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf
+Source: StrlSchG.pdf--250712
+
