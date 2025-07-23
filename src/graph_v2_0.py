@@ -417,9 +417,9 @@ def create_main_graph():
     
     main_workflow.add_conditional_edges(
         "quality_checker",
-        query_router,
+        quality_router,
         {
-            "continue": "update_position",
+            "generate_final_answer": "generate_final_answer",
             "end": END
         }
     )

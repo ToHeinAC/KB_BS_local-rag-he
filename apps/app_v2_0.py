@@ -57,7 +57,7 @@ from src.rag_helpers_v1_1 import (
 
 # Set page configuration
 st.set_page_config(
-    page_title="RAG Deep Researcher v2.0 - Human-in-the-Loop",
+    page_title="RAG Deep Researcher v2.0 - Human-in-the-Loop (HITL)",
     page_icon="🔍",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -556,7 +556,7 @@ def execute_main_workflow(enable_web_search, report_structure, max_search_querie
         
         # Execute main graph
         main_current_step = 0
-        main_final_state = None
+        main_final_state = main_state  # Initialize with main_state to avoid None
         
         main_status_text.text("🚀 Starting main research workflow...")
         
@@ -580,7 +580,8 @@ def execute_main_workflow(enable_web_search, report_structure, max_search_querie
             
             # Get the latest state from the step output
             for node_name, node_state in step_output.items():
-                main_final_state = node_state
+                if node_state is not None:  # Only update if node_state is not None
+                    main_final_state = node_state
                 
                 # Show retrieved documents after retrieve_rag_documents step
                 if node_name == "retrieve_rag_documents" and "retrieved_documents" in node_state:
@@ -751,9 +752,9 @@ def main():
     # Create header with two columns (matching app_v1_1.py)
     header_col1, header_col2 = st.columns([0.6, 0.4])
     with header_col1:
-        st.title("🔍 RAG Deep Researcher v2.0 - Human-in-the-Loop")
+        st.title("🔍 RAG Deep Researcher v2.0 - Human-in-the-Loop (HITL)")
         # Add license information under the title (exact implementation from basic_HITL_app.py)
-        st.markdown('<p style="font-size:12px; font-weight:bold; color:darkorange; margin-top:-10px;">LICENCE</p>', 
+        st.markdown('<p style="font-size:12px; font-weight:bold; color:darkorange; margin-top:0px;">LICENCE</p>', 
                     unsafe_allow_html=True, help=get_license_content())
     with header_col2:
         st.image("Header für Chatbot.png", use_container_width=True)
@@ -921,149 +922,103 @@ def main():
     if "input_counter" not in st.session_state:
         st.session_state.input_counter = 0
     
-    # Display current workflow phase
-    if st.session_state.workflow_phase == "hitl":
-        st.info("📝 **Current Phase: Human-in-the-Loop (HITL)** - Interactive conversation to refine your research needs.")
-    else:
-        st.info("🔬 **Current Phase: Main Research** - The system will now execute the full research workflow using your HITL input.")
+    # Workflow Visualization Expander (moved here to be visible from the beginning)
+    with st.expander("🔄 Show Workflow Graphs", expanded=False):
+        st.markdown("### RAG Deep Researcher v2.0 - Workflow Graphs")
+        
+        # Display embedding model information
+        from src.configuration_v1_1 import get_config_instance
+        config_instance = get_config_instance()
+        st.info(f"**Embedding Model:** {config_instance.embedding_model}")
+        
+        # Create two columns for HITL and Main graphs (side-by-side)
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("#### 🤝 Human-in-the-Loop (HITL) Workflow")
+            try:
+                # Generate HITL graph visualization
+                hitl_png = hitl_graph.get_graph().draw_mermaid_png()
+                st.image(hitl_png, caption="HITL Workflow Graph", use_container_width=True)
+            except Exception as e:
+                st.error(f"Could not generate HITL graph visualization: {str(e)}")
+        
+        with col2:
+            st.markdown("#### 🔬 Main Research Workflow")
+            try:
+                # Generate main graph visualization
+                main_png = main_graph.get_graph().draw_mermaid_png()
+                st.image(main_png, caption="Main Research Workflow Graph", use_container_width=True)
+            except Exception as e:
+                st.error(f"Could not generate main graph visualization: {str(e)}")
     
-    # HITL Phase - Interactive conversation pattern from basic_HITL_app.py
+    # Create two tabs for workflow phases with automatic switching
+    # When main phase is active, we'll reorder tabs to make Main Research appear first (and thus active)
     if st.session_state.workflow_phase == "hitl":
-        # Initialize HITL session state variables if they don't exist
-        if "hitl_conversation_history" not in st.session_state:
-            st.session_state.hitl_conversation_history = []
+        # HITL phase active - normal order
+        tab1, tab2 = st.tabs(["📝 HITL Phase (Active)", "🔬 Main Research Phase"])
+        hitl_tab, main_tab = tab1, tab2
+    else:
+        # Main phase active - reverse order to make Main Research tab appear first (active)
+        tab1, tab2 = st.tabs(["🔬 Main Research Phase (Active)", "📝 HITL Phase (Completed)"])
+        main_tab, hitl_tab = tab1, tab2
         
-        if "hitl_state" not in st.session_state:
-            st.session_state.hitl_state = None
-        
-        if "waiting_for_human_input" not in st.session_state:
-            st.session_state.waiting_for_human_input = False
-        
-        if "conversation_ended" not in st.session_state:
-            st.session_state.conversation_ended = False
-        
-        # Initial query input (following basic_HITL_app.py pattern)
-        if not st.session_state.hitl_state:
-            st.markdown("""
+        # Add a visual indicator that we've automatically switched to Main Research
+        if "phase_switch_notified" not in st.session_state:
+            st.success("✨ **Automatically switched to Main Research Phase!** The HITL phase has been completed.")
+            st.session_state.phase_switch_notified = True
+    
+    # HITL Phase Tab
+    with hitl_tab:
+        if st.session_state.workflow_phase == "hitl":
+            st.info("📝 **Current Phase: Human-in-the-Loop** - Interactive conversation to refine your research needs.")
             
-            This system will first ask you **clarifying questions** to better understand your research needs,
-            then proceed with enhanced document retrieval and report generation.
+            # Initialize HITL session state variables if they don't exist
+            if "hitl_conversation_history" not in st.session_state:
+                st.session_state.hitl_conversation_history = []
             
-            Type `/end` at any point to finish the conversation and proceed to main research.
-            """)
+            if "hitl_state" not in st.session_state:
+                st.session_state.hitl_state = None
             
-            user_query = st.text_area(
-                "Enter your initial research query:", 
-                height=100,
-                placeholder="e.g., 'What are the latest developments in quantum computing and their potential applications in cryptography?'"
-            )
-            submit_button = st.button("🚀 Submit Query", type="primary")
+            if "waiting_for_human_input" not in st.session_state:
+                st.session_state.waiting_for_human_input = False
             
-            if submit_button and user_query:
-                # Initialize the HITL state
-                st.session_state.hitl_state = initialize_hitl_state(
-                    user_query, 
-                    st.session_state.report_llm, 
-                    st.session_state.summarization_llm
+            if "conversation_ended" not in st.session_state:
+                st.session_state.conversation_ended = False
+            
+            # Initial query input (following basic_HITL_app.py pattern)
+            if not st.session_state.hitl_state:
+                st.markdown("""
+                
+                This system will first ask you **clarifying questions** to better understand your research needs,
+                then proceed with enhanced document retrieval and report generation.
+                
+                Type `/end` at any point to finish the conversation and proceed to main research.
+                """)
+                
+                user_query = st.text_area(
+                    "Enter your initial research query:", 
+                    height=100,
+                    placeholder="e.g., 'What are the latest developments in quantum computing and their potential applications in cryptography?'"
                 )
+                submit_button = st.button("🚀 Submit Query", type="primary")
                 
-                # Add user message to conversation history
-                st.session_state.hitl_conversation_history.append({
-                    "role": "user",
-                    "content": user_query
-                })
-                
-                # Process initial query
-                combined_response = process_initial_query(st.session_state.hitl_state)
-                
-                # Add AI message to conversation history
-                st.session_state.hitl_conversation_history.append({
-                    "role": "assistant",
-                    "content": combined_response
-                })
-                
-                # Set waiting for human input
-                st.session_state.waiting_for_human_input = True
-                
-                # Force a rerun to update the UI
-                st.rerun()
-        
-        # Display conversation history
-        if st.session_state.hitl_conversation_history:
-            st.subheader("💬 Conversation History")
-            for message in st.session_state.hitl_conversation_history:
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
-        
-        # Display debug information about the current state
-        if st.session_state.hitl_state:
-            with st.expander("Debug: Current HITL State", expanded=False):
-                # Create a deep copy of the state to display
-                display_state = {}
-                for key, value in st.session_state.hitl_state.items():
-                    display_state[key] = value
-                st.json(display_state)
-        
-        # Handle human feedback (following basic_HITL_app.py pattern)
-        if st.session_state.waiting_for_human_input and not st.session_state.conversation_ended:
-            # Use a dynamic key that changes after each submission to force widget reset
-            human_feedback = st.text_area(
-                "Your response (type /end to finish and proceed to main research):", 
-                value="", 
-                height=100, 
-                key=f"human_feedback_area_{st.session_state.input_counter}"
-            )
-            submit_feedback_button = st.button("Submit Response")
-            
-            if submit_feedback_button and human_feedback:
-                # Check if the user wants to end the conversation
-                if human_feedback.strip().lower() == "/end":
-                    st.session_state.conversation_ended = True
+                if submit_button and user_query:
+                    # Initialize the HITL state
+                    st.session_state.hitl_state = initialize_hitl_state(
+                        user_query, 
+                        st.session_state.report_llm, 
+                        st.session_state.summarization_llm
+                    )
                     
                     # Add user message to conversation history
                     st.session_state.hitl_conversation_history.append({
                         "role": "user",
-                        "content": "/end - Conversation ended"
+                        "content": user_query
                     })
                     
-                    # Finalize HITL conversation
-                    final_response = finalize_hitl_conversation(st.session_state.hitl_state)
-                    
-                    # Add AI message to conversation history
-                    st.session_state.hitl_conversation_history.append({
-                        "role": "assistant",
-                        "content": final_response
-                    })
-                    
-                    # Store HITL results in session state for handover to main workflow
-                    st.session_state.hitl_result = {
-                        "user_query": st.session_state.hitl_state["user_query"],
-                        "current_position": st.session_state.hitl_state["current_position"],
-                        "detected_language": st.session_state.hitl_state["detected_language"],
-                        "additional_context": st.session_state.hitl_state["additional_context"],
-                        "report_llm": st.session_state.hitl_state["report_llm"],
-                        "summarization_llm": st.session_state.hitl_state["summarization_llm"],
-                        "research_queries": st.session_state.hitl_state.get("research_queries", []),
-                        "analysis": st.session_state.hitl_state["analysis"],
-                        "follow_up_questions": st.session_state.hitl_state["follow_up_questions"],
-                        "human_feedback": st.session_state.hitl_state["human_feedback"]
-                    }
-                    
-                    # Move to main workflow phase
-                    st.session_state.workflow_phase = "main"
-                    
-                    # Increment input counter to reset widgets
-                    st.session_state.input_counter += 1
-                    st.rerun()
-                else:
-                    # Add user message to conversation history
-                    st.session_state.hitl_conversation_history.append({
-                        "role": "user",
-                        "content": human_feedback
-                    })
-                    
-                    # Process human feedback
-                    combined_response = process_human_feedback(st.session_state.hitl_state, human_feedback)
+                    # Process initial query
+                    combined_response = process_initial_query(st.session_state.hitl_state)
                     
                     # Add AI message to conversation history
                     st.session_state.hitl_conversation_history.append({
@@ -1071,75 +1026,170 @@ def main():
                         "content": combined_response
                     })
                     
-                    # Increment input counter to reset widgets
-                    st.session_state.input_counter += 1
+                    # Set waiting for human input
+                    st.session_state.waiting_for_human_input = True
+                    
+                    # Force a rerun to update the UI
                     st.rerun()
-    
-    else:
-        # Main Research Phase
-        if not st.session_state.hitl_result:
-            st.error("No HITL results found. Please restart and complete the HITL phase first.")
-            if st.button("🔄 Restart HITL Phase"):
-                st.session_state.workflow_phase = "hitl"
-                st.rerun()
-            return
-        
-        # Show HITL summary
-        with st.expander("📋 HITL Summary", expanded=False):
-            st.write(f"**Original Query:** {st.session_state.hitl_result['user_query']}")
-            st.write(f"**Detected Language:** {st.session_state.hitl_result['detected_language']}")
-            if st.session_state.hitl_result.get('research_queries'):
-                st.write("**Research Queries:**")
-                for i, query in enumerate(st.session_state.hitl_result['research_queries'], 1):
-                    st.write(f"{i}. {query}")
-        
-        # Execute main research workflow automatically
-        if not st.session_state.research_results:
-            st.info("🔬 Starting main research workflow automatically...")
-            with st.spinner("Executing main research workflow..."):
-                results = execute_main_workflow(
-                    enable_web_search=enable_web_search,
-                    report_structure=report_structure,
-                    max_search_queries=max_search_queries,
-                    enable_quality_checker=enable_quality_checker,
-                    quality_check_loops=quality_check_loops,
-                    use_ext_database=use_ext_database,
-                    selected_database=selected_database,
-                    k_results=k_results
+            
+            # Display conversation history
+            if st.session_state.hitl_conversation_history:
+                st.subheader("💬 Conversation History")
+                for message in st.session_state.hitl_conversation_history:
+                    with st.chat_message(message["role"]):
+                        st.markdown(message["content"])
+            
+            # Display debug information about the current state
+            if st.session_state.hitl_state:
+                with st.expander("Debug: Current HITL State", expanded=False):
+                    # Create a deep copy of the state to display
+                    display_state = {}
+                    for key, value in st.session_state.hitl_state.items():
+                        display_state[key] = value
+                    st.json(display_state)
+            
+            # Handle human feedback (following basic_HITL_app.py pattern)
+            if st.session_state.waiting_for_human_input and not st.session_state.conversation_ended:
+                # Use a dynamic key that changes after each submission to force widget reset
+                human_feedback = st.text_area(
+                    "Your response (type /end to finish and proceed to main research):", 
+                    value="", 
+                    height=100, 
+                    key=f"human_feedback_area_{st.session_state.input_counter}"
                 )
+                submit_feedback_button = st.button("Submit Response")
                 
-                if results:
-                    st.session_state.research_results = results
-            
-            st.rerun()
+                if submit_feedback_button and human_feedback:
+                    # Check if the user wants to end the conversation
+                    if human_feedback.strip().lower() == "/end":
+                        st.session_state.conversation_ended = True
+                        
+                        # Add user message to conversation history
+                        st.session_state.hitl_conversation_history.append({
+                            "role": "user",
+                            "content": "/end - Conversation ended"
+                        })
+                        
+                        # Finalize HITL conversation
+                        final_response = finalize_hitl_conversation(st.session_state.hitl_state)
+                        
+                        # Add AI message to conversation history
+                        st.session_state.hitl_conversation_history.append({
+                            "role": "assistant",
+                            "content": final_response
+                        })
+                        
+                        # Store HITL results in session state for handover to main workflow
+                        st.session_state.hitl_result = {
+                            "user_query": st.session_state.hitl_state["user_query"],
+                            "current_position": st.session_state.hitl_state["current_position"],
+                            "detected_language": st.session_state.hitl_state["detected_language"],
+                            "additional_context": st.session_state.hitl_state["additional_context"],
+                            "report_llm": st.session_state.hitl_state["report_llm"],
+                            "summarization_llm": st.session_state.hitl_state["summarization_llm"],
+                            "research_queries": st.session_state.hitl_state.get("research_queries", []),
+                            "analysis": st.session_state.hitl_state["analysis"],
+                            "follow_up_questions": st.session_state.hitl_state["follow_up_questions"],
+                            "human_feedback": st.session_state.hitl_state["human_feedback"]
+                        }
+                        
+                        # Move to main workflow phase
+                        st.session_state.workflow_phase = "main"
+                        
+                        # Increment input counter to reset widgets
+                        st.session_state.input_counter += 1
+                        st.rerun()
+                    else:
+                        # Add user message to conversation history
+                        st.session_state.hitl_conversation_history.append({
+                            "role": "user",
+                            "content": human_feedback
+                        })
+                        
+                        # Process human feedback
+                        combined_response = process_human_feedback(st.session_state.hitl_state, human_feedback)
+                        
+                        # Add AI message to conversation history
+                        st.session_state.hitl_conversation_history.append({
+                            "role": "assistant",
+                            "content": combined_response
+                        })
+                        
+                        # Increment input counter to reset widgets
+                        st.session_state.input_counter += 1
+                        st.rerun()
         else:
-            st.success("✅ Main research workflow completed! Results are displayed above.")
+            # HITL phase completed - show results in a collapsed expander
+            with st.expander("📋 HITL Phase Results (Completed)", expanded=False):
+                st.success("✅ HITL Phase completed successfully!")
+                
+                if st.session_state.hitl_result:
+                    st.markdown("### 📝 Query Analysis")
+                    st.write(f"**Original Query:** {st.session_state.hitl_result['user_query']}")
+                    st.write(f"**Detected Language:** {st.session_state.hitl_result['detected_language']}")
+                    
+                    st.markdown("### 🤖 AI Analysis")
+                    st.write(st.session_state.hitl_result['analysis'])
+                    
+                    st.markdown("### ❓ Follow-up Questions")
+                    for i, question in enumerate(st.session_state.hitl_result['follow_up_questions'], 1):
+                        st.write(f"{i}. {question}")
+                    
+                    st.markdown("### 🗣️ Human Feedback")
+                    st.write(st.session_state.hitl_result['human_feedback'])
+                    
+                    st.markdown("### 🔍 Generated Research Queries")
+                    for i, query in enumerate(st.session_state.hitl_result['research_queries'], 1):
+                        st.write(f"{i}. {query}")
+                    
+                    st.markdown("### 💬 Full Conversation History")
+                    if st.session_state.hitl_conversation_history:
+                        for message in st.session_state.hitl_conversation_history:
+                            with st.chat_message(message["role"]):
+                                st.markdown(message["content"])
+    
+    # Main Research Phase Tab
+    with main_tab:
+        if st.session_state.workflow_phase == "main":
+            st.info("🔬 **Current Phase: Main Research** - The system will now execute the full research workflow using your HITL input.")
             
-            # Option to restart
-            if st.button("🔄 Start New Research"):
-                clear_chat()
-                st.rerun()
+            # Main Research Phase
+            if not st.session_state.hitl_result:
+                st.error("No HITL results found. Please restart and complete the HITL phase first.")
+                if st.button("🔄 Restart HITL Phase"):
+                    st.session_state.workflow_phase = "hitl"
+                    st.rerun()
+                return
+            
+            # Execute main research workflow automatically
+            if not st.session_state.research_results:
+                st.info("🔬 Starting main research workflow automatically...")
+                with st.spinner("Executing main research workflow..."):
+                    results = execute_main_workflow(
+                        enable_web_search=enable_web_search,
+                        report_structure=report_structure,
+                        max_search_queries=max_search_queries,
+                        enable_quality_checker=enable_quality_checker,
+                        quality_check_loops=quality_check_loops,
+                        use_ext_database=use_ext_database,
+                        selected_database=selected_database,
+                        k_results=k_results
+                    )
+                    
+                    if results:
+                        st.session_state.research_results = results
+            else:
+                st.success("✅ Main research workflow completed! Results are displayed above.")
+                
+                # Option to restart
+                if st.button("🔄 Start New Research"):
+                    clear_chat()
+                    st.rerun()
+        else:
+            # Main phase not active - show message
+            st.info("🕰️ Waiting for HITL phase to complete before starting main research...")
     
-    # Workflow Visualization Expander (matching app_v1_1.py)
-    with st.expander("🔄 Show Workflow", expanded=False):
-        st.markdown("### RAG Deep Researcher v2.0 - Workflow with Human-in-the-Loop")
-        
-        # Display embedding model information
-        from src.configuration_v1_1 import get_config_instance
-        config_instance = get_config_instance()
-        st.info(f"**Embedding Model:** {config_instance.embedding_model}")
-
-        
-        # Always generate a new visualization
-        try:
-            # Generate the visualization and save to a fixed location
-            generate_langgraph_visualization()
-        except Exception as e:
-            st.warning(f"Could not generate new visualization: {str(e)}")
-        
-        # Removed the static LangGraph workflow visualization image as requested
-    
-    # Display chat history
+    # Display chat history (outside of tabs)
     if st.session_state.messages:
         st.subheader("📝 Research History")
         for message in st.session_state.messages:

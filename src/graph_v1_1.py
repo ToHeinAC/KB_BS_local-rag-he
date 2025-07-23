@@ -497,6 +497,8 @@ def summarize_query_research(state: ResearcherState, config: RunnableConfig):
             
             # Use source_summarizer_ollama to create a summary
             try:
+                print(f"  [DEBUG] About to call source_summarizer_ollama with llm_model: {summarization_llm}")
+                print(f"  [DEBUG] Type of summarization_llm: {type(summarization_llm)}")
                 summary_result = source_summarizer_ollama(
                     query=query,
                     context_documents=context_documents,
@@ -664,7 +666,9 @@ def generate_final_answer(state: ResearcherState, config: RunnableConfig):
         sorted_queries = []
         for query, docs in search_summaries.items():
             # Get position from the first document's metadata if available
-            position = docs[0].metadata.get("position", 0) if docs else 0
+            position = 0  # Default position
+            if docs and len(docs) > 0 and docs[0] is not None and hasattr(docs[0], 'metadata') and docs[0].metadata is not None:
+                position = docs[0].metadata.get("position", 0)
             sorted_queries.append((query, position))
 
         # Sort queries by position
