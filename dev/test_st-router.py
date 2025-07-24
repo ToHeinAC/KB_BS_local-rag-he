@@ -49,14 +49,16 @@ from langgraph.prebuilt import ToolNode
 
 # Import LangChain components
 from langchain_core.tools import tool
-from langchain_ollama.chat_models import ChatOllama
+from langchain_community.llms import Ollama
+from langchain.agents import Tool, initialize_agent
+from langchain.schema import SystemMessage, HumanMessage
 from pydantic import BaseModel, Field
 
 # Import Tavily for web search
 from tavily import TavilyClient
 
 # Import project utilities
-from src.utils_v1_1 import invoke_ollama, parse_output
+from src.utils_v1_1 import parse_output
 
 # Load environment variables
 load_dotenv()
@@ -131,100 +133,47 @@ class SupervisorDecisionResponse(BaseModel):
     action: str = Field(description="The next action to take: search, answer, or end")
     reasoning: str = Field(description="Explanation for why this action was chosen")
 
-# Define tools using LangChain @tool decorator
 @tool
-def categorize_query_tool(query: str) -> str:
-    """Categorize a user query using sophisticated LLM-based analysis.
-    
-    Args:
-        query: The user query to categorize
-        
-    Returns:
-        A JSON string with category, confidence, and reasoning
-    """
-    try:
-        # Clear GPU memory before starting
-        clear_cuda_memory()
-        
-        # Use the sophisticated categorization prompt and LLM analysis
-        response = invoke_ollama(
-            model=DEFAULT_LLM_MODEL,
-            system_prompt=CATEGORY_CLASSIFICATION_PROMPT,
-            user_prompt=f"Please categorize this query: {query}"
-        )
-        
-        # Extract the category from the response (should be in quotes)
-        import re
-        category_match = re.search(r'"([^"]+)"', response)
-        
-        if category_match:
-            category = category_match.group(1)
-            
-            # Determine confidence based on category characteristics
-            confidence = 0.9  # High confidence for LLM-based categorization
-            
-            # Generate reasoning based on the category
-            if category == "recent news":
-                reasoning = "Query requires real-time or time-sensitive information"
-            elif category == "general purpose":
-                reasoning = "Query can be answered with static knowledge"
-            elif category == "practical guide":
-                reasoning = "Query asks for step-by-step instructions or how-to guidance"
-            elif category == "legal guide":
-                reasoning = "Query involves legal matters or regulatory information"
-            elif category == "casual conversation":
-                reasoning = "Query appears to be conversational or social interaction"
-            else:
-                reasoning = "Category determined through LLM analysis"
-                
-            return f'{{"category": "{category}", "confidence": {confidence}, "reasoning": "{reasoning}"}}'
-        else:
-            # Fallback to general purpose if no clear category found
-            return '{"category": "general purpose", "confidence": 0.6, "reasoning": "Could not determine specific category, defaulting to general purpose"}'
-            
-    except Exception as e:
-        # Fallback to simple heuristic if LLM fails
-        query_lower = query.lower()
-        
-        if any(word in query_lower for word in ["news", "recent", "latest", "current", "today", "breaking", "weather", "forecast"]):
-            return '{"category": "recent news", "confidence": 0.7, "reasoning": "Fallback: Query contains time-sensitive keywords"}'
-        elif any(word in query_lower for word in ["how to", "tutorial", "guide", "step", "instructions"]):
-            return '{"category": "practical guide", "confidence": 0.8, "reasoning": "Fallback: Query asks for instructions"}'
-        elif any(word in query_lower for word in ["legal", "law", "regulation", "court", "attorney", "lawyer"]):
-            return '{"category": "legal guide", "confidence": 0.7, "reasoning": "Fallback: Query contains legal terms"}'
-        elif any(word in query_lower for word in ["hello", "hi", "how are you", "good morning", "thanks"]):
-            return '{"category": "casual conversation", "confidence": 0.9, "reasoning": "Fallback: Query appears conversational"}'
-        else:
-            return '{"category": "general purpose", "confidence": 0.6, "reasoning": "Fallback: Default categorization due to error"}'
-    
-    finally:
-        # Clear GPU memory after completion
-        clear_cuda_memory()
-
-@tool
-def supervisor_decision_tool(query: str, category: str, search_attempts: int, max_attempts: int, has_search_results: bool) -> str:
+def supervisor_decision_tool(category: str, search_attempts: int = 0, max_search_attempts: int = 2, search_results: Optional[str] = None) -> str:
     """Make a supervisor decision about the next workflow action.
     
     Args:
-        query: The user query
-        category: The categorized query type
-        search_attempts: Number of search attempts made
-        max_attempts: Maximum allowed search attempts
-        has_search_results: Whether search results are available
+        category: The category of the query
+        search_attempts: Number of search attempts made so far
+        max_search_attempts: Maximum number of search attempts allowed
+        search_results: Previous search results if any
         
     Returns:
         A JSON string with action and reasoning
     """
+    st.write("Used supervisor_decision_tool ...")
+    
+    # Use the provided values
+    has_search_results = bool(search_results)
+    
+    # Apply decision logic
     if category in ["general purpose", "casual conversation"]:
-        return '{"action": "answer", "reasoning": "General purpose and casual queries can be answered directly without search"}'
-    elif search_attempts >= max_attempts:
-        return '{"action": "answer", "reasoning": "Maximum search attempts reached, proceeding to answer generation"}'
+        action = "answer"
+        reasoning = "General purpose and casual queries can be answered directly without search"
+    elif search_attempts >= max_search_attempts:
+        action = "answer"
+        reasoning = f"Maximum search attempts ({max_search_attempts}) reached, proceeding to answer generation"
     elif category in ["recent news", "practical guide", "legal guide"] and not has_search_results:
-        return '{"action": "search", "reasoning": "This category requires current information, performing web search"}'
+        action = "search"
+        reasoning = "This category requires current information, performing web search"
     elif has_search_results:
-        return '{"action": "answer", "reasoning": "Search results available, proceeding to generate final answer"}'
+        action = "answer"
+        reasoning = "Search results available, proceeding to generate final answer"
     else:
-        return '{"action": "search", "reasoning": "Need to gather more information via web search"}'
+        action = "search"
+        reasoning = "Need to gather more information via web search"
+    
+    # Display decision in UI
+    st.info(f"🏹 Supervisor decision: **{action}**")
+    with st.expander("🧠 Decision Reasoning", expanded=False):
+        st.write(reasoning)
+    
+    return f'{{"action": "{action}", "reasoning": "{reasoning}"}}'
 
 # Define Pydantic models for state management
 class QueryCategory(BaseModel):
@@ -311,155 +260,414 @@ Query Category: {category}
 Here are the search results I should incorporate:
 {search_results}
 
-Please provide a comprehensive and accurate response SOLELY based on the users initial query, the query category and search results.
+Please help me create a comprehensive and accurate response.
 """
 
 @tool
-def tavily_search_tool(query: str, include_raw_content: bool = True, max_results: int = 3) -> str:
+def tavily_search_tool(state: dict) -> str:
     """Search the web using the Tavily API for recent information.
 
     Args:
-        query: The search query to execute
-        include_raw_content: Whether to include the raw_content from Tavily in the formatted string
-        max_results: Maximum number of results to return (default: 3)
+        state: The RouterState dictionary containing user_query and other state
 
     Returns:
         Formatted string containing search results with titles, URLs, and content
     """
     try:
+        st.write("Used tavily_search_tool ...")
+        
+        # Extract query and other parameters from state
+        query = state.get("user_query", "")
+        category = state.get("category", "general purpose")
+        search_attempts = state.get("search_attempts", 0)
+        
+        # Display search query for transparency
+        st.info(f"📅 Search query: {query}")
+        
+        # Use the tool directly - with enhanced query based on category
+        query_enhancement = ""
+        if category == "recent news":
+            query_enhancement = "recent information"
+        elif category == "practical guide":
+            query_enhancement = "step-by-step guide"
+        elif category == "legal guide":
+            query_enhancement = "legal information"
+            
+        enhanced_query = query
+        if query_enhancement:
+            enhanced_query += f" (Looking for {query_enhancement})"
+        
         # Get current date for context
         current_date = datetime.now().strftime("%Y-%m-%d")
         
-        # Enhance search query with current date context
-        enhanced_query = f"{query} (current date: {current_date})"
-        
+        # Initialize Tavily client
         tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
-        response = tavily_client.search(
-            enhanced_query,
-            max_results=max_results,
-            include_raw_content=include_raw_content
+        
+        # Perform the search
+        search_response = tavily_client.search(
+            query=enhanced_query,
+            search_depth="advanced",
+            max_results=3,
+            include_raw_content=True
         )
         
-        if response and "results" in response and response["results"]:
+        # Format the results
+        if search_response and "results" in search_response:
+            results = search_response["results"]
             formatted_results = []
-            for result in response["results"]:
-                formatted_result = f"""**Title:** {result.get('title', 'N/A')}
-**URL:** {result.get('url', 'N/A')}
-**Content:** {result.get('content', 'N/A')}"""
-                if result.get('raw_content'):
-                    formatted_result += f"\n**Raw Content:** {result['raw_content'][:500]}..."
+            
+            for i, result in enumerate(results, 1):
+                title = result.get("title", "No title")
+                url = result.get("url", "No URL")
+                content = result.get("content", "No content available")
+                
+                formatted_result = f"**Result {i}: {title}**\n"
+                formatted_result += f"URL: {url}\n"
+                formatted_result += f"Content: {content}\n"
+                
+                # Include raw content if available and requested
+                if "raw_content" in result:
+                    raw_content = result["raw_content"]
+                    if raw_content and len(raw_content) > 100:  # Only include if substantial
+                        formatted_result += f"Raw Content: {raw_content[:500]}...\n"
+                
                 formatted_results.append(formatted_result)
             
-            return "\n---\n".join(formatted_results)
+            search_results = "\n---\n".join(formatted_results)
+            
+            # Display search results in UI
+            with st.expander(f"🔍 Search Results (Attempt {search_attempts + 1})", expanded=True):
+                st.markdown(search_results)
+            
+            return search_results
         else:
             return "No search results found."
             
     except Exception as e:
-        return f"Error in Tavily search: {str(e)}"
+        error_msg = f"Error in Tavily search: {str(e)}"
+        st.error(error_msg)
+        return error_msg
 
-def categorize_query(state: RouterState) -> RouterState:
-    """Categorize the user query using LangChain-Ollama with structured output."""
+# Helper function for categorization logic
+def _categorize_query_logic(user_query: str, llm_model: str = DEFAULT_LLM_MODEL) -> dict:
+    """Helper function that contains the actual categorization logic."""
     try:
         # Clear GPU memory before starting
         clear_cuda_memory()
         
-        # Get the selected model or use default
+        # Create the categorization prompt
+        system_prompt = """
+You are a query categorization expert. Analyze the user query and categorize it into one of these categories:
+
+1. "general purpose" - General questions, explanations, how-to guides that don't require recent information
+2. "recent news" - Questions about current events, recent developments, breaking news
+3. "practical guide" - Step-by-step instructions, tutorials, practical how-to content
+4. "legal guide" - Legal advice, regulations, compliance, legal procedures
+5. "casual conversation" - Greetings, small talk, casual interactions
+
+Provide your response in JSON format with:
+- "category": one of the above categories
+- "confidence": float between 0.0 and 1.0
+- "reasoning": brief explanation of your decision
+"""
+        
+        user_prompt = f"Categorize this query: {user_query}"
+        
+        # Get response from LLM using Ollama directly
+        llm = Ollama(model=llm_model)
+        full_prompt = f"{system_prompt}\n\nUser: {user_prompt}\nAssistant: I'll categorize this query and provide a JSON response."
+        response = llm.invoke(full_prompt)
+        
+        # Parse JSON response - handle potential formatting issues
+        try:
+            # Try to find JSON in the response
+            import re
+            json_match = re.search(r'\{[^}]+\}', response)
+            if json_match:
+                result = json.loads(json_match.group())
+            else:
+                # If no JSON found, create a structured response
+                raise ValueError("No JSON found in response")
+        except (json.JSONDecodeError, ValueError):
+            # Fallback: try to extract category from response text
+            response_lower = response.lower()
+            if "recent news" in response_lower or "news" in response_lower:
+                category = "recent news"
+            elif "practical guide" in response_lower or "guide" in response_lower or "how to" in response_lower:
+                category = "practical guide"
+            elif "legal" in response_lower:
+                category = "legal guide"
+            elif "casual" in response_lower or "conversation" in response_lower:
+                category = "casual conversation"
+            else:
+                category = "general purpose"
+            
+            result = {
+                "category": category,
+                "confidence": 0.7,
+                "reasoning": f"Extracted from response: {response[:100]}..."
+            }
+        
+        # Validate required fields
+        if "category" not in result or "confidence" not in result or "reasoning" not in result:
+            raise ValueError("Missing required fields in response")
+            
+        return result
+        
+    except Exception as e:
+        st.error(f"Error in categorization logic: {str(e)}")
+        return {
+            "category": "general purpose",
+            "confidence": 0.5,
+            "reasoning": f"Fallback due to error: {str(e)}"
+        }
+
+def categorize_query(state: RouterState) -> RouterState:
+    """Categorize the user query using tool calling with LangChain agent."""
+    try:
+        # Clear GPU memory before starting
+        clear_cuda_memory()
+        
+        # Get current model and query
         current_model = state.get("llm_model", DEFAULT_LLM_MODEL)
+        query = state.get("user_query", "")
         
-        # Improved system prompt for more precise tool usage
-        system_prompt = CATEGORY_CLASSIFICATION_PROMPT
+        # Create categorization tool that uses helper function
+        def categorize_tool_func(query: str) -> str:
+            """Categorize a query into predefined categories."""
+            result = _categorize_query_logic(query, current_model)
+            return json.dumps(result)
         
-        # Initialize Ollama model with tool calling and structured output
-        ollama_model = ChatOllama(model=current_model, temperature=0.1)
-        model_with_tools = ollama_model.bind_tools([categorize_query_tool])
-        structured_model = model_with_tools.with_structured_output(QueryCategoryResponse)
+        categorize_tool = Tool(
+            name="categorize_query",
+            func=categorize_tool_func,
+            description="Categorize a user query into predefined categories. ONLY use this tool when you need to categorize the user's query."
+        )
         
-        # Prepare messages
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Please categorize this query: {state['user_query']}"}
-        ]
+        # Create LLM and agent using idiomatic pattern
+        llm = Ollama(model=current_model)
+        system_prompt = """You are a query categorization assistant. Analyze the user query and use the categorize_query tool to categorize it.
+
+ONLY call the categorize_query tool when you need to categorize the user's query.
+
+Available tools:
+- categorize_query: Use this to categorize the user's query into predefined categories"""
         
-        # Get structured response
-        response: QueryCategoryResponse = structured_model.invoke(messages)
+        agent = initialize_agent(
+            tools=[categorize_tool],
+            llm=llm,
+            agent_type="zero-shot-react-description",
+            system_message=SystemMessage(content=system_prompt)
+        )
         
-        state["category"] = response.category
-        state["category_confidence"] = response.confidence
-        state["category_reasoning"] = response.reasoning
+        # Execute agent with tool calling
+        response = agent.invoke(f"Please categorize this query: {query}")
         
-        st.info(f"🏷️ Query categorized as: **{response.category}** (confidence: {response.confidence:.2f})")
-        with st.expander("🤔 Categorization Reasoning", expanded=False):
-            st.write(response.reasoning)
+        # Parse the result from agent output
+        output = response.get('output', '') if isinstance(response, dict) else str(response)
         
-        return state
+        # Try to extract JSON from the output
+        try:
+            # Look for JSON in the output
+            import re
+            json_match = re.search(r'\{[^}]+\}', output)
+            if json_match:
+                result_json = json.loads(json_match.group())
+            else:
+                # Fallback parsing
+                result_json = {"category": "general purpose", "confidence": 0.5, "reasoning": "Could not parse agent output"}
+        except:
+            result_json = {"category": "general purpose", "confidence": 0.5, "reasoning": "JSON parsing failed"}
+        
+        # Update state with results
+        state["category"] = result_json.get("category", "general purpose")
+        state["category_confidence"] = result_json.get("confidence", 0.5)
+        state["category_reasoning"] = result_json.get("reasoning", "Categorization completed")
         
     except Exception as e:
         st.error(f"Error in categorization: {str(e)}")
-        # Fallback: use the tool directly
-        try:
-            import json
-            result_str = categorize_query_tool.invoke({"query": state["user_query"]})
-            result = json.loads(result_str)
-            
-            state["category"] = result["category"]
-            state["category_confidence"] = result["confidence"]
-            state["category_reasoning"] = result["reasoning"]
-        except:
-            state["category"] = "general purpose"
-            state["category_confidence"] = 0.5
-            state["category_reasoning"] = "Fallback due to error"
-        return state
+        # Fallback
+        state["category"] = "general purpose"
+        state["category_confidence"] = 0.5
+        state["category_reasoning"] = "Fallback due to error"
+    
+    # Display results
+    st.info(f"🏷️ Query categorized as: **{state['category']}** (confidence: {state['category_confidence']:.2f})")
+    with st.expander("🤔 Categorization Reasoning", expanded=False):
+        st.write(state['category_reasoning'])
+        
+    return state
 
-def supervisor_decision(state: RouterState) -> str:
-    """Supervisor node that decides the next action using LangChain-Ollama with structured output."""
+# Helper function for supervisor decision logic
+def _supervisor_decision_logic(category: str, search_attempts: int = 0, max_search_attempts: int = 2, search_results: Optional[str] = None) -> dict:
+    """Helper function that contains the actual supervisor decision logic."""
     try:
         # Clear GPU memory before starting
         clear_cuda_memory()
         
-        # Get the selected model or use default
+        # Create the decision prompt
+        system_prompt = """
+You are a workflow supervisor. Based on the query category and current state, decide the next action:
+
+Actions:
+- "search": Search for information (for recent news, guides that need current info)
+- "answer": Generate answer directly (for general questions, when search limit reached, or when search results are sufficient)
+- "end": End the workflow (only if explicitly requested)
+
+Decision Rules:
+1. "general purpose" or "casual conversation" → usually "answer"
+2. "recent news", "practical guide", "legal guide" → "search" first, then "answer"
+3. If search_attempts >= max_search_attempts → "answer"
+4. If search_results exist and are sufficient → "answer"
+
+Provide response in JSON format:
+- "action": one of "search", "answer", "end"
+- "reasoning": explanation of your decision
+"""
+        
+        user_prompt = f"""
+Category: {category}
+Search attempts: {search_attempts}/{max_search_attempts}
+Has search results: {bool(search_results)}
+Search results preview: {search_results[:200] if search_results else "None"}
+
+What should be the next action?
+"""
+        
+        # Get response from LLM using Ollama directly
+        llm = Ollama(model=DEFAULT_LLM_MODEL)
+        full_prompt = f"{system_prompt}\n\nUser: {user_prompt}\nAssistant: I'll analyze the situation and provide a JSON response."
+        response = llm.invoke(full_prompt)
+        
+        # Parse JSON response - handle potential formatting issues
+        try:
+            # Try to find JSON in the response
+            import re
+            json_match = re.search(r'\{[^}]+\}', response)
+            if json_match:
+                result = json.loads(json_match.group())
+            else:
+                # If no JSON found, create a structured response
+                raise ValueError("No JSON found in response")
+        except (json.JSONDecodeError, ValueError):
+            # Fallback: analyze response text for decision
+            response_lower = response.lower()
+            if "search" in response_lower and "answer" not in response_lower:
+                action = "search"
+                reasoning = f"Extracted 'search' from response: {response[:100]}..."
+            elif "end" in response_lower:
+                action = "end"
+                reasoning = f"Extracted 'end' from response: {response[:100]}..."
+            else:
+                action = "answer"
+                reasoning = f"Defaulted to 'answer' from response: {response[:100]}..."
+            
+            result = {
+                "action": action,
+                "reasoning": reasoning
+            }
+        
+        # Validate required fields
+        if "action" not in result or "reasoning" not in result:
+            raise ValueError("Missing required fields in response")
+            
+        return result
+        
+    except Exception as e:
+        st.error(f"Error in supervisor decision logic: {str(e)}")
+        # Fallback logic
+        if category in ["general purpose", "casual conversation"]:
+            return {"action": "answer", "reasoning": f"Fallback: Direct answer for {category}"}
+        elif search_attempts >= max_search_attempts:
+            return {"action": "answer", "reasoning": "Fallback: Max search attempts reached"}
+        elif search_results:
+            return {"action": "answer", "reasoning": "Fallback: Search results available"}
+        else:
+            return {"action": "search", "reasoning": "Fallback: Need to search first"}
+
+def supervisor_decision(state: RouterState) -> str:
+    """Supervisor node that decides the next action using tool calling with LangChain agent."""
+    try:
+        # Clear GPU memory before starting
+        clear_cuda_memory()
+        
+        # Get state values
+        category = state.get("category", "general purpose")
+        search_attempts = state.get("search_attempts", 0)
+        max_attempts = state.get("max_search_attempts", 2)
+        search_results = state.get("search_results", None)
         current_model = state.get("llm_model", DEFAULT_LLM_MODEL)
         
-        # Direct decision making based on rules (avoiding LLM confusion with tool calling)
-        # This provides reliable routing without tool calling confusion
+        # Create supervisor decision tool that uses helper function
+        def supervisor_tool_func(category: str, search_attempts: int = 0, max_attempts: int = 2, has_results: bool = False) -> str:
+            """Make a supervisor decision about the next workflow action."""
+            result = _supervisor_decision_logic(
+                category=category,
+                search_attempts=search_attempts,
+                max_search_attempts=max_attempts,
+                search_results=search_results if has_results else None
+            )
+            return json.dumps(result)
         
-        # Rule 1: General purpose or casual conversation queries go directly to answer
-        if state["category"] in ["general purpose", "casual conversation"]:
-            action = "answer"
-            reasoning = f"Category '{state['category']}' can be answered directly without search."
-        # Rule 2: If maximum search attempts reached, go to answer
-        elif state["search_attempts"] >= state["max_search_attempts"]:
-            action = "answer"
-            reasoning = f"Maximum search attempts ({state['max_search_attempts']}) reached. Using available information to answer."
-        # Rule 3: Information-seeking categories with no search results yet need search
-        elif state["category"] in ["recent news", "practical guide", "legal guide"] and not state.get("search_results"):
-            action = "search"
-            reasoning = f"'{state['category']}' query requires current information. Performing search."
-        # Rule 4: If we have search results, go to answer
-        elif state.get("search_results"):
-            action = "answer"
-            reasoning = "Search results available. Generating answer based on retrieved information."
-        # Default: perform search
-        else:
-            action = "search"
-            reasoning = "Need to gather information via search before answering."
-            
+        decision_tool = Tool(
+            name="make_decision",
+            func=supervisor_tool_func,
+            description="Make a supervisor decision about the next workflow action. ONLY use this tool when you need to decide the next action."
+        )
+        
+        # Create LLM and agent using idiomatic pattern
+        llm = Ollama(model=current_model)
+        system_prompt = """You are a workflow supervisor. Analyze the current state and use the make_decision tool to decide the next action.
+
+ONLY call the make_decision tool when you need to decide the next workflow action.
+
+Available tools:
+- make_decision: Use this to decide the next workflow action based on current state"""
+        
+        agent = initialize_agent(
+            tools=[decision_tool],
+            llm=llm,
+            agent_type="zero-shot-react-description",
+            system_message=SystemMessage(content=system_prompt)
+        )
+        
+        # Execute agent with tool calling
+        has_search_results = bool(search_results)
+        response = agent.invoke(f"Category: {category}, Search attempts: {search_attempts}/{max_attempts}, Has results: {has_search_results}. What should be the next action?")
+        
+        # Parse the result from agent output
+        output = response.get('output', '') if isinstance(response, dict) else str(response)
+        
+        # Try to extract JSON from the output
+        try:
+            # Look for JSON in the output
+            import re
+            json_match = re.search(r'\{[^}]+\}', output)
+            if json_match:
+                result_json = json.loads(json_match.group())
+            else:
+                # Fallback parsing
+                result_json = {"action": "answer", "reasoning": "Could not parse agent output"}
+        except:
+            result_json = {"action": "answer", "reasoning": "JSON parsing failed"}
+        
+        action = result_json.get("action", "answer")
+        reasoning = result_json.get("reasoning", "Decision made by agent")
+        
         # Display decision in UI
         st.info(f"🏹 Supervisor decision: **{action}**")
         with st.expander("🧠 Decision Reasoning", expanded=False):
             st.write(reasoning)
             
-        # Make sure we return a valid routing value
+        # Update state
+        state["supervisor_reasoning"] = reasoning
+        
         return action
-    
+        
     except Exception as e:
         st.error(f"Error in supervisor decision: {str(e)}")
-        # Default logic based on category
-        if state["category"] in ["general purpose", "casual conversation"]:
-            return "answer"
-        elif state["search_attempts"] >= state["max_search_attempts"]:
-            return "answer"
-        else:
-            return "search"
+        # Default to answering if there's an error
+        return "answer"
 
 def perform_search(state: RouterState) -> RouterState:
     """Perform web search using LangChain tool calling."""
@@ -502,7 +710,6 @@ def perform_search(state: RouterState) -> RouterState:
         clear_cuda_memory()
         
         return state
-        
     except Exception as e:
         st.error(f"Error in search: {str(e)}")
         state["search_results"] = f"Search error: {str(e)}"
@@ -559,11 +766,10 @@ The quality of your answer will be judged on both the thoroughness of your analy
             search_results=state.get("search_results", "No search results available.")
         )
         
-        response = invoke_ollama(
-            model=current_model,
-            system_prompt=system_prompt,
-            user_prompt=user_prompt
-        )
+        # Generate final answer using LLM with Ollama directly
+        llm = Ollama(model=current_model)
+        full_prompt = f"{system_prompt}\n\nUser: {user_prompt}\nAssistant:"
+        response = llm.invoke(full_prompt)
         
         # Parse the response to separate thinking and answer
         parsed_output = parse_output(response)
@@ -583,21 +789,243 @@ The quality of your answer will be judged on both the thoroughness of your analy
         clear_cuda_memory()
         
         return state
-        
     except Exception as e:
         st.error(f"Error in answer generation: {str(e)}")
         state["final_answer"] = f"Error generating answer: {str(e)}"
         state["thinking_process"] = None
         return state
 
+def categorize_query_with_agent(state: RouterState) -> RouterState:
+    """Categorize the user query using LangChain agent with tools."""
+    try:
+        # Clear GPU memory before starting
+        clear_cuda_memory()
+        
+        # Get the selected model or use default
+        current_model = state.get("llm_model", DEFAULT_LLM_MODEL)
+        
+        # Create LangChain agent with categorization tool
+        from langchain_community.llms import Ollama
+        from langchain.agents import Tool, initialize_agent
+        from langchain.schema import SystemMessage
+        
+        llm = Ollama(model=current_model)
+        
+        # Create categorization tool
+        def categorize_tool_func(query: str) -> str:
+            """Categorize a query into predefined categories."""
+            return categorize_query_tool.invoke({"user_query": query, "llm_model": current_model})
+        
+        categorize_tool = Tool(
+            name="categorize_query",
+            func=categorize_tool_func,
+            description="Categorize a user query into one of these categories: recent news, general purpose, practical guide, legal guide, casual conversation"
+        )
+        
+        system_prompt = """You are a query categorization expert. Use the categorize_query tool to analyze and categorize the user's query.
+        
+        ALWAYS use the categorize_query tool for every query to get the proper categorization with confidence and reasoning.
+        
+        After using the tool, extract the category, confidence, and reasoning from the response."""
+        
+        agent = initialize_agent(
+            tools=[categorize_tool],
+            llm=llm,
+            agent_type="zero-shot-react-description",
+            system_message=SystemMessage(content=system_prompt)
+        )
+        
+        # Use the agent to categorize
+        response = agent.invoke(f"Please categorize this query: {state['user_query']}")
+        
+        # Extract categorization from agent response
+        import json
+        import re
+        
+        # Try to extract JSON from the response
+        json_match = re.search(r'\{[^}]+\}', str(response.get('output', '')))
+        if json_match:
+            try:
+                result = json.loads(json_match.group())
+                state["category"] = result.get("category", "general purpose")
+                state["category_confidence"] = result.get("confidence", 0.7)
+                state["category_reasoning"] = result.get("reasoning", "Categorized using agent")
+            except:
+                # Fallback
+                state["category"] = "general purpose"
+                state["category_confidence"] = 0.6
+                state["category_reasoning"] = "Fallback categorization"
+        else:
+            # Fallback
+            state["category"] = "general purpose"
+            state["category_confidence"] = 0.6
+            state["category_reasoning"] = "Fallback categorization"
+        
+        # Display results
+        st.info(f"🏷️ Query categorized as: **{state['category']}** (confidence: {state['category_confidence']:.2f})")
+        with st.expander("🤔 Categorization Reasoning", expanded=False):
+            st.write(state['category_reasoning'])
+        
+        # Clear GPU memory after completion
+        clear_cuda_memory()
+        
+        return state
+    except Exception as e:
+        st.error(f"Error in categorization: {str(e)}")
+        # Fallback
+        state["category"] = "general purpose"
+        state["category_confidence"] = 0.5
+        state["category_reasoning"] = "Fallback due to error"
+        return state
+
+def perform_search_with_agent(state: RouterState) -> RouterState:
+    """Perform web search using LangChain agent with tools."""
+    try:
+        # Clear GPU memory before starting
+        clear_cuda_memory()
+        
+        # Get the selected model or use default
+        current_model = state.get("llm_model", DEFAULT_LLM_MODEL)
+        
+        # Create LangChain agent with search tool
+        from langchain_community.llms import Ollama
+        from langchain.agents import Tool, initialize_agent
+        from langchain.schema import SystemMessage
+        
+        llm = Ollama(model=current_model)
+        
+        # Create search tool
+        def search_tool_func(query: str) -> str:
+            """Search the web for information."""
+            return tavily_search_tool({
+                "user_query": query,
+                "category": state.get("category", "general purpose"),
+                "search_attempts": state.get("search_attempts", 0)
+            })
+        
+        search_tool = Tool(
+            name="web_search",
+            func=search_tool_func,
+            description="Search the web for current information, news, guides, or other relevant content"
+        )
+        
+        system_prompt = """You are a web search assistant. Use the web_search tool to find relevant information for the user's query.
+        
+        ALWAYS use the web_search tool to gather current information before providing any response.
+        
+        After searching, return the search results."""
+        
+        agent = initialize_agent(
+            tools=[search_tool],
+            llm=llm,
+            agent_type="zero-shot-react-description",
+            system_message=SystemMessage(content=system_prompt)
+        )
+        
+        # Use the agent to search
+        response = agent.invoke(f"Search for information about: {state['user_query']}")
+        
+        # Extract search results from agent response
+        search_results = response.get('output', 'No search results found')
+        state["search_results"] = search_results
+        state["search_attempts"] = state.get("search_attempts", 0) + 1
+        
+        # Clear GPU memory after completion
+        clear_cuda_memory()
+        
+        return state
+    except Exception as e:
+        st.error(f"Error in search: {str(e)}")
+        state["search_results"] = f"Search error: {str(e)}"
+        state["search_attempts"] = state.get("search_attempts", 0) + 1
+        return state
+
+def supervisor_decision_with_agent(state: RouterState) -> str:
+    """Make supervisor decision using LangChain agent with tools."""
+    try:
+        # Clear GPU memory before starting
+        clear_cuda_memory()
+        
+        # Get the selected model or use default
+        current_model = state.get("llm_model", DEFAULT_LLM_MODEL)
+        
+        # Create LangChain agent with supervisor decision tool
+        from langchain_community.llms import Ollama
+        from langchain.agents import Tool, initialize_agent
+        from langchain.schema import SystemMessage
+        from langchain_core.tools import tool, Tool
+        
+        llm = Ollama(model=current_model)
+        
+        # Create supervisor decision tool
+        def supervisor_tool_func(category: str, search_attempts: int = 0, max_attempts: int = 2, has_results: bool = False) -> str:
+            """Make a supervisor decision about the next workflow action."""
+            return supervisor_decision_tool.invoke({
+                "category": state.get("category", "general purpose"),
+                "search_attempts": state.get("search_attempts", 0), 
+                "max_search_attempts": state.get("max_search_attempts", 2),
+                "search_results": state.get("search_results")
+            })
+        
+        decision_tool = Tool(
+            name="make_decision",
+            func=supervisor_tool_func,
+            description="Make a routing decision about whether to search, answer, or end the workflow"
+        )
+        
+        system_prompt = f"""You are a workflow routing expert.
+        
+        Current state information:
+        - Query: {state['user_query']}
+        - Category: {state['category']}
+        - Search attempts so far: {state['search_attempts']}
+        - Maximum allowed search attempts: {state['max_search_attempts']}
+        - Has search results: {'Yes' if state.get('search_results') else 'No'}
+        
+        Use the make_decision tool to determine the next action for this workflow.
+        The tool will return one of these actions:
+        - "search" - perform web search
+        - "answer" - generate final answer
+        - "end" - end the workflow
+        """
+        
+        agent = initialize_agent(
+            tools=[decision_tool],
+            llm=llm,
+            agent_type="zero-shot-react-description",
+            system_message=SystemMessage(content=system_prompt)
+        )
+        
+        # Invoke the agent
+        response = agent.invoke("Based on the current state, what action should we take next?")
+        
+        # Extract the decision from the agent's output
+        import re
+        decision_match = re.search(r'"(search|answer|end)"', response.get('output', ''))
+
+        if decision_match:
+            action = decision_match.group(1)
+            st.info(f"🏹 Supervisor decision: **{action}**")
+            return action
+        else:
+            # Fallback to answer if no clear decision found
+            st.info("🏹 Supervisor decision: **answer** (fallback)")
+            return "answer"
+
+    except Exception as e:
+        st.error(f"Error in supervisor decision with agent: {str(e)}")
+        # Default to answering if there's an error
+        return "answer"
+
 def create_router_graph() -> StateGraph:
-    """Create the LangGraph workflow for query routing."""
-    
+    """Create the LangGraph workflow for query routing using function nodes."""
+
     # Create the graph
     workflow = StateGraph(RouterState)
-    
-    # Add nodes
+
+    # Add function nodes using the new tool-driven workflow
     workflow.add_node("categorize", categorize_query)
+    workflow.add_node("supervisor", supervisor_decision)
     workflow.add_node("search", perform_search)
     workflow.add_node("answer", generate_final_answer)
     
@@ -607,7 +1035,7 @@ def create_router_graph() -> StateGraph:
     # Add conditional edges from categorize to supervisor decision
     workflow.add_conditional_edges(
         "categorize",
-        supervisor_decision,
+        supervisor_decision_with_agent,
         {
             "search": "search",
             "answer": "answer",
@@ -618,7 +1046,7 @@ def create_router_graph() -> StateGraph:
     # Add conditional edges from search back to supervisor
     workflow.add_conditional_edges(
         "search",
-        supervisor_decision,
+        supervisor_decision_with_agent,
         {
             "search": "search",
             "answer": "answer", 
