@@ -18,7 +18,7 @@ Your output must only be a JSON object containing a single key "queries" followe
 {{ "queries": ["Query 1", "Query 2",...] }}
 
 * DO NOT include the original user query in your output. It will be added separately by the system.
-* You MUST generate exactly {max_queries-1} NEW, UNIQUE research queries (the original query will be added automatically).
+* You MUST generate exactly {max_queries_minus_one} NEW, UNIQUE research queries (the original query will be added automatically).
 * Today is: {date}
 * Strictly return the research queries in the following language: {language}
 """
@@ -112,6 +112,73 @@ Use proper citations in the correct format [Source_filename] after each fact.
 
 
 # Quality checking prompts
+# New LLM-based Quality Assessment Prompt
+LLM_QUALITY_CHECKER_SYSTEM_PROMPT = """You are an expert quality assessment specialist for research reports and document summaries.
+
+Your task is to evaluate the fidelity and quality of a final answer against the source documents it was derived from.
+
+Evaluate the following four dimensions (each scored 0-100):
+
+**FACTUAL FIDELITY (0-100)**: How accurately does the answer reflect the facts from source documents?
+- Check for factual errors, misrepresentations, or contradictions
+- Verify numerical data, dates, names, and specific details
+- Ensure no fabricated information
+
+**SEMANTIC FIDELITY (0-100)**: How well does the answer preserve the meaning and context from sources?
+- Check if interpretations align with source intent
+- Verify that nuances and qualifications are maintained
+- Ensure context is not lost or distorted
+
+**STRUCTURAL FIDELITY (0-100)**: How well organized and coherent is the answer?
+- Evaluate logical flow and organization
+- Check for completeness of coverage
+- Assess clarity and readability
+
+**SOURCE FIDELITY (0-100)**: How properly are sources cited and attributed?
+- Verify correct citation format [Source_filename]
+- Check that all claims are properly attributed
+- Ensure no missing citations for factual claims
+
+For your response, STRICTLY use the following language: {language}
+
+## Response Structure
+Always format your assessment as:
+
+**FIDELITY ASSESSMENT REPORT**
+
+- Factual Fidelity: [X/100] - [Brief justification]
+- Semantic Fidelity: [X/100] - [Brief justification]
+- Structural Fidelity: [X/100] - [Brief justification]
+- Source Fidelity: [X/100] - [Brief justification]
+- Overall Score: (sum of scores) - [X/400]
+
+**KEY FINDINGS**
+- [Bullet point list of main observations]
+
+**IMPROVEMENT RECOMMENDATIONS**
+- [Prioritized list of specific suggestions]
+
+**CONFIDENCE LEVEL**: [High/Medium/Low]
+
+IMPORTANT: If Overall Score is above 300/400, the answer PASSES quality assessment.
+If Overall Score is 300 or below, the answer FAILS and needs improvement.
+"""
+
+LLM_QUALITY_CHECKER_HUMAN_PROMPT = """Please evaluate the quality of this final answer against the source documents.
+
+## Final Answer to Evaluate:
+{final_answer}
+
+## Source Documents for Comparison:
+{source_documents}
+
+## Original Query:
+{query}
+
+Provide your assessment following the exact format specified in the system prompt.
+"""
+
+# Legacy Quality Checker Prompt (kept for compatibility)
 QUALITY_CHECKER_SYSTEM_PROMPT = """You are a quality assessment expert.
 Evaluate if the summary contains sufficient and relevant information from the source documents to answer the query.
 For your response, STRICTLY use the following language: {language}

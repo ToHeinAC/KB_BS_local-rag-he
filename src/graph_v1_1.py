@@ -18,6 +18,10 @@ from src.prompts_v1_1 import (
     SUMMARIZER_SYSTEM_PROMPT, SUMMARIZER_HUMAN_PROMPT,
     # Report writing prompts
     REPORT_WRITER_SYSTEM_PROMPT, REPORT_WRITER_HUMAN_PROMPT,
+    # Quality checking prompts
+    LLM_QUALITY_CHECKER_SYSTEM_PROMPT, LLM_QUALITY_CHECKER_HUMAN_PROMPT,
+    QUALITY_CHECKER_SYSTEM_PROMPT, QUALITY_CHECKER_HUMAN_PROMPT,
+    SUMMARY_IMPROVEMENT_SYSTEM_PROMPT, SUMMARY_IMPROVEMENT_HUMAN_PROMPT,
 )
 from src.utils_v1_1 import format_documents_with_metadata, invoke_ollama, parse_output, tavily_search, DetectedLanguage, Queries
 from src.rag_helpers_v1_1 import source_summarizer_ollama, format_documents_as_plain_text, parse_document_to_formatted_content
@@ -667,8 +671,14 @@ def generate_final_answer(state: ResearcherState, config: RunnableConfig):
         for query, docs in search_summaries.items():
             # Get position from the first document's metadata if available
             position = 0  # Default position
-            if docs and len(docs) > 0 and docs[0] is not None and hasattr(docs[0], 'metadata') and docs[0].metadata is not None:
-                position = docs[0].metadata.get("position", 0)
+            try:
+                if (docs and len(docs) > 0 and docs[0] is not None and 
+                    hasattr(docs[0], 'metadata') and docs[0].metadata is not None and 
+                    hasattr(docs[0].metadata, 'get')):
+                    position = docs[0].metadata.get("position", 0)
+            except (AttributeError, TypeError) as e:
+                print(f"  [DEBUG] Error accessing metadata position, using default: {e}")
+                position = 0
             sorted_queries.append((query, position))
 
         # Sort queries by position
@@ -1029,7 +1039,7 @@ def generate_final_answer(state: ResearcherState, config: RunnableConfig):
 # Quality checker function to verify information retention
 def quality_checker(state: ResearcherState, config: RunnableConfig):
     """
-    Check the quality of the final answer against the search summaries to ensure information retention.
+    LLM-based quality checker that evaluates the final answer using structured fidelity assessment.
     
     Args:
         state (ResearcherState): The current state of the researcher.
@@ -1038,26 +1048,28 @@ def quality_checker(state: ResearcherState, config: RunnableConfig):
     Returns:
         dict: A state update containing the quality check results and potentially an improved final answer.
     """
-    print("--- Running quality check on final answer ---")
+    print("--- Running LLM-based quality check on final answer ---")
     
     # Skip quality check if not enabled
     if not state.get("enable_quality_checker", False):
         print("  [INFO] Quality checker disabled. Skipping quality check.")
-        return {"quality_check": {"enabled": False, "message": "Quality checker disabled"}}
+        return {"quality_check": {"enabled": False, "message": "Quality checker disabled", "score": 0}}
     
     # Get the final answer and search summaries
     final_answer = state.get("final_answer", "")
     search_summaries = state.get("search_summaries", {})
     detected_language = state.get("detected_language", "English")
+    user_query = state.get("user_query", "")
     
     # If no final answer or search summaries, skip quality check
     if not final_answer or not search_summaries:
         print("  [WARNING] Missing final answer or search summaries. Skipping quality check.")
-        return {"quality_check": {"enabled": True, "message": "Missing data for quality check"}}
+        return {"quality_check": {"enabled": True, "message": "Missing data for quality check", "score": 0}}
     
-    # Format documents for quality check
+    # Format source documents for quality assessment
     formatted_docs = []
     for query, docs in search_summaries.items():
+        formatted_docs.append(f"\n--- Research Query: {query} ---")
         for doc in docs:
             source_name = ""
             if 'name' in doc.metadata:
@@ -1066,45 +1078,70 @@ def quality_checker(state: ResearcherState, config: RunnableConfig):
                 elif isinstance(doc.metadata['name'], str):
                     source_name = doc.metadata['name']
             
-            formatted_docs.append(f"Content: {doc.page_content}\nSource: {source_name}")
+            formatted_docs.append(f"Source: {source_name}\nContent: {doc.page_content}\n")
     
-    documents = "\n\n".join(formatted_docs)
+    source_documents = "\n".join(formatted_docs)
     
-    # Format the quality checker prompt
-    system_prompt = QUALITY_CHECKER_SYSTEM_PROMPT.format(
+    # Use the new LLM-based quality assessment prompt
+    system_prompt = LLM_QUALITY_CHECKER_SYSTEM_PROMPT.format(
         language=detected_language
     )
     
-    human_prompt = QUALITY_CHECKER_HUMAN_PROMPT.format(
-        summary=final_answer,
-        documents=documents,
-        language=detected_language
+    human_prompt = LLM_QUALITY_CHECKER_HUMAN_PROMPT.format(
+        final_answer=final_answer,
+        source_documents=source_documents,
+        query=user_query
     )
     
     # Use the report LLM for quality checking
     if "report_llm" in state:
         model_to_use = state["report_llm"]
-        print(f"  [DEBUG] Using model from state for quality check: {model_to_use}")
+        print(f"  [DEBUG] Using model from state for LLM quality assessment: {model_to_use}")
     else:
         model_to_use = config["configurable"].get("report_llm", "qwq")
-        print(f"  [DEBUG] Using model from config for quality check: {model_to_use}")
+        print(f"  [DEBUG] Using model from config for LLM quality assessment: {model_to_use}")
     
-    # Call the LLM to perform quality check
-    quality_result = invoke_ollama(
+    # Call the LLM to perform structured quality assessment
+    print("  [INFO] Performing LLM-based fidelity assessment...")
+    quality_assessment = invoke_ollama(
         model=model_to_use,
         system_prompt=system_prompt,
-        user_prompt=human_prompt,
-        output_format=dict
+        user_prompt=human_prompt
     )
     
-    # Log quality check results
-    print(f"  [INFO] Quality check score: {quality_result.get('quality_score', 'N/A')}/10")
-    print(f"  [INFO] Is accurate: {quality_result.get('is_accurate', False)}")
-    print(f"  [INFO] Is complete: {quality_result.get('is_complete', False)}")
+    # Parse the assessment to extract the overall score
+    assessment_text = quality_assessment if isinstance(quality_assessment, str) else str(quality_assessment)
     
-    # If improvement needed, generate improved answer
-    if quality_result.get('improvement_needed', False):
-        print("  [INFO] Quality check indicates improvements needed. Generating improved answer.")
+    # Extract overall score using regex pattern
+    import re
+    score_match = re.search(r'Overall Score:.*?([0-9]+)/400', assessment_text)
+    overall_score = int(score_match.group(1)) if score_match else 0
+    
+    # Determine pass/fail based on score threshold (>300/400)
+    passes_quality = overall_score > 300
+    
+    print(f"  [INFO] LLM Quality Assessment Score: {overall_score}/400")
+    print(f"  [INFO] Quality Assessment Result: {'PASS' if passes_quality else 'FAIL'}")
+    
+    # Create structured quality check result
+    quality_result = {
+        "enabled": True,
+        "assessment_type": "llm_fidelity_assessment",
+        "overall_score": overall_score,
+        "max_score": 400,
+        "passes_quality": passes_quality,
+        "threshold": 300,
+        "full_assessment": assessment_text,
+        "score": overall_score  # For compatibility with quality_router
+    }
+    
+    # If quality assessment fails, generate improved answer
+    if not passes_quality:
+        print("  [INFO] Quality assessment FAILED. Generating improved answer based on assessment feedback.")
+        
+        # Extract improvement recommendations from the assessment
+        improvement_match = re.search(r'\*\*IMPROVEMENT RECOMMENDATIONS\*\*(.*?)(?=\*\*|$)', assessment_text, re.DOTALL)
+        improvement_suggestions = improvement_match.group(1).strip() if improvement_match else "Please improve based on the quality assessment."
         
         # Format the summary improvement prompt
         system_prompt = SUMMARY_IMPROVEMENT_SYSTEM_PROMPT.format(
@@ -1113,8 +1150,8 @@ def quality_checker(state: ResearcherState, config: RunnableConfig):
         
         human_prompt = SUMMARY_IMPROVEMENT_HUMAN_PROMPT.format(
             summary=final_answer,
-            quality_feedback=quality_result.get('improvement_suggestions', ''),
-            documents=documents,
+            quality_feedback=improvement_suggestions,
+            documents=source_documents,
             language=detected_language
         )
         
@@ -1141,7 +1178,8 @@ def quality_checker(state: ResearcherState, config: RunnableConfig):
             "reflection_count": reflection_count
         }
     
-    # If no improvement needed, just return quality check results
+    # If quality assessment passes, return results without improvement
+    print("  [INFO] Quality assessment PASSED. No improvement needed.")
     return {"quality_check": quality_result}
 
 # Define main researcher nodes
@@ -1189,7 +1227,7 @@ def update_position(state: ResearcherState):
 def quality_router(state: ResearcherState):
     """
     Determines whether to loop back to generate_final_answer for improvement or end the workflow
-    based on the quality check score.
+    based on the LLM-based quality check results.
     
     Args:
         state (ResearcherState): The current state of the researcher.
@@ -1197,24 +1235,44 @@ def quality_router(state: ResearcherState):
     Returns:
         str: The next node to route to ("generate_final_answer" or END)
     """
-    # Get the quality check results
+    print("--- Quality routing decision ---")
+    
+    # Get the quality check results with proper null checking
     quality_check = state.get("quality_check", {})
     
-    # Get the quality score (default to 0 if not found)
-    quality_score = quality_check.get("score", 0)
+    # Ensure quality_check is not None and has get method
+    if quality_check is None:
+        quality_check = {}
+    
+    # Check if quality checker was enabled
+    if not quality_check.get("enabled", False):
+        print("  [INFO] Quality checker disabled, ending workflow")
+        return END
+    
+    # Get quality assessment results
+    passes_quality = quality_check.get("passes_quality", True)  # Default to pass if not specified
+    overall_score = quality_check.get("overall_score", 0)
+    max_score = quality_check.get("max_score", 400)
+    assessment_type = quality_check.get("assessment_type", "unknown")
     
     # Get the reflection count to prevent infinite loops
     reflection_count = state.get("reflection_count", 0)
     
-    # Check if we need to loop back for improvement (score > 6 and fewer than 3 reflections)
-    if quality_score > 6 and reflection_count < 3:
-        print(f"  [INFO] Quality score {quality_score} > 6, looping back to generate_final_answer for improvement (reflection {reflection_count + 1}/3)")
+    print(f"  [DEBUG] Assessment type: {assessment_type}")
+    print(f"  [DEBUG] Overall score: {overall_score}/{max_score}")
+    print(f"  [DEBUG] Passes quality: {passes_quality}")
+    print(f"  [DEBUG] Reflection count: {reflection_count}")
+    
+    # Check if we need to loop back for improvement
+    # Only loop back if quality failed AND we haven't exceeded max reflections
+    if not passes_quality and reflection_count < 3:
+        print(f"  [INFO] Quality assessment FAILED (score: {overall_score}/{max_score}), looping back for improvement (reflection {reflection_count + 1}/3)")
         return "generate_final_answer"
     else:
-        if quality_score > 6:
-            print(f"  [INFO] Maximum reflections reached ({reflection_count}/3), ending workflow despite quality score {quality_score}")
+        if passes_quality:
+            print(f"  [INFO] Quality assessment PASSED (score: {overall_score}/{max_score}), ending workflow")
         else:
-            print(f"  [INFO] Quality score {quality_score} <= 6, ending workflow")
+            print(f"  [INFO] Maximum reflections reached ({reflection_count}/3), ending workflow despite quality failure")
         return END
 
 # Define transitions for the simplified graph - linear flow without router

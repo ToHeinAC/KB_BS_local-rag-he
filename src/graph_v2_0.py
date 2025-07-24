@@ -218,9 +218,13 @@ def generate_knowledge_base_questions(state: InitState, config: RunnableConfig):
     model_to_use = state.get("report_llm", config["configurable"].get("report_llm", "deepseek-r1:latest"))
     print(f"  [DEBUG] Knowledge Base Query LLM (report_llm): {model_to_use}")
     
+    # Calculate max_queries_minus_one to avoid arithmetic in string format
+    max_queries_minus_one = max_queries - 1
+    
     # Format the system prompt using the same pattern as generate_research_queries
     system_prompt = RESEARCH_QUERY_WRITER_SYSTEM_PROMPT.format(
         max_queries=max_queries,
+        max_queries_minus_one=max_queries_minus_one,
         date=datetime.datetime.now().strftime("%Y/%m/%d %H:%M"),
         language=detected_language
     )
@@ -487,6 +491,22 @@ def quality_router(state: ResearcherStateV2):
     """Wrapper for quality_router_v1 to work with extended state."""
     return quality_router_v1(state)
 
+def conditional_quality_router(state: ResearcherStateV2):
+    """
+    Router that checks if quality checking is enabled before routing to quality checker.
+    If quality checking is disabled, goes directly to END.
+    """
+    # Check if quality checking is enabled in the state
+    enable_quality_checker = state.get("enable_quality_checker", False)
+    
+    if enable_quality_checker:
+        print("  [INFO] Quality checker enabled, routing to quality_router")
+        # Use the existing quality router logic
+        return quality_router_v1(state)
+    else:
+        print("  [INFO] Quality checker disabled, ending workflow")
+        return "end"
+
 # Create simplified main researcher graph
 def create_main_graph():
     """
@@ -521,10 +541,10 @@ def create_main_graph():
     main_workflow.add_edge("update_position", "summarize_query_research")
     main_workflow.add_edge("summarize_query_research", "generate_final_answer")
     
-    # Quality checker routing
+    # Conditional quality checker routing based on enable_quality_checker setting
     main_workflow.add_conditional_edges(
         "generate_final_answer",
-        quality_router,
+        conditional_quality_router,
         {
             "quality_checker": "quality_checker",
             "end": END

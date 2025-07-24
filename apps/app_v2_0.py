@@ -398,11 +398,12 @@ def generate_knowledge_base_questions(state):
     """Wrapper for generate_knowledge_base_questions that handles config parameter"""
     config = RunnableConfig(configurable={
         "report_llm": state.get("report_llm", "deepseek-r1:latest"),
-        "summarization_llm": state.get("summarization_llm", "deepseek-r1:latest")
+        "summarization_llm": state.get("summarization_llm", "deepseek-r1:latest"),
+        "max_search_queries": state.get("max_search_queries", 3)  # Add max_search_queries config
     })
     return _generate_knowledge_base_questions(state, config)
 
-def initialize_hitl_state(user_query, report_llm, summarization_llm):
+def initialize_hitl_state(user_query, report_llm, summarization_llm, max_search_queries=3):
     """
     Initialize HITL state following the basic_HITL_app.py pattern.
     """
@@ -415,7 +416,8 @@ def initialize_hitl_state(user_query, report_llm, summarization_llm):
         "analysis": "",
         "follow_up_questions": "",
         "report_llm": report_llm,
-        "summarization_llm": summarization_llm
+        "summarization_llm": summarization_llm,
+        "max_search_queries": max_search_queries  # Add max_search_queries to state
     }
 
 def process_initial_query(state):
@@ -616,7 +618,8 @@ def execute_main_workflow(enable_web_search, report_structure, max_search_querie
                         debug_message = f"""**🔍 Summarization Debug Info:**
 - Using LLM: `{summarization_llm}`
 - Processing {query_count} research queries
-- Found {doc_count} total documents"""
+- Found {query_count} x {st.session_state.k_results} total chunks
+- Analysed {doc_count} summarized documents"""
                         
                         # Add research queries if available
                         if hasattr(node_state, 'get') and node_state.get('research_queries'):
@@ -804,8 +807,51 @@ def execute_main_workflow(enable_web_search, report_structure, max_search_querie
         
         # Display quality check results if available
         if enable_quality_checker and "quality_check" in final_state and final_state["quality_check"]:
-            st.markdown("### ✅ Quality Check Results")
-            st.info(final_state["quality_check"])
+            quality_check = final_state["quality_check"]
+            
+            # Check if this is the new LLM-based assessment
+            if quality_check.get("assessment_type") == "llm_fidelity_assessment":
+                st.markdown("### 🔍 LLM-Based Quality Assessment")
+                
+                # Display score and pass/fail status
+                overall_score = quality_check.get("overall_score", 0)
+                max_score = quality_check.get("max_score", 400)
+                passes_quality = quality_check.get("passes_quality", False)
+                
+                # Create columns for score display
+                col1, col2, col3 = st.columns([1, 1, 1])
+                
+                with col1:
+                    st.metric(
+                        label="Overall Score",
+                        value=f"{overall_score}/{max_score}",
+                        delta=f"{overall_score - 300} from threshold" if overall_score != 0 else None
+                    )
+                
+                with col2:
+                    status_color = "🟢" if passes_quality else "🔴"
+                    status_text = "PASS" if passes_quality else "FAIL"
+                    st.metric(
+                        label="Assessment Result",
+                        value=f"{status_color} {status_text}"
+                    )
+                
+                with col3:
+                    threshold = quality_check.get("threshold", 300)
+                    st.metric(
+                        label="Pass Threshold",
+                        value=f"{threshold}/{max_score}"
+                    )
+                
+                # Display full assessment in expandable section
+                with st.expander("📊 Detailed Fidelity Assessment", expanded=False):
+                    full_assessment = quality_check.get("full_assessment", "No detailed assessment available.")
+                    st.markdown(full_assessment)
+                    
+            else:
+                # Legacy quality check display
+                st.markdown("### ✅ Quality Check Results")
+                st.info(quality_check)
         
         # Store results in session state
         st.session_state.research_results = final_state
@@ -1192,7 +1238,8 @@ def main():
                     st.session_state.hitl_state = initialize_hitl_state(
                         user_query, 
                         st.session_state.report_llm, 
-                        st.session_state.summarization_llm
+                        st.session_state.summarization_llm,
+                        max_search_queries  # Pass the max_search_queries parameter
                     )
                     
                     # Add user message to conversation history
@@ -1316,8 +1363,8 @@ def main():
                     st.write(st.session_state.hitl_result['analysis'])
                     
                     st.markdown("### ❓ Follow-up Questions")
-                    for i, question in enumerate(st.session_state.hitl_result['follow_up_questions'], 1):
-                        st.write(f"{i}. {question}")
+                    # follow_up_questions is a string, not a list, so display it directly
+                    st.write(st.session_state.hitl_result['follow_up_questions'])
                     
                     st.markdown("### 🗣️ Human Feedback")
                     st.write(st.session_state.hitl_result['human_feedback'])
