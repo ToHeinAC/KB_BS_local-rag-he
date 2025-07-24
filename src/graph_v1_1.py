@@ -1015,7 +1015,7 @@ def generate_final_answer(state: ResearcherState, config: RunnableConfig):
     
     # Add citation sources to the final answer
     if unique_sources:
-        source_str = "## Sources:\n" + "\n".join([f"['{source}']" for source in unique_sources])
+        source_str = "## Sources:\n" + "\n".join([f"[{source}]" for source in unique_sources])
         report_content = report_content + "\n\n" + source_str
         print(f"  [INFO] Added citation sources to final answer: {source_str}")
     

@@ -17,8 +17,8 @@ Generate necessary queries to complete the user's research goal. Keep queries co
 Your output must only be a JSON object containing a single key "queries" followed by a list of individual research queries:
 {{ "queries": ["Query 1", "Query 2",...] }}
 
-* Always include the original user query in the queries.
-* Generate up to {max_queries} research queries as needed.
+* DO NOT include the original user query in your output. It will be added separately by the system.
+* You MUST generate exactly {max_queries-1} NEW, UNIQUE research queries (the original query will be added automatically).
 * Today is: {date}
 * Strictly return the research queries in the following language: {language}
 """

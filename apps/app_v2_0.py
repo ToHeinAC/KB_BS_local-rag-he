@@ -573,18 +573,67 @@ def execute_main_workflow(enable_web_search, report_structure, max_search_querie
                 main_status_text.text("📍 Updating research position...")
             elif main_current_step == 3:
                 main_status_text.text("📋 Summarizing research findings...")
+                # Debug info for summarization
+                summarization_info = st.empty()
             elif main_current_step == 4:
                 main_status_text.text("✍️ Generating final answer...")
             elif main_current_step == 5 and enable_quality_checker:
                 main_status_text.text("✅ Checking answer quality...")
             
             # Get the latest state from the step output
+            print(f"  [DEBUG] Processing step output: {list(step_output.keys())}")
             for node_name, node_state in step_output.items():
+                print(f"  [DEBUG] Processing node: {node_name}, state type: {type(node_state)}")
                 if node_state is not None:  # Only update if node_state is not None
+                    print(f"  [DEBUG] Updating main_final_state from {node_name}")
                     main_final_state = node_state
+                    # Debug print the state keys if available
+                    if hasattr(main_final_state, 'keys'):
+                        try:
+                            print(f"  [DEBUG] State keys: {list(main_final_state.keys())}")
+                            if 'final_answer' in main_final_state:
+                                print(f"  [DEBUG] Final answer length: {len(main_final_state['final_answer']) if main_final_state['final_answer'] else 0} chars")
+                        except Exception as e:
+                            print(f"  [DEBUG] Could not inspect state keys: {str(e)}")
+                
+                # Show summarization debugging info when summarize_query_research node runs
+                if node_name == "summarize_query_research" and node_state is not None:
+                    # Display summarization debugging info in the UI
+                    try:
+                        # Get the summarization LLM from session state
+                        summarization_llm = st.session_state.get('summarization_llm', 'Unknown')
+                        
+                        # Get document counts if available
+                        doc_count = 0
+                        query_count = 0
+                        if hasattr(node_state, 'get') and node_state.get('search_summaries'):
+                            search_summaries = node_state.get('search_summaries')
+                            if isinstance(search_summaries, dict):
+                                query_count = len(search_summaries)
+                                doc_count = sum(len(docs) for docs in search_summaries.values() if isinstance(docs, list))
+                        
+                        # Create debug message
+                        debug_message = f"""**🔍 Summarization Debug Info:**
+- Using LLM: `{summarization_llm}`
+- Processing {query_count} research queries
+- Found {doc_count} total documents"""
+                        
+                        # Add research queries if available
+                        if hasattr(node_state, 'get') and node_state.get('research_queries'):
+                            research_queries = node_state.get('research_queries')
+                            if isinstance(research_queries, list) and research_queries:
+                                debug_message += f"\n\n**Current Research Queries ({len(research_queries)}):**\n"
+                                for i, query in enumerate(research_queries):
+                                    debug_message += f"\n{i+1}. {query}"
+                        
+                        # Display in the UI
+                        summarization_info.markdown(debug_message)
+                    except Exception as e:
+                        print(f"[ERROR] Error displaying summarization debug info: {str(e)}")
+                        summarization_info.error(f"Error displaying summarization debug info: {str(e)}")
                 
                 # Show retrieved documents after retrieve_rag_documents step
-                if node_name == "retrieve_rag_documents" and "retrieved_documents" in node_state:
+                if node_name == "retrieve_rag_documents" and node_state is not None and "retrieved_documents" in node_state:
                     with st.expander("📄 Retrieved Documents by Query", expanded=False):
                         retrieved_docs = node_state["retrieved_documents"]
                         research_queries = node_state.get("research_queries", [])
@@ -621,21 +670,137 @@ def execute_main_workflow(enable_web_search, report_structure, max_search_querie
         main_progress_bar.progress(1.0)
         main_status_text.text("✅ Research completed")
         
-        # Use the final state from main workflow
-        final_state = main_final_state if main_final_state else main_state
+        # Use the final state from main workflow with defensive programming
+        try:
+            # Add detailed debugging for final state
+            print(f"\n[DEBUG] === FINAL STATE PROCESSING START ===")
+            print(f"[DEBUG] main_final_state type: {type(main_final_state)}")
+            
+            # Debug print the entire main_final_state if possible
+            try:
+                import json
+                print(f"[DEBUG] main_final_state content: {json.dumps({k: str(v)[:200] + '...' if isinstance(v, (str, bytes)) else v 
+                                 for k, v in main_final_state.items()}, indent=2, default=str)}")
+            except Exception as e:
+                print(f"[DEBUG] Could not serialize main_final_state: {str(e)}")
+                
+            if main_final_state is not None:
+                print(f"[DEBUG] main_final_state keys: {list(main_final_state.keys()) if hasattr(main_final_state, 'keys') else 'No keys attribute'}")
+                if hasattr(main_final_state, 'get') and 'final_answer' in main_final_state:
+                    print(f"[DEBUG] Final answer exists, length: {len(main_final_state['final_answer']) if main_final_state['final_answer'] else 0} chars")
+            else:
+                print(f"[WARNING] main_final_state is None, falling back to main_state")
+                print(f"[DEBUG] Main state type: {type(main_state)}")
+                print(f"[DEBUG] Main state keys: {list(main_state.keys()) if hasattr(main_state, 'keys') else 'No keys attribute'}")
+            
+            # Safely get final state
+            final_state = main_final_state if main_final_state is not None else main_state
+            
+            # Ensure final_state is a dictionary-like object
+            if not hasattr(final_state, 'get') or not hasattr(final_state, 'keys'):
+                print(f"[WARNING] Converting final_state to dictionary from {type(final_state)}")
+                # Try different ways to convert to dict
+                try:
+                    if isinstance(final_state, dict):
+                        pass  # Already a dict
+                    elif hasattr(final_state, 'dict') and callable(getattr(final_state, 'dict')):
+                        final_state = final_state.dict()
+                    elif hasattr(final_state, '__dict__'):
+                        final_state = final_state.__dict__
+                    else:
+                        # Last resort - try to create a dict from object attributes
+                        final_state = {attr: getattr(final_state, attr) for attr in dir(final_state) 
+                                     if not attr.startswith('_') and not callable(getattr(final_state, attr))}
+                except Exception as e:
+                    print(f"[ERROR] Error converting final_state to dict: {str(e)}")
+                    final_state = {"final_answer": "Error: Could not process final state. See logs for details."}
+                
+                print(f"[DEBUG] After conversion, final_state type: {type(final_state)}")
+                
+        except Exception as e:
+            print(f"[ERROR] Error in final state processing: {str(e)}", exc_info=True)
+            final_state = {"final_answer": f"Error occurred during final state processing: {str(e)}. Check logs for details."}
         
-        # Display results
+        print(f"[DEBUG] === FINAL STATE PROCESSING COMPLETE ===\n")
+        
+        # Display results section
         st.subheader("📋 Research Results")
         
-        # Display the final answer
-        if "final_answer" in final_state and final_state["final_answer"]:
-            st.markdown("### 📄 Final Report")
-            st.markdown(final_state["final_answer"])
+        # Display the final answer with robust error handling
+        try:
+            print("\n[DEBUG] === FINAL ANSWER RENDERING START ===")
             
-            # Add copy to clipboard button
-            if st.button("📋 Copy Report to Clipboard"):
-                copy_to_clipboard(final_state["final_answer"])
-                st.success("Report copied to clipboard!")
+            # Safely extract final_answer with multiple fallback methods
+            final_answer = None
+            
+            # Method 1: Try direct attribute access
+            try:
+                if hasattr(final_state, 'get') and callable(final_state.get):
+                    final_answer = final_state.get('final_answer')
+                    print("[DEBUG] Extracted final_answer using .get() method")
+            except Exception as e:
+                print(f"[DEBUG] Error with .get() method: {str(e)}")
+            
+            # Method 2: Try dictionary access
+            if final_answer is None and isinstance(final_state, dict):
+                try:
+                    final_answer = final_state.get('final_answer')
+                    print("[DEBUG] Extracted final_answer using dict access")
+                except Exception as e:
+                    print(f"[DEBUG] Error with dict access: {str(e)}")
+            
+            # Method 3: Try attribute access
+            if final_answer is None and hasattr(final_state, 'final_answer'):
+                try:
+                    final_answer = final_state.final_answer
+                    print("[DEBUG] Extracted final_answer using attribute access")
+                except Exception as e:
+                    print(f"[DEBUG] Error with attribute access: {str(e)}")
+            
+            # If we still don't have an answer, try to convert to dict
+            if final_answer is None:
+                try:
+                    if hasattr(final_state, 'dict') and callable(getattr(final_state, 'dict')):
+                        final_state_dict = final_state.dict()
+                        final_answer = final_state_dict.get('final_answer')
+                        print("[DEBUG] Converted to dict and extracted final_answer")
+                except Exception as e:
+                    print(f"[DEBUG] Error converting to dict: {str(e)}")
+            
+            print(f"[DEBUG] Final answer type: {type(final_answer) if final_answer is not None else 'None'}")
+            print(f"[DEBUG] Final answer preview: {str(final_answer)[:200]}..." if final_answer else "[DEBUG] No final answer found")
+            
+            # Display the final answer with error handling
+            if final_answer:
+                st.markdown("### 📄 Final Report")
+                try:
+                    # First try to render as markdown
+                    st.markdown(final_answer, unsafe_allow_html=True)
+                    print("[DEBUG] Successfully rendered final answer as markdown")
+                except Exception as e:
+                    print(f"[ERROR] Error rendering markdown: {str(e)}")
+                    try:
+                        # Fallback to text area if markdown fails
+                        st.text_area("Final Report (Raw Text)", str(final_answer), height=400)
+                        print("[DEBUG] Rendered final answer in text area")
+                    except Exception as e2:
+                        print(f"[ERROR] Error in text area fallback: {str(e2)}")
+                        st.error("Could not display the final report. Please check the logs for details.")
+                
+                # Add copy to clipboard button with error handling
+                if st.button("📋 Copy Report to Clipboard"):
+                    try:
+                        copy_to_clipboard(final_answer)
+                        st.success("Report copied to clipboard!")
+                    except Exception as e:
+                        print(f"  [ERROR] Error copying to clipboard: {str(e)}")
+                        st.error(f"Could not copy to clipboard: {str(e)}")
+            else:
+                st.error("No final report was generated. Check logs for errors.")
+                print("  [ERROR] No final_answer found in final_state")
+        except Exception as e:
+            st.error(f"Error displaying final report: {str(e)}")
+            print(f"  [ERROR] Exception in final answer display: {str(e)}")
         
         # Display quality check results if available
         if enable_quality_checker and "quality_check" in final_state and final_state["quality_check"]:
@@ -735,11 +900,8 @@ def main():
     # Model selection session state
     if "report_llm" not in st.session_state:
         report_llm_models = get_report_llm_models()
-        # Set default to qwen3:30b-a3b if available, otherwise first model
-        if "qwen3:30b-a3b" in report_llm_models:
-            st.session_state.report_llm = "qwen3:30b-a3b"
-        else:
-            st.session_state.report_llm = report_llm_models[0] if report_llm_models else "deepseek-r1:latest"
+        # Set default to the first model in the list (from report_llms.md)
+        st.session_state.report_llm = report_llm_models[0] if report_llm_models else "deepseek-r1:latest"
     
     if "summarization_llm" not in st.session_state:
         summarization_llm_models = get_summarization_llm_models()
@@ -774,7 +936,7 @@ def main():
         st.session_state.report_llm = st.sidebar.selectbox(
             "Report Writing LLM",
             options=report_llm_models,
-            index=report_llm_models.index(st.session_state.report_llm) if st.session_state.report_llm in report_llm_models else (report_llm_models.index("qwen3:30b-a3b") if "qwen3:30b-a3b" in report_llm_models else 0),
+            index=report_llm_models.index(st.session_state.report_llm) if st.session_state.report_llm in report_llm_models else 0,
             help="Choose the LLM model to use for final report generation; loaded from global report_llms.md configuration"
         )
         
@@ -802,11 +964,11 @@ def main():
         
         # Max search queries
         max_search_queries = st.slider(
-            "Max Research Queries",
+            "Number of Research Queries",
             min_value=1,
             max_value=10,
             value=5,
-            help="Maximum number of research queries to generate"
+            help="Number of research queries to generate"
         )
         
         # Enable web search
@@ -939,7 +1101,7 @@ def main():
             try:
                 # Generate HITL graph visualization
                 hitl_png = hitl_graph.get_graph().draw_mermaid_png()
-                st.image(hitl_png, caption="HITL Workflow Graph", use_container_width=True)
+                st.image(hitl_png, caption="HITL Workflow Graph", width=350)
             except Exception as e:
                 st.error(f"Could not generate HITL graph visualization: {str(e)}")
         
@@ -948,28 +1110,50 @@ def main():
             try:
                 # Generate main graph visualization
                 main_png = main_graph.get_graph().draw_mermaid_png()
-                st.image(main_png, caption="Main Research Workflow Graph", use_container_width=True)
+                st.image(main_png, caption="Main Research Workflow Graph", width=350)
             except Exception as e:
                 st.error(f"Could not generate main graph visualization: {str(e)}")
     
-    # Create two tabs for workflow phases with automatic switching
-    # When main phase is active, we'll reorder tabs to make Main Research appear first (and thus active)
-    if st.session_state.workflow_phase == "hitl":
-        # HITL phase active - normal order
-        tab1, tab2 = st.tabs(["📝 HITL Phase (Active)", "🔬 Main Research Phase"])
-        hitl_tab, main_tab = tab1, tab2
-    else:
-        # Main phase active - reverse order to make Main Research tab appear first (active)
-        tab1, tab2 = st.tabs(["🔬 Main Research Phase (Active)", "📝 HITL Phase (Completed)"])
-        main_tab, hitl_tab = tab1, tab2
-        
-        # Add a visual indicator that we've automatically switched to Main Research
-        if "phase_switch_notified" not in st.session_state:
-            st.success("✨ **Automatically switched to Main Research Phase!** The HITL phase has been completed.")
-            st.session_state.phase_switch_notified = True
+    # Initialize session state for robust tab switching
+    if "active_tab" not in st.session_state:
+        st.session_state.active_tab = "HITL Phase"
     
-    # HITL Phase Tab
-    with hitl_tab:
+    # Define tab options
+    if st.session_state.workflow_phase == "hitl":
+        tab_options = ["📝 HITL Phase (Active)", "🔬 Main Research Phase"]
+        # Automatically switch to Main Research when HITL completes
+        if st.session_state.active_tab == "Main Research Phase":
+            # User manually switched, keep their choice
+            pass
+        else:
+            st.session_state.active_tab = "HITL Phase"
+    else:
+        tab_options = ["📝 HITL Phase (Completed)", "🔬 Main Research Phase (Active)"]
+        # Automatically switch to Main Research when workflow phase changes
+        if st.session_state.active_tab == "HITL Phase":
+            st.session_state.active_tab = "Main Research Phase"
+            # Add a visual indicator that we've automatically switched
+            if "phase_switch_notified" not in st.session_state:
+                st.success("✨ **Automatically switched to Main Research Phase!** The HITL phase has been completed.")
+                st.session_state.phase_switch_notified = True
+    
+    # Create radio button for tab selection with automatic switching
+    selected_tab = st.radio(
+        "Select workflow phase:",
+        tab_options,
+        index=tab_options.index([opt for opt in tab_options if "Main Research" in opt][0]) if st.session_state.active_tab == "Main Research Phase" else 0,
+        key="workflow_tab_radio",
+        horizontal=True
+    )
+    
+    # Update session state based on selection
+    if "HITL" in selected_tab:
+        st.session_state.active_tab = "HITL Phase"
+    else:
+        st.session_state.active_tab = "Main Research Phase"
+    
+    # HITL Phase Content
+    if st.session_state.active_tab == "HITL Phase":
         if st.session_state.workflow_phase == "hitl":
             st.info("📝 **Current Phase: Human-in-the-Loop** - Interactive conversation to refine your research needs.")
             
@@ -1119,7 +1303,7 @@ def main():
                         st.session_state.input_counter += 1
                         st.rerun()
         else:
-            # HITL phase completed - show results in a collapsed expander
+            # HITL phase completed - show summary without conversation history
             with st.expander("📋 HITL Phase Results (Completed)", expanded=False):
                 st.success("✅ HITL Phase completed successfully!")
                 
@@ -1142,14 +1326,11 @@ def main():
                     for i, query in enumerate(st.session_state.hitl_result['research_queries'], 1):
                         st.write(f"{i}. {query}")
                     
-                    st.markdown("### 💬 Full Conversation History")
-                    if st.session_state.hitl_conversation_history:
-                        for message in st.session_state.hitl_conversation_history:
-                            with st.chat_message(message["role"]):
-                                st.markdown(message["content"])
+                    # Note: Conversation history is preserved in session state but not displayed in GUI during Main phase
+                    st.info("💬 Conversation history has been preserved but is hidden during the Main Research phase for a cleaner interface.")
     
-    # Main Research Phase Tab
-    with main_tab:
+    # Main Research Phase Content
+    elif st.session_state.active_tab == "Main Research Phase":
         if st.session_state.workflow_phase == "main":
             st.info("🔬 **Current Phase: Main Research** - The system will now execute the full research workflow using your HITL input.")
             

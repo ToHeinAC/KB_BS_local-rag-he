@@ -242,8 +242,25 @@ def generate_knowledge_base_questions(state: InitState, config: RunnableConfig):
     
     # Extract queries and add the original query at the beginning
     research_queries = result.queries
+    
+    # Deduplicate queries - ensure the original query appears only once
+    # Remove any duplicates of the original query from the generated list
+    research_queries = [q for q in research_queries if q.strip().lower() != query.strip().lower()]
+    
+    # Insert the original query at the beginning
     research_queries.insert(0, query)
-    print(f"  [DEBUG] Generated knowledge base queries: {research_queries}")
+    
+    # Additional deduplication - remove any remaining exact duplicates (case-insensitive)
+    seen = set()
+    deduplicated_queries = []
+    for q in research_queries:
+        q_lower = q.strip().lower()
+        if q_lower not in seen:
+            seen.add(q_lower)
+            deduplicated_queries.append(q)
+    
+    research_queries = deduplicated_queries
+    print(f"  [DEBUG] Generated knowledge base queries (deduplicated): {research_queries}")
     assert isinstance(research_queries, list), "research_queries must be a list"
     
     # Update additional context with the generated queries
@@ -331,23 +348,122 @@ def retrieve_rag_documents(state: ResearcherStateV2, config: RunnableConfig):
 
 def summarize_query_research(state: ResearcherStateV2, config: RunnableConfig):
     """Enhanced summarization that considers additional context from HITL."""
+    print("--- Starting summarize_query_research with debug file output ---")
     additional_context = state.get("additional_context", "")
+    
+    # Prepare state for the original function
     if additional_context:
         enhanced_state = dict(state)
         enhanced_state["human_feedback"] = additional_context
-        return summarize_query_research_v1(enhanced_state, config)
+        result = summarize_query_research_v1(enhanced_state, config)
     else:
-        return summarize_query_research_v1(state, config)
+        result = summarize_query_research_v1(state, config)
+    
+    # Write state to debug file after summarization
+    try:
+        import os
+        import json
+        from datetime import datetime
+        
+        # Create a timestamp for the filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        debug_filename = f"summarize_query_research_debug.md"
+        
+        # Get the project root directory
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        debug_filepath = os.path.join(project_root, debug_filename)
+        
+        print(f"  [DEBUG] Writing debug state to {debug_filepath}")
+        
+        # Format state as markdown
+        with open(debug_filepath, 'w', encoding='utf-8') as f:
+            f.write(f"# Summarize Query Research Debug Output - {timestamp}\n\n")
+            
+            # Write original state keys
+            f.write("## Original State Keys\n\n")
+            f.write(", ".join(state.keys()) + "\n\n")
+            
+            # Write result keys
+            f.write("## Result Keys\n\n")
+            f.write(", ".join(result.keys()) + "\n\n")
+            
+            # Write search summaries if available
+            if "search_summaries" in result:
+                f.write("## Search Summaries\n\n")
+                search_summaries = result["search_summaries"]
+                f.write(f"Number of queries with summaries: {len(search_summaries)}\n\n")
+                
+                for query, summaries in search_summaries.items():
+                    f.write(f"### Query: {query}\n\n")
+                    f.write(f"Number of summaries: {len(summaries)}\n\n")
+                    
+                    for i, summary in enumerate(summaries):
+                        f.write(f"#### Summary {i+1}\n\n")
+                        f.write(f"```\n{summary.page_content}\n```\n\n")
+                        f.write(f"**Metadata:** {json.dumps(summary.metadata, indent=2, default=str)}\n\n")
+            
+            # Write formatted documents if available
+            if "formatted_documents" in result:
+                f.write("## Formatted Documents\n\n")
+                f.write(f"Number of formatted document sets: {len(result['formatted_documents'])}\n\n")
+            
+            # Write query mapping if available
+            if "query_mapping" in result:
+                f.write("## Query Mapping\n\n")
+                f.write("```json\n")
+                f.write(json.dumps(result["query_mapping"], indent=2))
+                f.write("\n```\n\n")
+                
+            f.write("## Complete State (Safe Serializable Keys)\n\n")
+            # Only include serializable data in the complete state dump
+            safe_state = {}
+            for key, value in result.items():
+                try:
+                    # Test if value is JSON serializable
+                    json.dumps({key: value}, default=str)
+                    safe_state[key] = value
+                except (TypeError, OverflowError):
+                    safe_state[key] = f"[Not serializable: {type(value).__name__}]"
+            
+            f.write("```json\n")
+            f.write(json.dumps(safe_state, indent=2, default=str))
+            f.write("\n```\n")
+            
+        print(f"  [DEBUG] Successfully wrote debug state to {debug_filepath}")
+    except Exception as e:
+        print(f"  [ERROR] Failed to write debug state to file: {str(e)}")
+    
+    # Return the original result
+    return result
 
 def generate_final_answer(state: ResearcherStateV2, config: RunnableConfig):
     """Enhanced final answer generation that considers additional context from HITL."""
-    additional_context = state.get("additional_context", "")
-    if additional_context:
-        enhanced_state = dict(state)
-        enhanced_state["human_feedback"] = additional_context
-        return generate_final_answer_v1(enhanced_state, config)
-    else:
-        return generate_final_answer_v1(state, config)
+    print("--- Enhanced generate_final_answer in v2.0 ---")
+    try:
+        # Convert ResearcherStateV2 to a compatible dict for generate_final_answer_v1
+        v1_state = dict(state)
+        
+        # Add additional context as human_feedback if available, otherwise preserve existing human_feedback
+        additional_context = state.get("additional_context", "")
+        if additional_context:
+            print(f"  [DEBUG] Using additional_context as human_feedback: {additional_context[:50]}...")
+            v1_state["human_feedback"] = additional_context
+        
+        # Call v1 implementation
+        print("  [DEBUG] Calling generate_final_answer_v1 with converted state")
+        result = generate_final_answer_v1(v1_state, config)
+        
+        # Make sure the final answer is properly set in the returned state
+        if isinstance(result, dict) and "final_answer" in result:
+            print(f"  [DEBUG] Final answer successfully generated (length: {len(result['final_answer'])})")
+            # Return only the necessary update to avoid overwriting other state fields
+            return {"final_answer": result["final_answer"]}
+        else:
+            print(f"  [ERROR] generate_final_answer_v1 returned unexpected result format: {type(result)}")
+            return {"final_answer": "Error: Could not generate final answer due to unexpected result format."}
+    except Exception as e:
+        print(f"  [ERROR] Exception in generate_final_answer: {str(e)}")
+        return {"final_answer": f"Error occurred during final answer generation: {str(e)}. Check logs for details."}
 
 def quality_checker(state: ResearcherStateV2, config: RunnableConfig):
     """Enhanced quality checker that considers additional context from HITL."""

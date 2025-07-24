@@ -1,24 +1,15 @@
 ## Wie können Rückstände aus der Überwachung entlassen werden?
 ### Key Passages (Sorted by Importance)
-**Key Passage:** Zunächst muss die Sicherheit der Bevölkerung gewährleistet werden, wobei eine effektive Dosis von 1 Millisievert im Kalenderjahr ohne weitere Maßnahmen nach Abschluss der Beseitigung nicht überschritten wird [Source: StrlSchG.pdf--250712]. [Source: StrlSchG.pdf--250712]
-**Key Passage:** Einhaltung der Überwachungsbedürftigkeit und Schutzmaßnahmen) erfüllt sind [Source: StrlSchG.pdf--250712]. [Source: StrlSchG.pdf--250712]
-**Key Passage:** 
-
-Bei Verwertung als Bauprodukt muss die Anforderungen des Kreislaufwirtschaftsgesetzes erfüllt sein, wobei eine effektive Dosis von 1 Millisievert im Kalenderjahr für Einzelpersonen der Bevölkerung nicht überschritten wird [Source: StrlSchG.pdf--250712]. [Source: StrlSchG.pdf--250712]
-**Key Passage:** Die Entlassung erfolgt durch schriftlichen Bescheid, wobei die zuständige Behörde den Verpflichteten verlangt, die geplante Beseitigung oder Verwertung sowie die Art, Masse und spezifische Aktivität der Rückstände zu nennen [Source: StrlSchG.pdf--250712]. [Source: StrlSchG.pdf--250712]
-**Key Passage:** 
-
-Zusätzlich muss bei grenzüberschreitender Verbringung ins Inland eine Genehmigung durch die zuständige Behörde erteilt werden, wobei das Ausland angefallene Rückstände zur Verwertung ins Inland nur nachweisen können, dass die Überwachungsbedürftigkeit erfüllt ist [Source: StrlSchG.pdf--250712].
+**Key Passage:** Zunächst muss die Verpflichtete den Behörden nachweisen, dass die überwachungsbedürftigen Rückstände gemäß den festgelegten Grenzen und Wegern (§ 61 Absatz 2 Satz 2) eingehalten werden oder dass die Entlassung zum Zweck einer bestimmten Verwertung vorliegt [Source: StrlSchG.pdf--250712]. [Source: StrlSchG.pdf--250712]
+**Key Passage:** Bei grenzüberschreitender Verbringung ins Inland zur Beseitigung ist das verboten, und bei der Nutzung als Bauprodukt muss die Exposition von Einzelnen der Bevölkerung durch die Rückstände nicht über 1 Millisievert im Kalenderjahr übertreten werden [Source: StrlSchG.pdf--250712]. [Source: StrlSchG.pdf--250712]
+**Key Passage:** Die Entlassung erfolgt schriftlich als Bescheid, wobei das Maßstab für den Schutz der Bevölkerung festgelegt ist, dass die effektive Dosis nicht über 1 Millisievert im Kalenderjahr hinaus geht [Source: StrlSchG.pdf--250712]. [Source: StrlSchG.pdf--250712]
+**Key Passage:** Für die Verbringung von Rückständen ins Inland müssen zusätzliche Nachweise zur Einhaltung der Vorschriften des Kreislaufwirtschaftsgesetzes angegeben werden [Source: StrlSchG.pdf--250712].
 Importance_score: 5.80
 Source_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712
 Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf [Source: StrlSchG.pdf--250712]
 
 ### Full Content
-Content: Content: Die Entlassung überwachungsbedürftiger Rückstände aus der Überwachung ist unter bestimmten Voraussetzungen möglich. Zunächst muss die Sicherheit der Bevölkerung gewährleistet werden, wobei eine effektive Dosis von 1 Millisievert im Kalenderjahr ohne weitere Maßnahmen nach Abschluss der Beseitigung nicht überschritten wird [Source: StrlSchG.pdf--250712]. Zudem muss die Verwertung oder Beseitigung durchgeführt werden, wobei die Voraussetzungen für eine Entlassung (z. B. Einhaltung der Überwachungsbedürftigkeit und Schutzmaßnahmen) erfüllt sind [Source: StrlSchG.pdf--250712]. 
-
-Bei Verwertung als Bauprodukt muss die Anforderungen des Kreislaufwirtschaftsgesetzes erfüllt sein, wobei eine effektive Dosis von 1 Millisievert im Kalenderjahr für Einzelpersonen der Bevölkerung nicht überschritten wird [Source: StrlSchG.pdf--250712]. Die Entlassung erfolgt durch schriftlichen Bescheid, wobei die zuständige Behörde den Verpflichteten verlangt, die geplante Beseitigung oder Verwertung sowie die Art, Masse und spezifische Aktivität der Rückstände zu nennen [Source: StrlSchG.pdf--250712]. 
-
-Zusätzlich muss bei grenzüberschreitender Verbringung ins Inland eine Genehmigung durch die zuständige Behörde erteilt werden, wobei das Ausland angefallene Rückstände zur Verwertung ins Inland nur nachweisen können, dass die Überwachungsbedürftigkeit erfüllt ist [Source: StrlSchG.pdf--250712].
+Content: Content: Die Entlassung von Rückständen aus der Überwachung ist unter bestimmten Voraussetzungen möglich. Zunächst muss die Verpflichtete den Behörden nachweisen, dass die überwachungsbedürftigen Rückstände gemäß den festgelegten Grenzen und Wegern (§ 61 Absatz 2 Satz 2) eingehalten werden oder dass die Entlassung zum Zweck einer bestimmten Verwertung vorliegt [Source: StrlSchG.pdf--250712]. Bei grenzüberschreitender Verbringung ins Inland zur Beseitigung ist das verboten, und bei der Nutzung als Bauprodukt muss die Exposition von Einzelnen der Bevölkerung durch die Rückstände nicht über 1 Millisievert im Kalenderjahr übertreten werden [Source: StrlSchG.pdf--250712]. Die Entlassung erfolgt schriftlich als Bescheid, wobei das Maßstab für den Schutz der Bevölkerung festgelegt ist, dass die effektive Dosis nicht über 1 Millisievert im Kalenderjahr hinaus geht [Source: StrlSchG.pdf--250712]. Für die Verbringung von Rückständen ins Inland müssen zusätzliche Nachweise zur Einhaltung der Vorschriften des Kreislaufwirtschaftsgesetzes angegeben werden [Source: StrlSchG.pdf--250712].
 Importance_score: 5.80
 Source_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712
 Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf
@@ -26,81 +17,115 @@ Source: StrlSchG.pdf--250712
 
 
 
-## Welche spezifischen Arten von Rückständen (z. B. chemisch, datenbasiert, biologisch) werden in der Überwachung erwähnt, und in welchem Kontext (z. B. medizinisch, umweltbezogen, digital) entstehen diese?
+## Welche spezifischen gesetzlichen Grenzwerte und Strahlenschutzvorschriften sind für die Entsorgung von Rückständen mit natürlichen Radionukliden in Ihrem Kontext besonders relevant?
 ### Key Passages (Sorted by Importance)
-**Key Passage:** Stattdessen werden die Kontexte der Exposition (medizinisch, umweltbezogen, digital) im Rahmen des Strahlenschutzgesetzes (StrlSchG) und der Anlage 6 zu den §§ 28, 100, 101 des Strahlenschutzzulage (StrlSchV) behandelt. [Source: StrlSchV.pdf--250712]
+**Key Passage:** Content: Die gesetzlichen Grenzwerte und Strahlenschutzvorschriften für die Entsorgung von Rückständen mit natürlichen Radionukliden sind in den Gesetzen **Strahlenschutzgesetz (StrlSchG)** sowie der **Strahlenschutzverordnung (StrlSchV)** festgelegt. [Source: StrlSchG.pdf--250712]
 **Key Passage:** 
 
-Im medizinischen Kontext werden Expositionen durch die Beseitigung oder Verwertung von Rückständen beschrieben, wobei Maßnahmen zur Schutz der Bevölkerung ergriffen werden, insbesondere bei überwachungsbedürftigen Rückständen. [Source: StrlSchV.pdf--250712]
-**Key Passage:** Die Richtwert einer effektiven Dosis von 1 Millisievert im Kalenderjahr ist als Sicherheitsgrenze festgelegt (§ 62 Absatz 3). [Source: StrlSchV.pdf--250712]
-**Key Passage:** Für industrielle Prozesse mit überwachungsbedürftigen Rückständen sind spezielle Maßnahmen zur Schutz der Bevölkerung vorgeschrieben (§ 61 Absatz 2). [Source: StrlSchV.pdf--250712]
-**Key Passage:** 
-
-Im digitalen Kontext werden die Verbringung und Verwertung von Rückständen im Ausland verboten, wobei eine Abweichung vom abfallrechtlichen Verwertungsweg nur unter besonderer Vorsicht zulässig ist (§ 61 Absatz 2 Satz 1). [Source: StrlSchV.pdf--250712]
-**Key Passage:** 
-
-Die Dokumente betonen die Notwendigkeit von transparenten Rückstandskonzepten, um Expositionen zu vermeiden und den abfallrechtlichen Verwertungswege sicherzustellen.
-Importance_score: 5.43
-Source_filename: StrlSchV.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712
-Source_path: kb/insert_data/StrlSchV.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf [Source: StrlSchV.pdf--250712]
-
-### Full Content
-Content: Content: Die Dokumente erwähnen keine spezifischen Arten von Rückständen wie chemisch, datenbasiert oder biologisch. Stattdessen werden die Kontexte der Exposition (medizinisch, umweltbezogen, digital) im Rahmen des Strahlenschutzgesetzes (StrlSchG) und der Anlage 6 zu den §§ 28, 100, 101 des Strahlenschutzzulage (StrlSchV) behandelt.  
-
-Im medizinischen Kontext werden Expositionen durch die Beseitigung oder Verwertung von Rückständen beschrieben, wobei Maßnahmen zur Schutz der Bevölkerung ergriffen werden, insbesondere bei überwachungsbedürftigen Rückständen. Die Richtwert einer effektiven Dosis von 1 Millisievert im Kalenderjahr ist als Sicherheitsgrenze festgelegt (§ 62 Absatz 3).  
-
-Im umweltbezogenen Kontext werden die Anforderungen der Grundsätze der Rechtsverordnung angewendet, um Expositionen zu ermitteln. Für industrielle Prozesse mit überwachungsbedürftigen Rückständen sind spezielle Maßnahmen zur Schutz der Bevölkerung vorgeschrieben (§ 61 Absatz 2).  
-
-Im digitalen Kontext werden die Verbringung und Verwertung von Rückständen im Ausland verboten, wobei eine Abweichung vom abfallrechtlichen Verwertungsweg nur unter besonderer Vorsicht zulässig ist (§ 61 Absatz 2 Satz 1).  
-
-Die Dokumente betonen die Notwendigkeit von transparenten Rückstandskonzepten, um Expositionen zu vermeiden und den abfallrechtlichen Verwertungswege sicherzustellen.
-Importance_score: 5.43
-Source_filename: StrlSchV.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712
-Source_path: kb/insert_data/StrlSchV.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf
-Source: StrlSchV.pdf--250712
-
-
-
-## Welche konkreten Anwendungsbereiche oder Szenarien (z. B. Patientenüberwachung, Umweltmonitoring, Sicherheitsysteme) sind für die Entfernung der Rückstände relevant, und welche spezifischen Herausforderungen bestehen dabei?
-### Key Passages (Sorted by Importance)
-**Key Passage:** Content: Die Entfernung von Rückständen ist im Rahmen der Strahlenschutzgesetzgebung (StrlSchG) für folgende Anwendungsbereiche relevant:  
 1. [Source: StrlSchG.pdf--250712]
-**Key Passage:** **Patientenüberwachung**: Gemäß § 62 Absatz 1 und 2 des Gesetzes sind Rückstände, die zur Beseitigung oder Verwertung verpflichtet sind, unter bestimmten Voraussetzungen entlassen werden können. [Source: StrlSchG.pdf--250712]
-**Key Passage:** Dies erfordert eine Sicherstellung der Expositionsvorschriften (Richtwert: 1 Millisievert im Kalenderjahr) und eine geplante Beseitigung ohne Schutzmaßnahmen für die Bevölkerung. [Source: StrlSchG.pdf--250712]
+**Key Passage:** **Richtwert und Verpflichtungen**:  
+   - Wer industrielle oder bergbauliche Prozesse durchführt, die überwachungsbedürftige Rückstände erzeugen, muss Maßnahmen ergreifen, um den Richtwert der effektiven Dosis von 1 Millisievert im Kalenderjahr nicht zu überschreiten. [Source: StrlSchG.pdf--250712]
 **Key Passage:** 
+
 2. [Source: StrlSchG.pdf--250712]
-**Key Passage:** **Umweltmonitoring**: Die Verbringung von Rückständen ins Inland zur Beseitigung ist verboten (§ 60 Absatz 7), wobei der Rechtsverordnung nach § 61 Absatz 2 Satz 2 folgende Voraussetzungen gelten müssen: die Einhaltung der Überwachungsgrenzen und des Verwertungswege. [Source: StrlSchG.pdf--250712]
+**Key Passage:** **Verpflichtungen bei Entsorgung**:  
+   - Rückstände müssen vor ihrer Beseitigung oder Verwertung nicht vermischt oder verdünnt werden, um die Überwachungsgrenzen zu beibehalten [Source: StrlSchG.pdf]. [Source: StrlSchG.pdf--250712]
 **Key Passage:** 
+   - Die zuständige Behörde kann bei der Entsorgung von überwachungsbedürftigen Rückständen verlangen, dass für deren Verwertung und Beseitigung die durch Rechtsverordnung festgelegten Grenzen eingehalten werden [Source: StrlSchG.pdf]. [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+
 3. [Source: StrlSchG.pdf--250712]
-**Key Passage:** **Sicherheitssysteme**: Die Entfernung von Rückständen erfordert Schutzmaßnahmen gegen Exposition, insbesondere bei Bauprodukten oder in anderen Bundesländern (§ 62 Absatz 1). [Source: StrlSchG.pdf--250712]
+**Key Passage:** **Verpflichtungen bei Transport**:  
+   - Wer radioaktive Stoffe befördert, muss sicherstellen, dass sie nur an autorisierte Personen oder deren berechtigte Empfänger übergeben werden. [Source: StrlSchG.pdf--250712]
 **Key Passage:** 
 
-**Herausforderungen**:  
-- **Schutz der Bevölkerung**: Die Sicherstellung einer effektiven Dosis von 1 Millisievert im Kalenderjahr ohne weitere Maßnahmen ist zentral. [Source: StrlSchG.pdf--250712]
-**Key Passage:** Bei Bauprodukten muss die Einhaltung der Rechtsverordnung nach § 61 Absatz 2 Satz 2 sichergestellt werden (§ 63 Absatz 5). [Source: StrlSchG.pdf--250712]
-**Key Passage:** 
-- **Fachkundige Beratung**: Der Einsatz einer Person mit Strahlenschutzfachkenntnis ist vorgeschrieben (§ 62 Absatz 1). [Source: StrlSchG.pdf--250712]
+4. [Source: StrlSchG.pdf--250712]
 **Key Passage:** 
 
-Quellen: [StrlSchG.pdf] § 62, 63; Rechtsverordnung nach §§ 60–61.
-Importance_score: 5.54
-Source_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712
-Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf [Source: StrlSchG.pdf--250712]
+5. [Source: StrlSchG.pdf--250712]
+**Key Passage:** **Zusätzliche Vorschriften**:  
+   - Die Bundesregierung regelt durch Rechtsverordnung mit Zustimmung des Bundesrates die Errichtung, Betrieb und Gewässeraufsicht von Anlagen, in denen Rückstände entsorgt oder behandelt werden [Source: StrlSchG.pdf]. [Source: StrlSchG.pdf--250712]
+**Key Passage:** 
+
+Diese Vorschriften stellen sicher, dass der Schutz vor ionisierender Strahlung bei der Entsorgung natürlicher Radionuklid-Rückständen gewährleistet ist.
+Importance_score: 5.19
+Source_filename: StrlSchG.pdf--250712, StrlSchV.pdf--250712, StrlSchG.pdf--250712
+Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchV.pdf, kb/insert_data/StrlSchG.pdf [Source: StrlSchG.pdf--250712]
 
 ### Full Content
-Content: Content: Die Entfernung von Rückständen ist im Rahmen der Strahlenschutzgesetzgebung (StrlSchG) für folgende Anwendungsbereiche relevant:  
-1. **Patientenüberwachung**: Gemäß § 62 Absatz 1 und 2 des Gesetzes sind Rückstände, die zur Beseitigung oder Verwertung verpflichtet sind, unter bestimmten Voraussetzungen entlassen werden können. Dies erfordert eine Sicherstellung der Expositionsvorschriften (Richtwert: 1 Millisievert im Kalenderjahr) und eine geplante Beseitigung ohne Schutzmaßnahmen für die Bevölkerung.  
-2. **Umweltmonitoring**: Die Verbringung von Rückständen ins Inland zur Beseitigung ist verboten (§ 60 Absatz 7), wobei der Rechtsverordnung nach § 61 Absatz 2 Satz 2 folgende Voraussetzungen gelten müssen: die Einhaltung der Überwachungsgrenzen und des Verwertungswege.  
-3. **Sicherheitssysteme**: Die Entfernung von Rückständen erfordert Schutzmaßnahmen gegen Exposition, insbesondere bei Bauprodukten oder in anderen Bundesländern (§ 62 Absatz 1).  
+Content: Content: Die gesetzlichen Grenzwerte und Strahlenschutzvorschriften für die Entsorgung von Rückständen mit natürlichen Radionukliden sind in den Gesetzen **Strahlenschutzgesetz (StrlSchG)** sowie der **Strahlenschutzverordnung (StrlSchV)** festgelegt.  
 
-**Herausforderungen**:  
-- **Schutz der Bevölkerung**: Die Sicherstellung einer effektiven Dosis von 1 Millisievert im Kalenderjahr ohne weitere Maßnahmen ist zentral. Bei Bauprodukten muss die Einhaltung der Rechtsverordnung nach § 61 Absatz 2 Satz 2 sichergestellt werden (§ 63 Absatz 5).  
-- **Autorisierung**: Die Entlassung von Rückständen erfordert Genehmigungen für den Verwertungswege und die Beseitigung, insbesondere bei internationaler Anfallung.  
-- **Fachkundige Beratung**: Der Einsatz einer Person mit Strahlenschutzfachkenntnis ist vorgeschrieben (§ 62 Absatz 1).  
+1. **Richtwert und Verpflichtungen**:  
+   - Wer industrielle oder bergbauliche Prozesse durchführt, die überwachungsbedürftige Rückstände erzeugen, muss Maßnahmen ergreifen, um den Richtwert der effektiven Dosis von 1 Millisievert im Kalenderjahr nicht zu überschreiten. Dies gilt auch für Rückstände, die im Ausland angefallen und ins Inland verbracht wurden [Source: StrlSchG.pdf].  
+   - Die Bundesregierung ermächtigt durch Rechtsverordnung (mit Zustimmung des Bundesrates) die Festlegung der Überwachungsgrenzen und Verwertungswege für Rückstände [Source: StrlSchG.pdf].  
 
-Quellen: [StrlSchG.pdf] § 62, 63; Rechtsverordnung nach §§ 60–61.
-Importance_score: 5.54
-Source_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712
-Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf
+2. **Verpflichtungen bei Entsorgung**:  
+   - Rückstände müssen vor ihrer Beseitigung oder Verwertung nicht vermischt oder verdünnt werden, um die Überwachungsgrenzen zu beibehalten [Source: StrlSchG.pdf].  
+   - Die zuständige Behörde kann bei der Entsorgung von überwachungsbedürftigen Rückständen verlangen, dass für deren Verwertung und Beseitigung die durch Rechtsverordnung festgelegten Grenzen eingehalten werden [Source: StrlSchG.pdf].  
+
+3. **Verpflichtungen bei Transport**:  
+   - Wer radioaktive Stoffe befördert, muss sicherstellen, dass sie nur an autorisierte Personen oder deren berechtigte Empfänger übergeben werden. Die zuständige Behörde kann Ausnahmen erlassen, soweit der Schutz gegen Abhandenkommen und Einwirkung Dritter gewährleistet ist [Source: StrlSchV.pdf].  
+
+4. **Kontaminationswerte**:  
+   - Für Abfälle, die infolge eines Notfalls radioaktiv kontaminiert sind oder sein können, gelten spezielle Kontaminationswerte. Wer diese unterschreitet, muss davon ausgehen, dass der Schutz von Mensch und Umwelt sichergestellt ist [Source: StrlSchG.pdf].  
+
+5. **Zusätzliche Vorschriften**:  
+   - Die Bundesregierung regelt durch Rechtsverordnung mit Zustimmung des Bundesrates die Errichtung, Betrieb und Gewässeraufsicht von Anlagen, in denen Rückstände entsorgt oder behandelt werden [Source: StrlSchG.pdf].  
+
+Diese Vorschriften stellen sicher, dass der Schutz vor ionisierender Strahlung bei der Entsorgung natürlicher Radionuklid-Rückständen gewährleistet ist.
+Importance_score: 5.19
+Source_filename: StrlSchG.pdf--250712, StrlSchV.pdf--250712, StrlSchG.pdf--250712
+Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchV.pdf, kb/insert_data/StrlSchG.pdf
 Source: StrlSchG.pdf--250712
+
+
+
+## Welche Technologien oder Verfahren zur Reduktion von Radionukliden in Rückständen werden aktuell in Ihrem Forschungsumfeld priorisiert, und welche Kriterien (z. B. Kosten, Umweltverträglichkeit) spielen bei der Auswahl einer Entsorgungsstrategie eine zentrale Rolle?
+### Key Passages (Sorted by Importance)
+**Key Passage:** Content: Die aktuelle Forschungsumfelder im Bereich der Reduktion von Radionuclidien in Rückständen beziehen sich auf die Umsetzung des Nationalen Entsorgungsprogramms (NEP), das eine systematische Abwicklung abgebrannter Brennelemente und radioaktiver Abfälle vorsieht. [Source: AtG.pdf--250712]
+**Key Passage:** Die Priorisierung technischer Verfahren ist nicht explizit genannt, jedoch sind folgende Kriterien zentral bei der Auswahl einer Entsorgungsstrategie:  
+
+1. [Source: AtG.pdf--250712]
+**Key Passage:** **Kosten**:  
+   - Die Kosten für die Entsorgung werden von den Abfallerzeugern getragen (§ 5 AtG.pdf), wobei finanzielle Aspekte eine entscheidende Rolle spielen. [Source: AtG.pdf--250712]
+**Key Passage:** 
+
+2. [Source: AtG.pdf--250712]
+**Key Passage:** 
+
+3. [Source: AtG.pdf--250712]
+**Key Passage:** **Dokumentierte Entscheidungsprozesse**:  
+   - Eine nachvollziehbare Abwicklung der Entstehung, Verarbeitung und Endlagerung wird vorgeschrieben (§ 6 AtG.pdf), um Compliance mit Rechtsvorschriften zu sichern. [Source: AtG.pdf--250712]
+**Key Passage:** 
+
+4. [Source: AtG.pdf--250712]
+**Key Passage:** **Technische Lösungen**:  
+   - Die Konzepte zur Entsorgung werden in den NEP detailliert beschrieben, einschließlich der Anlageplanung und des Verfahrens für die Endlagerung (§ 9a Absatz 1 Satz 2 StrlSchG.pdf). [Source: AtG.pdf--250712]
+**Key Passage:** 
+
+Die konkreten technischen Methoden sind nicht explizit genannt, aber die Auswahl beruht auf den oben genannten Kriterien.
+Importance_score: 6.03
+Source_filename: AtG.pdf--250712, AtG.pdf--250712, StrlSchG.pdf--250712
+Source_path: kb/insert_data/AtG.pdf, kb/insert_data/AtG.pdf, kb/insert_data/StrlSchG.pdf [Source: AtG.pdf--250712]
+
+### Full Content
+Content: Content: Die aktuelle Forschungsumfelder im Bereich der Reduktion von Radionuclidien in Rückständen beziehen sich auf die Umsetzung des Nationalen Entsorgungsprogramms (NEP), das eine systematische Abwicklung abgebrannter Brennelemente und radioaktiver Abfälle vorsieht. Die Priorisierung technischer Verfahren ist nicht explizit genannt, jedoch sind folgende Kriterien zentral bei der Auswahl einer Entsorgungsstrategie:  
+
+1. **Kosten**:  
+   - Die Kosten für die Entsorgung werden von den Abfallerzeugern getragen (§ 5 AtG.pdf), wobei finanzielle Aspekte eine entscheidende Rolle spielen.  
+
+2. **Umweltverträglichkeit**:  
+   - Der Einsatz wird geprägt durch Verpflichtungen wie das Kreislaufwirtschaftsgesetz und die Transparenzregelungen (StrlSchG.pdf), um Umweltschutz zu gewährleisten.  
+
+3. **Dokumentierte Entscheidungsprozesse**:  
+   - Eine nachvollziehbare Abwicklung der Entstehung, Verarbeitung und Endlagerung wird vorgeschrieben (§ 6 AtG.pdf), um Compliance mit Rechtsvorschriften zu sichern.  
+
+4. **Technische Lösungen**:  
+   - Die Konzepte zur Entsorgung werden in den NEP detailliert beschrieben, einschließlich der Anlageplanung und des Verfahrens für die Endlagerung (§ 9a Absatz 1 Satz 2 StrlSchG.pdf).  
+
+Die konkreten technischen Methoden sind nicht explizit genannt, aber die Auswahl beruht auf den oben genannten Kriterien.
+Importance_score: 6.03
+Source_filename: AtG.pdf--250712, AtG.pdf--250712, StrlSchG.pdf--250712
+Source_path: kb/insert_data/AtG.pdf, kb/insert_data/AtG.pdf, kb/insert_data/StrlSchG.pdf
+Source: AtG.pdf--250712
 

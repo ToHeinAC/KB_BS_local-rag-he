@@ -1,3 +1,4 @@
+qwen3:14b
 mistral-small3.2:latest
 deepseek-r1:latest
 deepseek-r1:70b
