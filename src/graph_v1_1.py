@@ -219,15 +219,8 @@ def retrieve_rag_documents(state: ResearcherState, config: RunnableConfig):
     except Exception as e:
         print(f"  [ERROR] Error updating config: {e}")
     
-    # Create a dictionary to map original queries to their index-prefixed versions
-    # This ensures duplicate queries are treated as separate keys
-    query_mapping = {}
-    
-    # Process each research query
+    # Process each research query directly without mapping to numbers
     for i, query in enumerate(research_queries):
-        # Create an indexed version of the query to handle duplicates
-        indexed_query = f"{i+1}:{query}"
-        query_mapping[indexed_query] = query
         print(f"  [INFO] Processing query {i+1}/{len(research_queries)}: '{query}'")
         
         # Use similarity_search_for_tenant directly (the working method) instead of search_documents
@@ -290,8 +283,8 @@ def retrieve_rag_documents(state: ResearcherState, config: RunnableConfig):
         else:
             print(f"  [WARNING] No documents were retrieved for query: '{query}'")
         
-        # Store documents using the indexed query to avoid overwriting duplicates
-        all_query_documents[indexed_query] = documents
+        # Store documents for the query directly
+        all_query_documents[query] = documents
     
     print(f"  [INFO] Completed retrieval for all {len(research_queries)} queries")
     
@@ -316,8 +309,7 @@ def retrieve_rag_documents(state: ResearcherState, config: RunnableConfig):
     # In LangGraph, the returned dictionary represents the specific state updates
     # We need to make sure this is properly merged with the existing state
     return {
-        "retrieved_documents": all_query_documents,
-        "query_mapping": query_mapping  # Include the query mapping in the state update
+        "retrieved_documents": all_query_documents
     }
 
 
@@ -339,24 +331,8 @@ def summarize_query_research(state: ResearcherState, config: RunnableConfig):
     # Get all query documents from the previous step
     all_query_documents = state.get("retrieved_documents", {})
     
-    # Get the query mapping to convert indexed queries back to original queries
-    query_mapping = state.get("query_mapping", {})
-    print(f"  [DEBUG] Query mapping: {query_mapping}")
-    
-    # If no query mapping exists but we have indexed queries, try to extract the original queries
-    if not query_mapping and all_query_documents:
-        print("  [INFO] No query mapping found, attempting to extract original queries from indexed keys")
-        query_mapping = {}
-        for indexed_query in all_query_documents.keys():
-            # Try to extract the original query from the index format (i:query)
-            if ":" in indexed_query:
-                parts = indexed_query.split(":", 1)
-                if len(parts) == 2 and parts[0].isdigit():
-                    query_mapping[indexed_query] = parts[1]
-                    print(f"  [DEBUG] Extracted query mapping: {indexed_query} -> {parts[1]}")
-        
-        if not query_mapping:
-            print("  [WARNING] Could not extract query mapping, will use indexed queries directly")
+    # Now using direct queries (no mapping needed)
+    print(f"  [DEBUG] Using direct queries as keys (no query mapping)")
     research_queries = state.get("research_queries", [])
 
     
@@ -391,7 +367,21 @@ def summarize_query_research(state: ResearcherState, config: RunnableConfig):
         summarization_llm = config["configurable"].get("summarization_llm", "llama3.2")
         print(f"  [DEBUG] Using summarization LLM from config: {summarization_llm}")
         
-    detected_language = state.get("detected_language", config["configurable"].get("detected_language", "English"))
+    # Robust language extraction - handle both string and dict formats
+    detected_language_raw = state.get("detected_language", config["configurable"].get("detected_language", "English"))
+    
+    # Extract language string from dict if necessary
+    if isinstance(detected_language_raw, dict):
+        detected_language = detected_language_raw.get("detected_language", "English")
+        print(f"  [DEBUG] Extracted language from dict: {detected_language}")
+    else:
+        detected_language = detected_language_raw
+    
+    # Ensure we have a valid string
+    if not isinstance(detected_language, str):
+        detected_language = "English"
+        print(f"  [WARNING] Invalid language format, defaulting to English")
+    
     print(f"  [Using language: {detected_language}]")
     
     # Format the system prompt for summarization
@@ -417,24 +407,16 @@ def summarize_query_research(state: ResearcherState, config: RunnableConfig):
         # Mark this query as processed
         processed_queries.add(query)
         
-        # Create the indexed query format to match how we stored it
-        indexed_query = f"{i+1}:{query}"
+        # Get documents directly using the query as the key
+        documents = all_query_documents.get(query, [])
         
-        # Try to get documents using the indexed query format first
-        documents = all_query_documents.get(indexed_query, [])
-        
-        # If no documents found with the indexed query, try the original query
-        if not documents:
-            documents = all_query_documents.get(query, [])
-            if documents:
-                print(f"  [INFO] Found documents using original query format")
-        
-        # Try all possible indexed formats if still no documents found
+        # If no documents found, try any indexed format that might exist
+        # (for backward compatibility with existing data)
         if not documents:
             for key in all_query_documents.keys():
-                if key.endswith(f":{query}"):
+                if ":" in key and key.split(":", 1)[1] == query:
                     documents = all_query_documents[key]
-                    print(f"  [INFO] Found documents using alternative indexed query: {key}")
+                    print(f"  [INFO] Found documents using legacy indexed format: {key}")
                     break
         print(f"  [DEBUG] Found {len(documents)} documents for this query")
         
@@ -492,10 +474,15 @@ def summarize_query_research(state: ResearcherState, config: RunnableConfig):
             # Format documents for summarization (using the original method for source_summarizer_ollama)
             context_documents = format_documents_with_metadata(documents, preserve_original=True)
             
+            # Get user_query and human_feedback for the new prompt structure
+            user_query = state.get("user_query", query)  # Use original user query if available
+            human_feedback = state.get("human_feedback", "")  # Get human feedback from HITL
+            
             # Format the human prompt for this specific query and documents
             human_prompt = SUMMARIZER_HUMAN_PROMPT.format(
-                query=query,
+                user_query=user_query,
                 documents=context_documents,
+                human_feedback=human_feedback,
                 language=detected_language
             )
             
@@ -503,13 +490,19 @@ def summarize_query_research(state: ResearcherState, config: RunnableConfig):
             try:
                 print(f"  [DEBUG] About to call source_summarizer_ollama with llm_model: {summarization_llm}")
                 print(f"  [DEBUG] Type of summarization_llm: {type(summarization_llm)}")
+                # Ensure detected_language is a string and not a dictionary
+                language_to_use = detected_language.get('detected_language', 'English') if isinstance(detected_language, dict) else detected_language
+                if not isinstance(language_to_use, str):
+                    language_to_use = 'English'
+                    print(f"  [WARNING] Invalid language format, defaulting to English")
+                
                 summary_result = source_summarizer_ollama(
-                    query=query,
+                    user_query=user_query,
                     context_documents=context_documents,
-                    language=detected_language,
+                    language=language_to_use,
                     system_message=system_prompt,
-                    #human_message=human_prompt,
-                    llm_model=summarization_llm
+                    llm_model=summarization_llm,
+                    human_feedback=human_feedback
                 )
                 # Extract the summary content from the successful result
                 summary = summary_result["content"]
@@ -596,7 +589,6 @@ def summarize_query_research(state: ResearcherState, config: RunnableConfig):
     # In LangGraph, we need to explicitly return all state keys we want to preserve
     result = {
         "search_summaries": all_summaries,
-        "query_mapping": query_mapping,  # Make sure to return the query mapping for other nodes to use
         "formatted_documents": all_formatted_documents  # Add the formatted documents to the state
     }
     

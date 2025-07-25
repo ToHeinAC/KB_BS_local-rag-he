@@ -438,7 +438,7 @@ def process_initial_query(state):
     state["analysis"] = ""
     
     # Format the combined response for initial query
-    combined_response = f"FOLLOW-UP: {state['follow_up_questions']}"
+    combined_response = f"FOLLOW-UP:\n {state['follow_up_questions']}"
     
     # Store initial AI questions in additional_context
     state["additional_context"] += f"Initial AI Question(s):\n{state['follow_up_questions']}"
@@ -463,7 +463,7 @@ def process_human_feedback(state, human_feedback):
         state["follow_up_questions"] = follow_up_result["follow_up_questions"]
     
     # Format the combined response
-    combined_response = f"ANALYSIS: {state['analysis']}\n\nFOLLOW-UP: {state['follow_up_questions']}"
+    combined_response = f"ANALYSIS: {state['analysis']}\n\nFOLLOW-UP:\n {state['follow_up_questions']}"
     
     # Store the conversation turn in additional_context
     conversation_turn = f"AI Question(s):\n{state['follow_up_questions']}\n\nHuman Answer:\n{human_feedback}"
@@ -960,7 +960,7 @@ def main():
     # Create header with two columns (matching app_v1_1.py)
     header_col1, header_col2 = st.columns([0.6, 0.4])
     with header_col1:
-        st.title("🔍 RAG Deep Researcher v2.0 - Human-in-the-Loop (HITL)")
+        st.title("🔍 BrAin: Human-in-the-Loop (HITL) RAG Researcher V2.0")
         # Add license information under the title (exact implementation from basic_HITL_app.py)
         st.markdown('<p style="font-size:12px; font-weight:bold; color:darkorange; margin-top:0px;">LICENCE</p>', 
                     unsafe_allow_html=True, help=get_license_content())

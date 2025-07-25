@@ -411,12 +411,9 @@ def summarize_query_research(state: ResearcherStateV2, config: RunnableConfig):
                 f.write("## Formatted Documents\n\n")
                 f.write(f"Number of formatted document sets: {len(result['formatted_documents'])}\n\n")
             
-            # Write query mapping if available
-            if "query_mapping" in result:
-                f.write("## Query Mapping\n\n")
-                f.write("```json\n")
-                f.write(json.dumps(result["query_mapping"], indent=2))
-                f.write("\n```\n\n")
+            # Query mapping has been removed from workflow
+            f.write("## Note on Query Processing\n\n")
+            f.write("Queries are now processed directly without numerical mapping.\n\n")
                 
             f.write("## Complete State (Safe Serializable Keys)\n\n")
             # Only include serializable data in the complete state dump
@@ -440,34 +437,434 @@ def summarize_query_research(state: ResearcherStateV2, config: RunnableConfig):
     # Return the original result
     return result
 
-def generate_final_answer(state: ResearcherStateV2, config: RunnableConfig):
-    """Enhanced final answer generation that considers additional context from HITL."""
-    print("--- Enhanced generate_final_answer in v2.0 ---")
+
+def rerank_summaries(state: ResearcherStateV2, config: RunnableConfig):
+    """
+    Rerank summaries based on relevance and accuracy using LLM scoring.
+    Ignores any 'importance_score' in metadata and uses LLM-based evaluation.
+    """
+    print("--- Starting rerank_summaries ---")
+    
+    # Get search summaries from the previous step
+    search_summaries = state.get("search_summaries", {})
+    user_query = state.get("user_query", "")
+    additional_context = state.get("additional_context", "")
+    
+    if not search_summaries:
+        print("  [WARNING] No search summaries found for reranking")
+        return {"search_summaries": {}}
+    
+    # Get the report LLM for scoring (use report_llm for consistency)
+    report_llm = state.get("report_llm", "qwen3:30b-a3b")
+    
+    # Robust language extraction - handle both string and dict formats
+    detected_language_raw = state.get("detected_language", "English")
+    if isinstance(detected_language_raw, dict):
+        detected_language = detected_language_raw.get("detected_language", "English")
+        print(f"  [DEBUG] Extracted language from dict in reranker: {detected_language}")
+    else:
+        detected_language = detected_language_raw
+    
+    # Ensure we have a valid string
+    if not isinstance(detected_language, str):
+        detected_language = "English"
+        print(f"  [WARNING] Invalid language format in reranker, defaulting to English")
+    
+    print(f"  [INFO] Reranking summaries for {len(search_summaries)} queries using {report_llm}")
+    
+    # Rerank summaries for each query
+    reranked_summaries = {}
+    
+    for query, summaries in search_summaries.items():
+        print(f"  [INFO] Reranking {len(summaries)} summaries for query: '{query[:50]}...'")
+        
+        if not summaries:
+            reranked_summaries[query] = []
+            continue
+            
+        # Convert summaries to the format expected by reranker
+        summary_list = []
+        for summary_doc in summaries:
+            # Extract content from the formatted summary
+            content = summary_doc.page_content
+            # Parse the content to extract just the summary text
+            if "Content: " in content:
+                summary_text = content.split("Content: ")[1].split("\n")[0]
+            else:
+                summary_text = content
+            
+            summary_list.append({
+                "Content": summary_text,
+                "original_doc": summary_doc
+            })
+        
+        # Rerank this query's summaries
+        reranked_results = _rerank_query_summaries(
+            initial_query=user_query,
+            query=query,
+            summaries=summary_list,
+            additional_context=additional_context,
+            llm_model=report_llm,
+            language=detected_language
+        )
+        
+        # Convert back to Document format, preserving original metadata but updating order
+        reranked_docs = []
+        for result in reranked_results:
+            original_doc = result["summary"]["original_doc"]
+            # Update metadata with reranking score
+            original_doc.metadata["rerank_score"] = result["score"]
+            original_doc.metadata["original_index"] = result["original_index"]
+            reranked_docs.append(original_doc)
+        
+        reranked_summaries[query] = reranked_docs
+        print(f"  [INFO] Reranked {len(reranked_docs)} summaries for query '{query[:30]}...'")
+    
+    print(f"  [INFO] Completed reranking for all {len(reranked_summaries)} queries")
+    
+    # Write state to debug file after reranking
     try:
-        # Convert ResearcherStateV2 to a compatible dict for generate_final_answer_v1
-        v1_state = dict(state)
+        import os
+        import json
+        from datetime import datetime
         
-        # Add additional context as human_feedback if available, otherwise preserve existing human_feedback
-        additional_context = state.get("additional_context", "")
-        if additional_context:
-            print(f"  [DEBUG] Using additional_context as human_feedback: {additional_context[:50]}...")
-            v1_state["human_feedback"] = additional_context
+        # Create a timestamp for the filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        debug_filename = f"reranked_debug.md"
         
-        # Call v1 implementation
-        print("  [DEBUG] Calling generate_final_answer_v1 with converted state")
-        result = generate_final_answer_v1(v1_state, config)
+        # Get the project root directory
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        debug_filepath = os.path.join(project_root, debug_filename)
         
-        # Make sure the final answer is properly set in the returned state
-        if isinstance(result, dict) and "final_answer" in result:
-            print(f"  [DEBUG] Final answer successfully generated (length: {len(result['final_answer'])})")
-            # Return only the necessary update to avoid overwriting other state fields
-            return {"final_answer": result["final_answer"]}
-        else:
-            print(f"  [ERROR] generate_final_answer_v1 returned unexpected result format: {type(result)}")
-            return {"final_answer": "Error: Could not generate final answer due to unexpected result format."}
+        print(f"  [DEBUG] Writing reranked debug state to {debug_filepath}")
+        
+        # Format state as markdown
+        with open(debug_filepath, 'w', encoding='utf-8') as f:
+            f.write(f"# Reranked Summaries Debug Output - {timestamp}\n\n")
+            
+            # Write original state info
+            f.write("## Original State Info\n\n")
+            f.write(f"- User Query: {user_query}\n")
+            f.write(f"- Additional Context: {additional_context}\n")
+            f.write(f"- Report LLM: {report_llm}\n")
+            f.write(f"- Detected Language: {detected_language}\n")
+            f.write(f"- Number of queries processed: {len(reranked_summaries)}\n\n")
+            
+            # Write reranked summaries details
+            f.write("## Reranked Summaries\n\n")
+            
+            for query, summaries in reranked_summaries.items():
+                f.write(f"### Query: {query}\n\n")
+                f.write(f"Number of summaries: {len(summaries)}\n\n")
+                
+                for i, summary_doc in enumerate(summaries):
+                    f.write(f"#### Summary {i+1} (Rank {i+1})\n\n")
+                    
+                    # Extract rerank score and original index from metadata
+                    rerank_score = summary_doc.metadata.get('rerank_score', 'N/A')
+                    original_index = summary_doc.metadata.get('original_index', 'N/A')
+                    
+                    f.write(f"**Rerank Score:** {rerank_score}\n")
+                    f.write(f"**Original Index:** {original_index}\n")
+                    f.write(f"**Position:** {summary_doc.metadata.get('position', 'N/A')}\n\n")
+                    
+                    # Extract and display the content
+                    content = summary_doc.page_content
+                    if "Content: " in content:
+                        summary_text = content.split("Content: ")[1].split("\n")[0]
+                        f.write(f"**Summary Content:**\n```\n{summary_text}\n```\n\n")
+                    else:
+                        f.write(f"**Summary Content:**\n```\n{content}\n```\n\n")
+                    
+                    # Write full metadata
+                    f.write(f"**Full Metadata:**\n```json\n{json.dumps(summary_doc.metadata, indent=2, default=str)}\n```\n\n")
+                    
+                f.write("---\n\n")
+            
+            # Write scoring statistics
+            f.write("## Scoring Statistics\n\n")
+            all_scores = []
+            for summaries in reranked_summaries.values():
+                for summary_doc in summaries:
+                    score = summary_doc.metadata.get('rerank_score')
+                    if score is not None and score != 'N/A':
+                        all_scores.append(score)
+            
+            if all_scores:
+                f.write(f"- Total summaries scored: {len(all_scores)}\n")
+                f.write(f"- Average score: {sum(all_scores)/len(all_scores):.2f}\n")
+                f.write(f"- Highest score: {max(all_scores):.2f}\n")
+                f.write(f"- Lowest score: {min(all_scores):.2f}\n\n")
+            else:
+                f.write("- No valid scores found\n\n")
+            
+            # Write complete reranked state (safe serializable keys)
+            f.write("## Complete Reranked State (Safe Serializable Keys)\n\n")
+            safe_state = {
+                "search_summaries": {},
+                "user_query": user_query,
+                "additional_context": additional_context,
+                "report_llm": report_llm,
+                "detected_language": detected_language
+            }
+            
+            # Add serializable summary info
+            for query, summaries in reranked_summaries.items():
+                safe_state["search_summaries"][query] = []
+                for summary_doc in summaries:
+                    safe_summary = {
+                        "content_preview": summary_doc.page_content[:200] + "..." if len(summary_doc.page_content) > 200 else summary_doc.page_content,
+                        "metadata": summary_doc.metadata
+                    }
+                    safe_state["search_summaries"][query].append(safe_summary)
+            
+            f.write("```json\n")
+            f.write(json.dumps(safe_state, indent=2, default=str))
+            f.write("\n```\n")
+            
+        print(f"  [DEBUG] Successfully wrote reranked debug state to {debug_filepath}")
     except Exception as e:
-        print(f"  [ERROR] Exception in generate_final_answer: {str(e)}")
+        print(f"  [ERROR] Failed to write reranked debug state to file: {str(e)}")
+    
+    # Return updated state with reranked summaries
+    return {
+        "search_summaries": reranked_summaries
+    }
+
+
+def _rerank_query_summaries(initial_query: str, query: str, summaries: list[dict], 
+                           additional_context: str, llm_model: str, language: str) -> list[dict]:
+    """
+    Rerank a list of summaries based on relevance & accuracy.
+    Ignores any 'importance_score' in metadata.
+    
+    Args:
+        initial_query: The original user question.
+        query: The specific research query being processed.
+        summaries: List of dicts, each with a 'Content' key.
+        additional_context: Conversation history or domain context.
+        llm_model: LLM model to use for scoring.
+        language: Detected language for the evaluation.
+    
+    Returns:
+        A list of dicts with keys: 'summary', 'score', 'original_index',
+        sorted by descending score.
+    """
+    results = []
+    for idx, s in enumerate(summaries):
+        content = s["Content"]
+        score = _score_summary(initial_query, query, content, additional_context, llm_model, language)
+        results.append({
+            "summary": s,
+            "score": score,
+            "original_index": idx
+        })
+    # sort highest score first
+    return sorted(results, key=lambda x: x["score"], reverse=True)
+
+
+def _score_summary(initial_query: str, query: str, content: str, context: str, 
+                  llm_model: str, language: str) -> float:
+    """
+    Ask the LLM to score a single summary 0–10.
+    """
+    prompt = f"""
+You are an expert evaluator of document summary relevance.
+
+TASK: Score the following summary for its relevance and accuracy regarding the original query and the given context.
+
+ORIGINAL USER QUERY:
+{initial_query}
+
+SPECIFIC RESEARCH QUERY:
+{query}
+
+ADDITIONAL CONTEXT:
+{context}
+
+SUMMARY TO ASSESS:
+{content}
+
+SCORING CRITERIA (weights in parentheses):
+1. Direct relevance to the original user query (40%)
+2. Specificity and level of detail (25%)
+3. Alignment with the research query context (20%)
+4. Factual accuracy and completeness (15%)
+
+INSTRUCTIONS:
+Return ONLY a number between 0 and 10:
+- 10 = perfectly relevant and accurate
+- 8-9 = very relevant with strong detail
+- 6-7 = relevant but somewhat incomplete
+- 4-5 = partially relevant
+- 0-3 = poorly relevant or inaccurate
+
+Respond in {language}.
+"""
+    
+    try:
+        response = invoke_ollama(
+            system_prompt="You are an expert document evaluator. Provide only numerical scores.",
+            user_prompt=prompt,
+            model=llm_model
+        )
+        
+        # Extract numerical score from response
+        import re
+        match = re.search(r"\b(\d+(?:\.\d+)?)\b", response)
+        if match:
+            score = float(match.group(1))
+            # Ensure score is within valid range
+            return max(0.0, min(10.0, score))
+        else:
+            print(f"  [WARNING] Could not extract score from LLM response: {response[:100]}...")
+            return 5.0
+    except Exception as e:
+        print(f"  [ERROR] Failed to score summary: {str(e)}")
+        return 5.0
+
+def generate_final_answer(state: ResearcherStateV2, config: RunnableConfig):
+    """Enhanced final answer generation that makes stronger use of reranked summaries."""
+    print("--- Enhanced generate_final_answer with reranked summaries prioritization ---")
+    
+    # Get required state variables
+    user_query = state.get("user_query", "")
+    search_summaries = state.get("search_summaries", {})
+    additional_context = state.get("additional_context", "")
+    report_llm = state.get("report_llm", "qwen3:30b-a3b")
+    
+    # Robust language extraction - handle both string and dict formats
+    detected_language_raw = state.get("detected_language", "English")
+    if isinstance(detected_language_raw, dict):
+        detected_language = detected_language_raw.get("detected_language", "English")
+        print(f"  [DEBUG] Extracted language from dict in final answer: {detected_language}")
+    else:
+        detected_language = detected_language_raw
+    
+    # Ensure we have a valid string
+    if not isinstance(detected_language, str):
+        detected_language = "English"
+        print(f"  [WARNING] Invalid language format in final answer, defaulting to English")
+    
+    if not search_summaries:
+        print("  [WARNING] No search summaries found for final answer generation")
+        return {"final_answer": "Error: No summaries available for generating final answer."}
+    
+    try:
+        # Collect all reranked summaries from all queries
+        all_reranked_summaries = []
+        
+        for query, summaries in search_summaries.items():
+            print(f"  [INFO] Processing {len(summaries)} summaries for query: '{query[:50]}...'")
+            
+            for summary_doc in summaries:
+                # Extract rerank score and content
+                rerank_score = summary_doc.metadata.get('rerank_score', 0.0)
+                
+                # Extract content from the formatted summary
+                content = summary_doc.page_content
+                if "Content: " in content:
+                    summary_text = content.split("Content: ")[1].split("\n")[0]
+                else:
+                    summary_text = content
+                
+                all_reranked_summaries.append({
+                    'score': rerank_score,
+                    'summary': {
+                        'Content': summary_text,
+                        'query': query
+                    },
+                    'original_index': summary_doc.metadata.get('original_index', 0)
+                })
+        
+        # Sort all summaries by rerank score (highest first)
+        all_reranked_summaries.sort(key=lambda x: x['score'], reverse=True)
+        
+        print(f"  [INFO] Using {len(all_reranked_summaries)} reranked summaries for final answer")
+        
+        if not all_reranked_summaries:
+            return {"final_answer": "Error: No valid summaries found for generating final answer."}
+        
+        # Generate the enhanced prompt using reranked summaries
+        final_answer_prompt = _generate_final_answer_prompt(
+            initial_query=user_query,
+            reranked_summaries=all_reranked_summaries,
+            additional_context=additional_context,
+            language=detected_language
+        )
+        
+        print(f"  [INFO] Generating final answer using {report_llm} with {len(all_reranked_summaries)} prioritized summaries")
+        
+        # Generate final answer using the enhanced prompt
+        final_answer = invoke_ollama(
+            system_prompt=f"You are an expert assistant providing comprehensive answers. Respond in {detected_language}.",
+            user_prompt=final_answer_prompt,
+            model=report_llm
+        )
+        
+        print(f"  [INFO] Final answer generated successfully (length: {len(final_answer)})")
+        
+        return {"final_answer": final_answer}
+        
+    except Exception as e:
+        print(f"  [ERROR] Exception in enhanced generate_final_answer: {str(e)}")
         return {"final_answer": f"Error occurred during final answer generation: {str(e)}. Check logs for details."}
+
+
+def _generate_final_answer_prompt(initial_query: str, reranked_summaries: list[dict], 
+                                 additional_context: str = "", language: str = "English") -> str:
+    """
+    Create a prompt for generating the final answer using reranked summaries.
+    
+    Args:
+        initial_query: The original user question
+        reranked_summaries: List of summaries sorted by relevance score (highest first)
+        additional_context: Conversation history or domain context
+        language: Detected language for the response
+    
+    Returns:
+        Formatted prompt string for the LLM
+    """
+    
+    prompt = f"""You are an expert assistant providing comprehensive answers based on ranked document summaries.
+
+TASK: Generate a complete and accurate answer to the user's query using the provided summaries. Prioritize information from higher-ranked summaries.
+
+ORIGINAL QUERY:
+{initial_query}
+
+CONTEXT:
+{additional_context}
+
+RANKED SUMMARIES (ordered by relevance):
+
+PRIMARY SOURCE (Highest Relevance - Score: {reranked_summaries[0]['score']:.1f}):
+{reranked_summaries[0]['summary']['Content']}
+
+SUPPORTING SOURCES:"""
+
+    # Add remaining summaries as supporting sources
+    for i, item in enumerate(reranked_summaries[1:], 2):
+        prompt += f"""
+
+Source {i} (Score: {item['score']:.1f}):
+{item['summary']['Content']}"""
+
+    prompt += f"""
+
+INSTRUCTIONS:
+• Base your answer PRIMARILY on the highest-ranked summary as it is most relevant to the query
+• Use supporting sources to add context, details, or complementary information
+• If supporting sources contradict the primary source, prioritize the primary source unless there's clear evidence of error
+• Maintain accuracy and cite relevant legal references (§ sections) when mentioned
+• Structure your response clearly with bullet points as preferred
+• If information is incomplete, acknowledge limitations
+• Focus on directly answering the original query
+• Respond in {language} language
+
+Generate a comprehensive answer that prioritizes the most relevant information while incorporating supporting details where appropriate."""
+
+    return prompt
 
 def quality_checker(state: ResearcherStateV2, config: RunnableConfig):
     """Enhanced quality checker that considers additional context from HITL."""
@@ -520,8 +917,9 @@ def create_main_graph():
     1. retrieve_rag_documents: Retrieves documents based on research_queries from HITL
     2. update_position: Updates the current position in the research process
     3. summarize_query_research: Summarizes the retrieved documents
-    4. generate_final_answer: Generates the final answer based on summaries
-    5. quality_checker (optional): Checks the quality of the final answer
+    4. rerank_summaries: Reranks the summaries
+    5. generate_final_answer: Generates the final answer based on summaries
+    6. quality_checker (optional): Checks the quality of the final answer
     
     Returns:
         Compiled StateGraph: The compiled main workflow graph
@@ -531,6 +929,7 @@ def create_main_graph():
     # Add nodes for main workflow starting with retrieve_rag_documents
     main_workflow.add_node("retrieve_rag_documents", retrieve_rag_documents)
     main_workflow.add_node("summarize_query_research", summarize_query_research)
+    main_workflow.add_node("rerank_summaries", rerank_summaries)
     main_workflow.add_node("generate_final_answer", generate_final_answer)
     main_workflow.add_node("quality_checker", quality_checker)
     main_workflow.add_node("update_position", update_position)
@@ -539,7 +938,8 @@ def create_main_graph():
     main_workflow.add_edge(START, "retrieve_rag_documents")
     main_workflow.add_edge("retrieve_rag_documents", "update_position")
     main_workflow.add_edge("update_position", "summarize_query_research")
-    main_workflow.add_edge("summarize_query_research", "generate_final_answer")
+    main_workflow.add_edge("summarize_query_research", "rerank_summaries")
+    main_workflow.add_edge("rerank_summaries", "generate_final_answer")
     
     # Conditional quality checker routing based on enable_quality_checker setting
     main_workflow.add_conditional_edges(

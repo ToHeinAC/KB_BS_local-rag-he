@@ -361,13 +361,28 @@ def format_documents_as_plain_text(documents):
     return "\n".join(formatted_docs)
 
 
-def source_summarizer_ollama(query, context_documents, language, system_message, llm_model="deepseek-r1"):
+def source_summarizer_ollama(user_query, context_documents, language, system_message, llm_model="deepseek-r1", human_feedback=""):
     # Make sure language is explicitly passed through the entire pipeline
     print(f"Generating summary using language: {language}")
     print(f"  [DEBUG] Actually using summarization model in source_summarizer_ollama: {llm_model}")
+    
+    # Robust language handling - ensure language is a string and has a valid value
+    if not language or not isinstance(language, str):
+        language = "English"
+        print(f"  [WARNING] Invalid language parameter in source_summarizer_ollama, defaulting to {language}")
+    
     # Override system_message to ensure language is set properly
     from src.prompts_v1_1 import SUMMARIZER_SYSTEM_PROMPT
-    system_message = SUMMARIZER_SYSTEM_PROMPT.format(language=language)
+    try:
+        system_message = SUMMARIZER_SYSTEM_PROMPT.format(language=language)
+        print(f"  [DEBUG] Successfully formatted system prompt with language: {language}")
+    except Exception as e:
+        print(f"  [ERROR] Error formatting system prompt with language '{language}': {str(e)}")
+        # Try fallback to English if formatting fails
+        language = "English"
+        system_message = SUMMARIZER_SYSTEM_PROMPT.format(language=language)
+        print(f"  [DEBUG] Using fallback language: {language}")
+
     # Check if context_documents is already a formatted string
     if isinstance(context_documents, str):
         formatted_context = context_documents
@@ -385,7 +400,12 @@ def source_summarizer_ollama(query, context_documents, language, system_message,
     #    f"{str(doc)}"
     #    for doc in context_documents
     #)
-    prompt = SUMMARIZER_HUMAN_PROMPT.format(query=query, documents=formatted_context, language=language)
+    prompt = SUMMARIZER_HUMAN_PROMPT.format(
+        user_query=user_query,
+        documents=formatted_context,
+        human_feedback=human_feedback,
+        language=language
+    )
     
     # Initialize ChatOllama with the specified model and temperature
     llm = Ollama(model=llm_model, temperature=0.1, repeat_penalty=1.2) 
