@@ -30,7 +30,106 @@ The additional context is:
 
 Strictly return questions in the following language: {language}"""
 
+# Deep analysis prompts for HITL knowledge base question generation
+DEEP_ANALYSIS_SYSTEM_PROMPT = """# ROLE
+You are an expert information synthesis and analysis specialist with deep subject matter expertise.
 
+# GOAL
+Create a profound and insightful representation of the user's information needs based on the initial query and human-in-the-loop conversation.
+
+# AVAILABLE INFORMATION
+- Initial user query: The user's original question or request
+- Complete conversation history: All interactions between user and AI
+- Human feedback exchanges: Clarifications and additional context from the user
+- Detected language: {language}
+
+# ANALYSIS TASK
+1. Deeply analyze the original user query to identify the core information need
+2. Examine the HITL feedback exchanges to identify clarifications and refinements
+3. Synthesize these insights into a clear, profound representation of what the user truly needs
+4. Identify underlying assumptions, constraints, and priorities revealed in the conversation
+5. Recognize technical terminology and domain-specific concepts that indicate expertise level
+
+# OUTPUT FORMAT
+Provide 3-4 clear, profound, and query-oriented summaries that represent the essence of the information need.
+Each summary should be 1-2 sentences and capture a different aspect of the user's requirements.
+
+Format as:
+1. [First insight about the user's core information need]
+2. [Second insight focusing on specific technical requirements]
+3. [Third insight capturing context, constraints or priorities]
+4. [Optional fourth insight if needed for completeness]
+
+# CRITICAL CONSTRAINTS
+- Write EXCLUSIVELY in {language} language
+- Focus on deep understanding rather than surface-level query reformulation
+- Capture nuance, technical specificity, and context from the entire conversation
+- Each insight must be standalone and valuable for guiding information retrieval
+- Prioritize clarity and precision over length
+"""
+
+DEEP_ANALYSIS_HUMAN_PROMPT = """# ORIGINAL QUERY
+{query}
+
+# COMPLETE CONVERSATION HISTORY
+{additional_context}
+
+# HUMAN FEEDBACK EXCHANGES
+{human_feedback}
+
+# TASK
+Based on the complete conversation above, provide 3-4 profound insights that capture the essence of the user's information needs in {language}:"""
+
+# Knowledge base search question generation prompts
+KNOWLEDGE_BASE_SEARCH_SYSTEM_PROMPT = """# ROLE
+You are an expert knowledge base search query specialist.
+
+# GOAL
+Generate 5 highly targeted, searchable questions optimized for knowledge base retrieval based on the initial user query and the deep analysis of their information needs.
+
+# AVAILABLE INFORMATION
+- Initial user query: The user's original question
+- Deep analysis of information needs: Comprehensive analysis from previous step
+- Detected language: {language}
+
+# SEARCH QUERY OPTIMIZATION STRATEGY
+1. Use specific technical terminology likely to match knowledge base content
+2. Focus on different aspects of the user's information need identified in the analysis
+3. Frame as search queries, not conversational questions
+4. Cover both broad concepts and specific implementation details
+5. Avoid redundancy between questions
+6. Include relevant keywords and domain-specific terms
+7. Consider different search angles (what, how, why, when, where)
+8. Leverage the deep analysis insights to create more targeted queries
+
+# OUTPUT FORMAT
+Generate exactly 5 questions in numbered markdown format:
+1. [First targeted search question]
+2. [Second targeted search question]
+3. [Third targeted search question]
+4. [Fourth targeted search question]
+5. [Fifth targeted search question]
+
+# CRITICAL CONSTRAINTS
+- You MUST Write EXCLUSIVELY in {language} language, both your prefix and your questions - NO EXCEPTIONS
+- Focus on technical/domain-specific search terms
+- Phrase as search queries optimized for knowledge retrieval
+- Do NOT return JSON, dictionaries, or structured data
+- Provide ONLY the numbered questions, no additional text
+- Exactly 5 questions required, formulated as full questions
+"""
+
+KNOWLEDGE_BASE_SEARCH_HUMAN_PROMPT = """# INITIAL USER QUERY
+{query}
+
+# DEEP ANALYSIS OF INFORMATION NEEDS
+{deep_analysis}
+
+# TASK
+Based on the initial query and the deep analysis above, generate 5 targeted knowledge base search questions in {language} that will help retrieve the most relevant information:"""
+
+
+# Legacy prompt - kept for backward compatibility
 SUMMARIZER_SYSTEM_PROMPT_old = """
 You are an expert AI summarizer. Create a factual summary from provided documents STRICTLY using the language {language} with EXACT source citations. Follow these rules:
 

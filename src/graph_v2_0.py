@@ -16,6 +16,8 @@ from src.prompts_v1_1 import (
     RESEARCH_QUERY_WRITER_SYSTEM_PROMPT, RESEARCH_QUERY_WRITER_HUMAN_PROMPT,
     SUMMARIZER_SYSTEM_PROMPT, SUMMARIZER_HUMAN_PROMPT,
     REPORT_WRITER_SYSTEM_PROMPT, REPORT_WRITER_HUMAN_PROMPT,
+    DEEP_ANALYSIS_SYSTEM_PROMPT, DEEP_ANALYSIS_HUMAN_PROMPT,
+    KNOWLEDGE_BASE_SEARCH_SYSTEM_PROMPT, KNOWLEDGE_BASE_SEARCH_HUMAN_PROMPT,
 )
 from src.utils_v1_1 import format_documents_with_metadata, invoke_ollama, parse_output, tavily_search, DetectedLanguage, Queries
 from src.rag_helpers_v1_1 import source_summarizer_ollama, format_documents_as_plain_text, parse_document_to_formatted_content
@@ -192,102 +194,135 @@ Based on the research context and analysis above, generate strategic follow-up q
 
 def generate_knowledge_base_questions(state: InitState, config: RunnableConfig):
     """
-    Generate knowledge base questions and output research_queries as list[str].
+    Generate knowledge base questions using a two-step process:
+    1. First LLM call: Deep analysis of user query and HITL feedback
+    2. Second LLM call: Generate knowledge base questions using initial query + deep analysis
     
     This is the final node in the HITL workflow that produces research_queries
-    which will be passed to the main workflow. The function processes user feedback
-    and analysis to generate a list of research queries for document retrieval.
+    which will be passed to the main workflow.
     
     Args:
-        state (InitState): The current state of the HITL workflow
+        state (InitState): The current state of the HITL workflow with all human feedback
         config (RunnableConfig): Configuration for the workflow execution
         
     Returns:
-        InitState: Updated state with research_queries as list[str]
+        InitState: Updated state with knowledge_base_questions, additional_context (deep_analysis), and research_queries
     """
-    print("--- Generating knowledge base questions ---")
+    print("--- Generating knowledge base questions with two-step process ---")
     
     query = state["user_query"]
     detected_language = state.get("detected_language", "English")
+    human_feedback = state.get("human_feedback", "")
     additional_context = state.get("additional_context", "")
-    max_queries = config["configurable"].get("max_search_queries", 3)
-    report_llm = state.get("report_llm", config["configurable"].get("report_llm", "deepseek-r1:latest"))
-    summarization_llm = state.get("summarization_llm", config["configurable"].get("summarization_llm", "deepseek-r1:latest"))
     
-    # Use the report writer LLM for generating research queries (same as generate_research_queries)
+    # Use the report writer LLM for both analysis and question generation
     model_to_use = state.get("report_llm", config["configurable"].get("report_llm", "deepseek-r1:latest"))
     print(f"  [DEBUG] Knowledge Base Query LLM (report_llm): {model_to_use}")
+    print(f"  [DEBUG] Detected language: {detected_language}")
     
-    # Calculate max_queries_minus_one to avoid arithmetic in string format
-    max_queries_minus_one = max_queries - 1
+    # ========================================
+    # FIRST LLM CALL: Deep Analysis
+    # ========================================
+    print(f"  [DEBUG] Step 1/2: Performing deep analysis of user query and HITL feedback")
     
-    # Format the system prompt using the same pattern as generate_research_queries
-    system_prompt = RESEARCH_QUERY_WRITER_SYSTEM_PROMPT.format(
-        max_queries=max_queries,
-        max_queries_minus_one=max_queries_minus_one,
-        date=datetime.datetime.now().strftime("%Y/%m/%d %H:%M"),
+    # Format human feedback for analysis prompt
+    human_feedback_text = ""
+    if human_feedback:
+        if isinstance(human_feedback, list):
+            for i, feedback in enumerate(human_feedback):
+                human_feedback_text += f"Exchange {i+1}: {feedback}\n"
+        else:
+            human_feedback_text = str(human_feedback)
+    else:
+        human_feedback_text = "No additional human feedback exchanges.\n"
+    
+    # Format the system prompt for deep analysis
+    analysis_system_prompt = DEEP_ANALYSIS_SYSTEM_PROMPT.format(
         language=detected_language
     )
     
-    # Format the human prompt with HITL context
-    human_prompt = RESEARCH_QUERY_WRITER_HUMAN_PROMPT.format(
+    # Format the human prompt for deep analysis
+    analysis_human_prompt = DEEP_ANALYSIS_HUMAN_PROMPT.format(
         query=query,
-        language=detected_language,
-        additional_context=f"Consider this HITL conversation context when generating queries: {additional_context}" if additional_context else ""
+        additional_context=additional_context if additional_context else "No detailed conversation history available.",
+        human_feedback=human_feedback_text,
+        language=detected_language
     )
     
-    # Using local llm model with Ollama (same pattern as generate_research_queries)
-    result = invoke_ollama(
+    # First LLM invocation: Generate deep analysis
+    print(f"  [DEBUG] Invoking first LLM call for deep analysis...")
+    analysis_result = invoke_ollama(
         model=model_to_use,
-        system_prompt=system_prompt,
-        user_prompt=human_prompt,
-        output_format=Queries
+        system_prompt=analysis_system_prompt,
+        user_prompt=analysis_human_prompt,
     )
     
-    # Extract queries and add the original query at the beginning
-    research_queries = result.queries
+    # Parse the result to get the deep analysis
+    analysis_parsed_result = parse_output(analysis_result)
+    deep_analysis = analysis_parsed_result["response"]
+    print(f"  [DEBUG] First LLM call completed. Deep analysis generated.")
     
-    # Deduplicate queries - ensure the original query appears only once
-    # Remove any duplicates of the original query from the generated list
-    research_queries = [q for q in research_queries if q.strip().lower() != query.strip().lower()]
+    # ========================================
+    # SECOND LLM CALL: Knowledge Base Questions
+    # ========================================
+    print(f"  [DEBUG] Step 2/2: Generating knowledge base questions using initial query + deep analysis")
     
-    # Insert the original query at the beginning
-    research_queries.insert(0, query)
+    # Format the system prompt for knowledge base questions
+    kb_system_prompt = KNOWLEDGE_BASE_SEARCH_SYSTEM_PROMPT.format(
+        language=detected_language
+    )
     
-    # Additional deduplication - remove any remaining exact duplicates (case-insensitive)
-    seen = set()
-    deduplicated_queries = []
-    for q in research_queries:
-        q_lower = q.strip().lower()
-        if q_lower not in seen:
-            seen.add(q_lower)
-            deduplicated_queries.append(q)
+    # Format the human prompt for knowledge base questions
+    kb_human_prompt = KNOWLEDGE_BASE_SEARCH_HUMAN_PROMPT.format(
+        query=query,
+        deep_analysis=deep_analysis,
+        language=detected_language
+    )
     
-    research_queries = deduplicated_queries
-    print(f"  [DEBUG] Generated knowledge base queries (deduplicated): {research_queries}")
+    # Second LLM invocation: Generate knowledge base questions
+    print(f"  [DEBUG] Invoking second LLM call for knowledge base questions...")
+    kb_result = invoke_ollama(
+        model=model_to_use,
+        system_prompt=kb_system_prompt,
+        user_prompt=kb_human_prompt,
+    )
+    
+    # Parse the result
+    kb_parsed_result = parse_output(kb_result)
+    knowledge_base_questions = kb_parsed_result["response"]
+    print(f"  [DEBUG] Second LLM call completed. Knowledge base questions generated.")
+    
+    # Parse knowledge base questions into a list of research queries
+    import re
+    research_queries = []
+    for line in knowledge_base_questions.split('\n'):
+        # Extract questions using regex pattern for numbered lists (1. Question)
+        match = re.match(r'\d+\.\s*(.*)', line.strip())
+        if match:
+            research_queries.append(match.group(1).strip())
+    
+    print(f"  [DEBUG] Parsed {len(research_queries)} research queries from knowledge base questions")
     assert isinstance(research_queries, list), "research_queries must be a list"
     
-    # Update additional context with the generated queries
-    if additional_context:
-        additional_context += "\n\n"
-    additional_context += f"AI Knowledge Base Questions:\n" + "\n".join([f"{i+1}. {q}" for i, q in enumerate(research_queries)])
-    
     # Debug logging to show the final research queries
-    print(f"=== HITL WORKFLOW COMPLETE ===")
+    print(f"=== HITL WORKFLOW COMPLETE (Two-Step Process) ===")
     print(f"Generated {len(research_queries)} research queries:")
     for i, query_item in enumerate(research_queries, 1):
         print(f"  {i}. {query_item}")
     print(f"=== HANDOVER TO MAIN WORKFLOW ===")
     
-    # Return updated state with research_queries for main workflow
+    print(f"  [DEBUG] generate_knowledge_base_questions completed successfully with two separate LLM calls")
+    
+    # Return updated state with all required fields
     return {
         "user_query": query,
         "detected_language": detected_language,
-        "research_queries": research_queries,  # Key output for main workflow
-        "additional_context": additional_context,
-        "report_llm": report_llm,
-        "summarization_llm": summarization_llm,
-        "current_position": "hitl_complete"
+        "knowledge_base_questions": knowledge_base_questions,  # Generated questions text
+        "additional_context": deep_analysis,  # Deep analysis as additional_context
+        "research_queries": research_queries,  # Parsed list for main workflow
+        "report_llm": state.get("report_llm", config["configurable"].get("report_llm", "deepseek-r1:latest")),
+        "summarization_llm": state.get("summarization_llm", config["configurable"].get("summarization_llm", "deepseek-r1:latest")),
+        "current_position": "generate_knowledge_base_questions"
     }
 
 # Create HITL graph
