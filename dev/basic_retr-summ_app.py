@@ -39,6 +39,8 @@ spec.loader.exec_module(summ_prompts)
 SUMMARIZER_SYSTEM_PROMPT = summ_prompts.SUMMARIZER_SYSTEM_PROMPT
 SUMMARIZER_HUMAN_PROMPT = summ_prompts.SUMMARIZER_HUMAN_PROMPT
 
+clear_cuda_memory()
+
 def extract_embedding_model(db_dir_name):
     """
     Extract the embedding model name from the database directory name.
@@ -118,10 +120,18 @@ def test_summarization_with_llm(query, docs, llm_model, language="English", huma
         if formatted_docs is None:
             formatted_docs = format_documents_with_metadata(docs)
         
+        # Transform the docs into the format expected by source_summarizer_ollama
+        transformed_docs = []
+        for doc in docs:
+            transformed_docs.append({
+                'content': doc.page_content,
+                'metadata': doc.metadata
+            })
+        
         # Use the source_summarizer_ollama function with the prompts from summ-prompts.py
         summary_result = source_summarizer_ollama(
             user_query=query,
-            context_documents=formatted_docs,
+            context_documents=transformed_docs,  # Pass the transformed documents with metadata
             llm_model=llm_model,
             human_feedback=human_feedback,
             language=language,  # Use the selected language

@@ -325,12 +325,16 @@ Based on the above context, generate 1-3 NEW clarifying questions in {detected_l
 def generate_knowledge_base_questions(state: InitState):
     """
     Generate knowledge base questions based on the completed interaction.
+    Uses two separate LLM invocations:
+    1. First LLM call: Deep analysis of user query and HITL feedback
+    2. Second LLM call: Generate knowledge base questions using initial query + additional_context
     
     Args:
         state (InitState): The current state with all human feedback.
     
     Returns:
-        state (InitState): The updated state with generated knowledge base questions.
+        state (InitState): The updated state with generated knowledge base questions
+        and deep analysis as additional_context.
     """
     query = state["user_query"]
     detected_language = state["detected_language"]
@@ -340,28 +344,115 @@ def generate_knowledge_base_questions(state: InitState):
     # Use the configured LLM model
     model_to_use = state.get("report_llm", "deepseek-r1:latest")
     
-    # Format system prompt for KB question generation
-    system_prompt = f"""# ROLE
+    print(f"[DEBUG] Starting generate_knowledge_base_questions with two LLM calls")
+    print(f"[DEBUG] Model to use: {model_to_use}")
+    print(f"[DEBUG] Detected language: {detected_language}")
+    
+    # ========================================
+    # FIRST LLM CALL: Deep Analysis
+    # ========================================
+    print(f"[DEBUG] Step 1/2: Performing deep analysis of user query and HITL feedback")
+    
+    analysis_system_prompt = f"""# ROLE
+You are an expert information synthesis and analysis specialist with deep subject matter expertise.
+
+# GOAL
+Create a profound and insightful representation of the user's information needs based on the initial query and human-in-the-loop conversation.
+
+# AVAILABLE INFORMATION
+- Initial user query: The user's original question or request
+- Complete conversation history: All interactions between user and AI
+- Human feedback exchanges: Clarifications and additional context from the user
+- Detected language: {detected_language}
+
+# ANALYSIS TASK
+1. Deeply analyze the original user query to identify the core information need
+2. Examine the HITL feedback exchanges to identify clarifications and refinements
+3. Synthesize these insights into a clear, profound representation of what the user truly needs
+4. Identify underlying assumptions, constraints, and priorities revealed in the conversation
+5. Recognize technical terminology and domain-specific concepts that indicate expertise level
+
+# OUTPUT FORMAT
+Provide 3-4 clear, profound, and query-oriented summaries that represent the essence of the information need.
+Each summary should be 1-2 sentences and capture a different aspect of the user's requirements.
+
+Format as:
+1. [First insight about the user's core information need]
+2. [Second insight focusing on specific technical requirements]
+3. [Third insight capturing context, constraints or priorities]
+4. [Optional fourth insight if needed for completeness]
+
+# CRITICAL CONSTRAINTS
+- Write EXCLUSIVELY in {detected_language} language
+- Focus on deep understanding rather than surface-level query reformulation
+- Capture nuance, technical specificity, and context from the entire conversation
+- Each insight must be standalone and valuable for guiding information retrieval
+- Prioritize clarity and precision over length
+"""
+    
+    analysis_human_prompt = f"""# ORIGINAL QUERY
+{query}
+
+# COMPLETE CONVERSATION HISTORY
+{additional_context if additional_context else "No detailed conversation history available."}
+
+# HUMAN FEEDBACK EXCHANGES
+"""
+    
+    if human_feedback:
+        for i, feedback in enumerate(human_feedback):
+            analysis_human_prompt += f"Exchange {i+1}: {feedback}\n"
+    else:
+        analysis_human_prompt += "No additional human feedback exchanges.\n"
+    
+    analysis_human_prompt += f"\n# TASK\nBased on the complete conversation above, provide 3-4 profound insights that capture the essence of the user's information needs in {detected_language}:"
+    
+    # First LLM invocation: Generate deep analysis
+    print(f"[DEBUG] Invoking first LLM call for deep analysis...")
+    analysis_result = invoke_ollama(
+        model=model_to_use,
+        system_prompt=analysis_system_prompt,
+        user_prompt=analysis_human_prompt,
+    )
+    
+    # Parse the result to get the deep analysis
+    analysis_parsed_result = parse_output(analysis_result)
+    deep_analysis = analysis_parsed_result["response"]
+    print(f"[DEBUG] First LLM call completed. Deep analysis generated.")
+    
+    # Update additional_context with the deep analysis
+    updated_additional_context = additional_context
+    if updated_additional_context:
+        updated_additional_context += "\n\n"
+    updated_additional_context += f"## Deep Analysis of Information Needs\n{deep_analysis}"
+    
+    print(f"[DEBUG] Additional context updated with deep analysis")
+    
+    # ========================================
+    # SECOND LLM CALL: Knowledge Base Questions
+    # ========================================
+    print(f"[DEBUG] Step 2/2: Generating knowledge base questions using initial query + additional_context")
+    
+    kb_system_prompt = f"""# ROLE
 You are an expert knowledge base search query specialist.
 
 # GOAL
-Generate 5 highly targeted, searchable questions optimized for knowledge base retrieval based on the completed human-in-the-loop conversation.
+Generate 5 highly targeted, searchable questions optimized for knowledge base retrieval based on the initial user query and the deep analysis of their information needs.
 
 # AVAILABLE INFORMATION
-- Initial user query: Available for context
-- Complete conversation history: {additional_context if additional_context else "Limited conversation history"}
-- Human feedback exchanges: Will be provided in user prompt
+- Initial user query: The user's original question
+- Deep analysis of information needs: Comprehensive analysis from previous step
 - Detected language: {detected_language}
-- Domain context: Extracted from conversation analysis
 
 # SEARCH QUERY OPTIMIZATION STRATEGY
 1. Use specific technical terminology likely to match knowledge base content
-2. Focus on different aspects of the user's information need
+2. Focus on different aspects of the user's information need identified in the analysis
 3. Frame as search queries, not conversational questions
 4. Cover both broad concepts and specific implementation details
 5. Avoid redundancy between questions
 6. Include relevant keywords and domain-specific terms
 7. Consider different search angles (what, how, why, when, where)
+8. Leverage the deep analysis insights to create more targeted queries
 
 # OUTPUT FORMAT
 Generate exactly 5 questions in numbered markdown format:
@@ -378,36 +469,38 @@ Generate exactly 5 questions in numbered markdown format:
 - Do NOT return JSON, dictionaries, or structured data
 - Provide ONLY the numbered questions, no additional text
 - Exactly 5 questions required, formulated as full questions
-    """
-    
-    # Format the human prompt with context from all interactions
-    human_prompt = f"""# CONVERSATION SUMMARY
-Initial Query: {query}
-
-# COMPLETE CONVERSATION HISTORY
-{additional_context if additional_context else "No detailed conversation history available."}
-
-# HUMAN FEEDBACK EXCHANGES
 """
     
-    if human_feedback:
-        for i, feedback in enumerate(human_feedback):
-            human_prompt += f"Exchange {i+1}: {feedback}\n"
-    else:
-        human_prompt += "No additional human feedback exchanges.\n"
+    kb_human_prompt = f"""# INITIAL USER QUERY
+{query}
+
+# DEEP ANALYSIS OF INFORMATION NEEDS
+{deep_analysis}
+
+# TASK
+Based on the initial query and the deep analysis above, generate 5 targeted knowledge base search questions in {detected_language} that will help retrieve the most relevant information:"""
     
-    human_prompt += f"\n# TASK\nBased on the complete conversation above, generate 5 targeted knowledge base search questions in {detected_language} that will help retrieve the most relevant information:"
-    
-    # Using local model with Ollama
-    result = invoke_ollama(
+    # Second LLM invocation: Generate knowledge base questions
+    print(f"[DEBUG] Invoking second LLM call for knowledge base questions...")
+    kb_result = invoke_ollama(
         model=model_to_use,
-        system_prompt=system_prompt,
-        user_prompt=human_prompt,
+        system_prompt=kb_system_prompt,
+        user_prompt=kb_human_prompt,
     )
     
     # Parse the result
-    parsed_result = parse_output(result)
-    return {"knowledge_base_questions": parsed_result["response"], "current_position": "generate_knowledge_base_questions"}
+    kb_parsed_result = parse_output(kb_result)
+    knowledge_base_questions = kb_parsed_result["response"]
+    print(f"[DEBUG] Second LLM call completed. Knowledge base questions generated.")
+    
+    print(f"[DEBUG] generate_knowledge_base_questions completed successfully with two separate LLM calls")
+    
+    return {
+        "knowledge_base_questions": knowledge_base_questions, 
+        #"additional_context": updated_additional_context,
+        "additional_context": deep_analysis,
+        "current_position": "generate_knowledge_base_questions"
+    }
 
 def create_hitl_graph():
     """
@@ -582,11 +675,23 @@ def main():
                 with st.spinner("Generating knowledge base questions..."):
                     kb_questions_result = generate_knowledge_base_questions(st.session_state.state)
                     kb_questions_content = kb_questions_result["knowledge_base_questions"]
+                    deep_analysis_content = kb_questions_result["additional_context"]
+                
+                # Create formatted response with both deep analysis and questions
+                formatted_response = f"""## Deep Analysis of Your Information Needs
+
+{deep_analysis_content}
+
+## Targeted Knowledge Base Search Questions
+
+Based on our conversation and the analysis above, here are targeted knowledge base search questions:
+
+{kb_questions_content}"""
                 
                 # Add AI message to conversation history
                 st.session_state.conversation_history.append({
                     "role": "assistant",
-                    "content": f"Based on our conversation, here are targeted knowledge base search questions:\n\n{kb_questions_content}"
+                    "content": formatted_response
                 })
                 
                 # Add final KB questions to additional_context

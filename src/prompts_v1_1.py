@@ -77,8 +77,8 @@ RELEVANCE_EVALUATOR_HUMAN_PROMPT = """Evaluate the relevance of the retrieved do
 
 
 # Document summarization prompts
-SUMMARIZER_SYSTEM_PROMPT = """You are an expert document summarizer.
-Forward the information from the provided documents that is relevant to the query without adding external information or personal opinions.
+SUMMARIZER_SYSTEM_PROMPT = """You are an expert document summarizer with highest awareness of the language requirements and the context.
+GOAL: Forward a deep and profound representation of the provided documents that is relevant to the query without adding external information or personal opinions.
 CRUCIAL: You MUST write the response STRICTLY in the following language: {language}
 
 CRUCIAL guidelines:
@@ -106,14 +106,14 @@ One-shot example:
 - AI-Human feedback: "AI: Is the subject the Nobel Prize in Physics? Human: Yes"
 - Documents: "Albert Einstein[a] (14 March 1879 – 18 April 1955) was a German-born theoretical physicist who is best known for developing the theory of relativity. Einstein also made important contributions to quantum mechanics.[1][5] His mass–energy equivalence formula E = mc2, which arises from special relativity, has been called "the world's most famous equation".[6] He received the 1921 Nobel Prize in Physics for "his services to theoretical physics, and especially for his discovery of the law of the photoelectric effect". [7]"
 
-- Expected output: "Albert Einstein won the Nobel Prize in Physics in 1921 for his services to theoretical physics, and especially for his discovery of the law of the photoelectric effect [7]. Moreover, as a German-born theoretical physicist he also made important contributions to quantum mechanics [1] [5]."
+- Expected output: "Albert Einstein won the Nobel Prize in Physics in 1921 for his services to theoretical physics, and especially for his discovery of the law of the photoelectric effect [7]. Moreover, the German-born theoretical physicist also made important contributions to quantum mechanics [1] [5]."
 
-Here comes your task:"""
+Here comes your summaization task (urgently remember: YOU MUST respond in {language} language):"""
 
 SUMMARIZER_HUMAN_PROMPT = """ 
 Query: {user_query}
 
-AI-Human feedback: {human_feedback}
+AI-Human Feedback: {human_feedback}
 
 Documents:
 {documents}
