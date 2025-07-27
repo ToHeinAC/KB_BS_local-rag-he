@@ -677,6 +677,21 @@ def main():
                     kb_questions_content = kb_questions_result["knowledge_base_questions"]
                     deep_analysis_content = kb_questions_result["additional_context"]
                 
+                # Update state with the complete results from generate_knowledge_base_questions
+                st.session_state.state.update(kb_questions_result)
+                
+                # Parse knowledge base questions into a list of research queries
+                import re
+                research_queries = []
+                for line in kb_questions_content.split('\n'):
+                    # Extract questions using regex pattern for numbered lists (1. Question)
+                    match = re.match(r'\d+\.\s*(.*)', line.strip())
+                    if match:
+                        research_queries.append(match.group(1).strip())
+                
+                # Add research_queries to state for proper handover to main workflow
+                st.session_state.state["research_queries"] = research_queries
+                
                 # Create formatted response with both deep analysis and questions
                 formatted_response = f"""## Deep Analysis of Your Information Needs
 
@@ -693,11 +708,6 @@ Based on our conversation and the analysis above, here are targeted knowledge ba
                     "role": "assistant",
                     "content": formatted_response
                 })
-                
-                # Add final KB questions to additional_context
-                st.session_state.state["additional_context"] += (
-                    f"Final Knowledge Base Questions:\n{kb_questions_content}"
-                )
                 
                 st.session_state.kb_questions_generated = True
                 
