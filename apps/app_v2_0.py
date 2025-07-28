@@ -480,10 +480,9 @@ def finalize_hitl_conversation(state):
         kb_questions_result = generate_knowledge_base_questions(state)
         kb_questions_content = kb_questions_result["research_queries"]  # Use research_queries for main workflow
     
-    # Add final KB questions to additional_context
-    state["additional_context"] += (
-        f"Final Knowledge Base Questions:\n{kb_questions_content}"
-    )
+    # IMPORTANT: Use the deep_analysis returned from generate_knowledge_base_questions
+    # instead of the accumulated conversation history
+    state["additional_context"] = kb_questions_result["additional_context"]  # This is the deep_analysis
     
     # Store research queries for main workflow handover
     state["research_queries"] = kb_questions_content if isinstance(kb_questions_content, list) else [kb_questions_content]
@@ -960,7 +959,10 @@ def main():
     # Create header with two columns (matching app_v1_1.py)
     header_col1, header_col2 = st.columns([0.6, 0.4])
     with header_col1:
-        st.title("🔍 BrAin: Human-in-the-Loop (HITL) RAG Researcher V2.0")
+        st.markdown(
+    '<h1>🔍 Br<span style="color:darkorange;"><b>AI</b></span>n: Human-In-The-Loop (HITL) RAG Researcher V2.0</h1>',
+    unsafe_allow_html=True
+)
         # Add license information under the title (exact implementation from basic_HITL_app.py)
         st.markdown('<p style="font-size:12px; font-weight:bold; color:darkorange; margin-top:0px;">LICENCE</p>', 
                     unsafe_allow_html=True, help=get_license_content())
@@ -1010,11 +1012,11 @@ def main():
         
         # Max search queries
         max_search_queries = st.slider(
-            "Number of Research Queries",
+            "Number of Additional Research Queries",
             min_value=1,
             max_value=10,
             value=5,
-            help="Number of research queries to generate"
+            help="Number of additional research queries to generate"
         )
         
         # Enable web search
@@ -1351,36 +1353,39 @@ def main():
                         st.rerun()
         else:
             # HITL phase completed - show summary without conversation history
-            with st.expander("📋 HITL Phase Results (Completed)", expanded=False):
-                st.success("✅ HITL Phase completed successfully!")
+            st.markdown("📋 HITL Phase Results (Completed)")
+            st.success("✅ HITL Phase completed successfully!")
                 
-                if st.session_state.hitl_result:
-                    st.markdown("### 📝 Query Analysis")
-                    st.write(f"**Original Query:** {st.session_state.hitl_result['user_query']}")
-                    st.write(f"**Detected Language:** {st.session_state.hitl_result['detected_language']}")
+            if st.session_state.hitl_result:
+                st.markdown("### 📝 Query Analysis")
+                st.write(f"**Original Query:** {st.session_state.hitl_result['user_query']}")
+                st.write(f"**Detected Language:** {st.session_state.hitl_result['detected_language']}")
+                
+                # Display deep analysis and knowledge base questions following basic_HITL_app.py pattern
+                if 'additional_context' in st.session_state.hitl_result and st.session_state.hitl_result['additional_context']:
+                    st.markdown("### 🧠 Deep Analysis of Your Information Needs")
+                    st.write(st.session_state.hitl_result['additional_context'])
                     
-                    st.markdown("### 🤖 AI Analysis")
-                    st.write(st.session_state.hitl_result['analysis'])
-                    
-                    st.markdown("### ❓ Follow-up Questions")
-                    # follow_up_questions is a string, not a list, so display it directly
-                    st.write(st.session_state.hitl_result['follow_up_questions'])
-                    
-                    st.markdown("### 🗣️ Human Feedback")
-                    st.write(st.session_state.hitl_result['human_feedback'])
-                    
-                    st.markdown("### 🔍 Generated Research Queries")
+                    st.markdown("### 🎯 Targeted Knowledge Base Search Questions")
+                    st.write("Based on our conversation and the analysis above, here are targeted knowledge base search questions:")
+                    # Display the research queries in a formatted way
                     for i, query in enumerate(st.session_state.hitl_result['research_queries'], 1):
                         st.write(f"{i}. {query}")
-                    
-                    # Note: Conversation history is preserved in session state but not displayed in GUI during Main phase
-                    st.info("💬 Conversation history has been preserved but is hidden during the Main Research phase for a cleaner interface.")
+                
+                # Note: Conversation history is preserved in session state but not displayed in GUI during Main phase
+                st.info("💬 Conversation history has been preserved but is hidden during the Main Research phase for a cleaner interface.")
     
     # Main Research Phase Content
     elif st.session_state.active_tab == "Main Research Phase":
         if st.session_state.workflow_phase == "main":
             st.info("🔬 **Current Phase: Main Research** - The system will now execute the full research workflow using your HITL input.")
-            
+            with st.expander("### 🧠 Deep Analysis of Your Information Needs"):
+                st.write(st.session_state.hitl_result['additional_context'])
+                st.markdown("### 🎯 Targeted Knowledge Base Search Questions")
+                st.write("Based on our conversation and the analysis above, here are targeted knowledge base search questions:")
+                # Display the research queries in a formatted way
+                for i, query in enumerate(st.session_state.hitl_result['research_queries'], 1):
+                    st.write(f"{i}. {query}")
             # Main Research Phase
             if not st.session_state.hitl_result:
                 st.error("No HITL results found. Please restart and complete the HITL phase first.")

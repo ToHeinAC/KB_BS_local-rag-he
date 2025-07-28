@@ -1,47 +1,47 @@
-# Summarize Query Research Debug Output - 20250725_173445
+# Summarize Query Research Debug Output - 20250728_163051
 
-## Original State Keys
+# Full State Dump
 
-user_query, current_position, detected_language, research_queries, retrieved_documents, search_summaries, final_answer, quality_check, report_llm, summarization_llm, enable_quality_checker, human_feedback, analysis, follow_up_questions, additional_context
+## search_summaries
 
-## Result Keys
+### Wie können Rückstände aus der Überwachung entlassen werden?
 
-search_summaries, formatted_documents, additional_context
+#### Item 1
 
-## Search Summaries
-
-Number of queries with summaries: 5
-
-### Query: Wie können Rückstände aus der Überwachung entlassen werden?
-
-Number of summaries: 1
-
-#### Summary 1
-
+**Content:**
 ```
-Content: Die Entlassung von überwachungsbedürftigen Rückständen aus der Überwachung ist unter bestimmten Voraussetzungen zulässig. Diese sind:
+Content: Die Entlassung von Rückständen aus der Überwachung erfolgt gemäß den Vorgaben des Strahlenschutzgesetzes (StrlSchG) unter strengen gesetzlichen Rahmenbedingungen:  
 
-1. **Einhaltung der Sicherheitsmaßnahmen**:  
-   Die Behörde muss sicherstellen, dass die Beseitigung oder Verwertung des Materials den Schutz der Bevölkerung gewährleistet (maximal 1 Millisievert im Kalenderjahr Exposition ohne weiteren Maßnahmen). Dies gilt insbesondere für Materialien wie Bauprodukte.
+1. **Voraussetzungen für die Entlassung**:  
+   - Die zuständige Behörde entlässt überwachungsbedürftige Rückstände aus der Überwachung, wenn durch Maßnahmen zur Verwertung oder Beseitigung der erforderliche Schutz vor Strahlung sicherstellt ist (§ 62 Abs. 2).  
+   - Die Körperdosis beruflich Exponierter darf die Werte für die Einstufung als „beruflich exponierte Person“ nicht überschreiten.  
+   - Keine Bedenken gegen die abfallrechtliche Zulässigkeit des Verwertungs- oder Beseitigungsweges bestehen (§ 62 Abs. 2).  
 
-2. **Einhaltung von Vorgaben**:  
-   - Die Verwertungswege müssen gemäß den in der Rechtsverordnung festgelegten Überwachungsgrenzen und -vorschriften eingehalten werden (z.B. Absatz 6 Nummer 1).  
-   - Bei der Beseitigung von Rückständen als Bauprodukte muss die Erfüllung der Anforderungen in §§ 133 bis 135 gewährleistet sein.
+2. **Schutz der Bevölkerung**:  
+   - Der Schutzmaßstab ist, dass die effektive Dosis von Einzelpersonen durch Beseitigung/Verwertung nicht mehr als **1 Millisievert im Kalenderjahr** überschreitet (§ 62 Abs. 3).  
+   - Bei Verwendung der Rückstände als Bauprodukte müssen zudem die Anforderungen von § 133–135 erfüllt sein.  
 
-3. **Verpflichteter Hinweis**:  
-   Der Verpflichtete (z.B. Betreiber) muss unverzüglich bei Feststellung der Überwachungsbedürftigkeit die Entlassung des Materials an die Behörde melden, soweit eine Anzeige nach Absatz 6 Nummer 1 erforderlich ist.
+3. **Verfahren und Dokumentation**:  
+   - Der verpflichtete Betreiber muss unverzüglich nach Feststellung der Überwachungsbedürftigkeit eine Anmeldung zur Verwertung/Beseitigung einreichen (§ 62 Abs. 1).  
+   - Bei Ablehnung einer Entlassungszulassung ist eine **Anzeige gemäß § 63** erforderlich, die innerhalb von einem Monat nach Feststellung der Überwachungsbedürftigkeit abzugeben ist (§ 63 Abs. 1).  
+   - Die Behörde kann verlangen, dass der Verbleib entfernter Kontaminationen nachgewiesen wird (§ 64 Abs. 2).  
 
-4. **Ausnahmen**:  
-   - Die Behörde kann den Verpflichteten bei spezifischen Nutzungsvoraussetzungen (z.B. hoher Exposition) befreien, wenn die Sicherheitsmaßnahmen erfüllt sind und das vorgesehene Verwertungs- oder Beseitigungsweg abfallrechtlich zulässig ist.
+4. **Grenzüberschreitende Transporte**:  
+   - Die grenzüberschreitende Verbringung von Rückständen ins Inland zur Beseitigung ist **verboten** (§ 65 Abs. 7).  
 
-**Zusammenfassung**:  
-Die Entlassung von Rückständen aus der Überwachung erfolgt unter strengen Sicherheitsvorschriften, wobei die Exposition auf maximal 1 Millisievert pro Jahr limitiert bleibt. Die Verwertungswege müssen gemäß gesetzlichen Vorgaben eingehalten werden, und es gibt Ausnahmen bei spezifischen Nutzungsvoraussetzungen.
+5. **Rechtliche Grundlagen**:  
+   - Eine abfallrechtliche Verwertung oder Beseitigung ohne Entlassung aus der Überwachung ist nicht zulässig (§ 62 Abs. 4).  
+   - Die Bundesregierung wird ermächtigt, durch Rechtsverordnung mit Zustimmung des Bundestags die konkreten Verwertungswege und Schutzmaßnahmen zu regeln (§ 63–65).  
+
+**Zusammenfassend**: Die Entlassung von Rückständen aus der Überwachung setzt eine umfassende Prüfung der Strahlenschutzanforderungen, die Einhaltung gesetzlicher Grenzwerte und die Zustimmung der zuständigen Behörde voraus. Zudem sind dokumentierte Nachweise zur Sicherheit und Verwertbarkeit erforderlich.
 Importance_score: 5.80
 Source_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712
 Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf
 ```
 
-**Metadata:** {
+**Metadata:**
+```json
+{
   "position": 0,
   "query": "Wie k\u00f6nnen R\u00fcckst\u00e4nde aus der \u00dcberwachung entlassen werden?",
   "name": [
@@ -55,209 +55,358 @@ Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert
     "kb/insert_data/StrlSchG.pdf"
   ]
 }
-
-### Query: Wie können Materialien mit erhöhten Gehalten an natürlich vorkommenden Radionukliden sicher entsorgt werden?
-
-Number of summaries: 1
-
-#### Summary 1
-
-```
-Content: Die Entfernung und Abwasserung von radioaktivem Material aus Überwachungszielen unterliegen strengen gesetzlichen Vorschriften, die sich in den genannten Dokumenten detailliert beschreiben. Hier sind die zentralen Regelungen:
-
-1. **Genehmigungsverfahren**:  
-   - Die Transport oder Abgabe von Kernbrennstoffen und radioaktivem Material erfordert eine Genehmigung (§ 3 AtG).  
-   - Für den Ausfuhr- oder Einfuhrschein ist die Genehmigung nur in schwerwiegenden Gründen möglich, wenn die Sicherheit der Nichtverbreitung von Kernbrennstoffen oder der Versorgung deutscher Forschungsreaktoren gewährleistet wird (§ 6 AtG).
-
-2. **Sicherheitsvorschriften**:  
-   - Der Transporter muss sicherstellen, dass das Material nur an autorisierte Empfänger übergeben wird (§ 95 StrlSchV).  
-   - Bei der Abgabe von Störstrahlern ist eine Genehmigungsfreiheit vorgesehen, wenn die Sicherheitsvorschriften erfüllt sind (§ 96 StrlSchV).
-
-3. **Verfahrensweise**:  
-   - Die Durchführung von Maßnahmen erfolgt nach einem abgestuften Konzept (§ 3 AtG).  
-   - Abgebrannte Brennelemente und radioaktive Abfälle müssen sicher entsorgt werden, wobei auch die Aspekte der **passiven Sicherheit** berücksichtigt sind (§ 3 Abs. 2 AtG).
-
-4. **Dokumentation**:  
-   - Ein faktengestützter Entscheidungsprozess ist für alle Stufen der Abwasserung vorgeschrieben, um die Nachvollziehbarkeit und Sicherheit zu gewährleisten (§ 3 Abs. 6 AtG).
-
-5. **Zusätzliche Vorschriften**:  
-   - Die wechselseitigen Abhängigkeiten zwischen Anfall und Entsorgung müssen abgebrannten Brennelementen berücksichtigt werden (§ 3 Abs. 2a AtG).  
-
-**Kurz zusammenfassend**: Radioaktive Residuen aus Überwachungszielen müssen gemäß den gesetzlichen Vorschriften genehmigter Transport und Abgabe erfolgen, mit Schwerpunkt auf Sicherheit (passiv & aktiv), Dokumentation und Compliance mit Rechtsvorschriften. Die Verfahren sind abgestuft und betonen die langfristige Risikobewertung sowie den Schutz der Allgemeinheit.
-Importance_score: 5.53
-Source_filename: StrlSchG.pdf--250712, StrlSchV.pdf--250712, AtG.pdf--250712
-Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchV.pdf, kb/insert_data/AtG.pdf
 ```
 
-**Metadata:** {
+### Welche rechtlichen Rahmenbedingungen gelten für die Entsorgung von Materialien mit erhöhten Konzentrationen natürlicher Radionuklide?
+
+#### Item 1
+
+**Content:**
+```
+Content: Die Entsorgung von Rückständen mit erhöhter Konzentration natürlicher Radionuklide unter Berücksichtigung rechtlicher Rahmenbedingungen erfolgt gemäß folgenden Vorschriften:  
+
+1. **Regeldeckungssummen (§ 8 Abs. 3–5, § 8a AtDeckV):**  
+   - Bei der Entsorgung radioaktiver Abfälle in einer Landessammelstelle oder zugelassener Einrichtung beträgt die Regeldeckungssumme **7 Millionen Euro**, sofern es sich nicht um eine Kernanlage handelt. Für Abfälle aus Anlagen im Sinne des Atomgesetzes (§ 7) steigt der Betrag auf **70 Millionen Euro**.  
+   - Bei Beförderung von radioaktiven Stoffen darf die Deckungssumme den Betrag von **35 Millionen Euro nicht überschreiten**, soweit dies angemessen ist (§ 8 Abs. 5).  
+
+2. **Entsorgungsbedingungen gemäß StrlSchG:**  
+   - Bei radioaktiver Kontamination durch einen Notfall gelten **Kontaminationswerte** als sicher, wenn die Abfälle in Anlagen entsorgt werden, die den Schutz von Mensch und Umwelt gewährleisten (§ 3 Abs. 1 StrlSchG).  
+   - Ausnahmen zur Rechtsvorschriften sind nur zulässig, **sofern keine Gesundheitsrisiken** entstehen oder EU-Recht verletzt wird (§ 2 Abs. 2 StrlSchG).  
+
+3. **Verbot der Wiederverwendung (AtG):**  
+   - Radioaktive Stoffe mit erhöhter Konzentration natürlicher Radionuklide dürfen nicht wiederaufgenommen oder verarbeitet werden, wenn sie gemäß einer Verordnung unter § 1 Abs. 1 Nr. 1 des Atomgesetzes (AtG) freigegeben wurden (§ 3 AtG).  
+
+4. **Kernmaterialien und Transport:**  
+   - Für den Transport von Kernmaterialien gilt eine Regeldeckungssumme von **80 Millionen Euro**, die bei bestimmten Mengen oder Aktivitäten auf bis zu **125 Millionen Euro erhöht** werden kann (§ 8a Abs. 1 AtDeckV).  
+
+Diese Vorschriften sichern den Schutz vor Strahlungseffekten und ermöglichen eine rechtliche Entsorgung unter Einhaltung der Kreislaufwirtschafts- sowie Atomgesetze. Ausnahmen sind nur bei unbedenklicher Risikominimierung zulässig (§ 2 Abs. 2 StrlSchG).
+Importance_score: 6.73
+Source_filename: AtG.pdf--250712, StrlSchG.pdf--250712, AtDeckV.pdf--250712
+Source_path: kb/insert_data/AtG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/AtDeckV.pdf
+```
+
+**Metadata:**
+```json
+{
   "position": 1,
-  "query": "Wie k\u00f6nnen Materialien mit erh\u00f6hten Gehalten an nat\u00fcrlich vorkommenden Radionukliden sicher entsorgt werden?",
-  "name": [
-    "StrlSchG.pdf--250712",
-    "StrlSchV.pdf--250712",
-    "AtG.pdf--250712"
-  ],
-  "path": [
-    "kb/insert_data/StrlSchG.pdf",
-    "kb/insert_data/StrlSchV.pdf",
-    "kb/insert_data/AtG.pdf"
-  ]
-}
-
-### Query: Welche rechtlichen und regulatorischen Anforderungen gelten für die Entsorgung solcher radioaktiver Rückstände?
-
-Number of summaries: 1
-
-#### Summary 1
-
-```
-Content: Die Verordnung über Anforderungen und Verfahren zur Entsorgung radioaktiver Abfälle (Atomrechtliche Entsorgungsverordnung - AtEV) regelt die Pflichten bei der Ausgabe und Empfang von radioaktivem Material. Dabei sind folgende Aspekte relevant:
-
-1. **Aufzeichnungen in elektronischen Buchführungssystemen**:  
-   Die Verpflichteten (z.B. Arbeitgeber, Behörden) müssen sicherstellen, dass die erfassten Angaben (wie Anfall und Verbleib von radioaktiven Abfällen) in elektronischen Systemen aufgezeichnet werden, sodass sie unverzüglich zur Verfügung gestellt werden können. Dies ist gemäß § 2 Absatz 1 des AtEV vorgesehen.
-
-2. **Dokumentation der erfassten Angaben**:  
-   Die Angaben müssen nach Ablieferung an Landessammelstellen oder Anlagen des Bundes mindestens ein Jahr lang bereitzustellt werden (§ 3 Absatz 4). Dies umfasst den Erwarteten Anfall und Verbleib für das laufende Kalenderjahr sowie seit dem letzten Stichtag.
-
-3. **Behandlung und Verpackung**:  
-   Die Behandlungsart und Verpackung der Abfälle müssen entsprechend den Anforderungen des Betreibers (z.B. durch die Dritte nach § 9a Absatz 3 Satz 2) erfolgen. Für Abfälle, die an Landessammelstellen abgeliefert wurden, sind zusätzliche Kosten für eine nachträgliche Änderung der Anforderungen festgelegt.
-
-4. **Kennzeichnung und Sicherheitstechnik**:  
-   Behälter oder Verpackungs-Unit müssen mit Kennzeichnungen (gemäß Anlage Teil B) versehen sein, um die Gefahren zu verhindern. Dies ist unberührt von den Vorgaben des Gefahrgutbeförderungsgesetzes.
-
-5. **Verpflichtungen bei der Ausgabe**:  
-   Wer radioaktive Abfälle abgibt, muss vor Beginn einer Tätigkeit eine schriftliche Erklärung des Empfängers über seine Annahmebereitschaft einholen und die erfassten Angaben (§ 2 Absatz 1) dem Empfänger zur Verfügung stellen. Dies ist auch in elektronischer Form vorgesehen.
-
-Diese Regelungen sind Teil der Umsetzung der EU-Richtlinie 2013/59/Euratom, die den Schutz vor ionisierender Strahlung regelt (ABl. L 13 vom 17.1.2014). Die Verordnung ist am 31. Dezember 2018 in Kraft getreten und wurde mit Zustimmung mehrerer Ministerien beschlossen.
-Importance_score: 7.00
-Source_filename: AtG.pdf--250712, AtEV.pdf--250712, AtEV.pdf--250712
-Source_path: kb/insert_data/AtG.pdf, kb/insert_data/AtEV.pdf, kb/insert_data/AtEV.pdf
-```
-
-**Metadata:** {
-  "position": 2,
-  "query": "Welche rechtlichen und regulatorischen Anforderungen gelten f\u00fcr die Entsorgung solcher radioaktiver R\u00fcckst\u00e4nde?",
+  "query": "Welche rechtlichen Rahmenbedingungen gelten f\u00fcr die Entsorgung von Materialien mit erh\u00f6hten Konzentrationen nat\u00fcrlicher Radionuklide?",
   "name": [
     "AtG.pdf--250712",
-    "AtEV.pdf--250712",
-    "AtEV.pdf--250712"
+    "StrlSchG.pdf--250712",
+    "AtDeckV.pdf--250712"
   ],
   "path": [
     "kb/insert_data/AtG.pdf",
-    "kb/insert_data/AtEV.pdf",
-    "kb/insert_data/AtEV.pdf"
+    "kb/insert_data/StrlSchG.pdf",
+    "kb/insert_data/AtDeckV.pdf"
   ]
 }
-
-### Query: Welche Techniken werden in der Praxis zur Behandlung von radioaktiv belasteten Materialien eingesetzt?
-
-Number of summaries: 1
-
-#### Summary 1
-
-```
-Content: Die Entlassung von Rückständen aus der Überwachung unterliegt den gesetzlichen Vorgaben des Atomgesetzes und entsprechenden Rechtsverordnungen. Insbesondere sind Materialien, die in Verbindung mit natürlicher Radioaktivität angewendet werden (siehe Abschnitt 10), als „Practices“ zu klassifizieren, wobei deren Isotopenprozentanteil oder Konzentrationen bestimmte Grenzen nicht überschreiten. Diese Klassifikation beeinflusst die Lizenzvergabe und -erforderungen für ihre Verwendung sowie den Umgang mit ihnen. Zudem sind Kernbrennstoffe, die in der Natur auftreten oder als solche genutzt werden, unter bestimmten Bedingungen nicht zur Überwachung nach dem Atomgesetz unterliegen (siehe Abschnitt 3). Die Entsorgung solcher Materialien muss daher gemäß den Vorschriften des Atomgesetzes und der Rechtsverordnungen erfolgen.
-Importance_score: 6.11
-Source_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, strlschg_en_bf.pdf--250712
-Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/strlschg_en_bf.pdf
 ```
 
-**Metadata:** {
-  "position": 3,
-  "query": "Welche Techniken werden in der Praxis zur Behandlung von radioaktiv belasteten Materialien eingesetzt?",
+### Wie werden Risikobewertungen in der Entwicklung von Entsorgungsverfahren für radioaktive Rückstände integriert?
+
+#### Item 1
+
+**Content:**
+```
+Content: Die Entlassung überwachungsbedürftiger Rückstände aus der Überwachtung zur Verwertung als Bauprodukt erfolgt gemäß § 30 des Strahlenschutzgesetzes (StrlSchV). Dazu muss der Antragsteller folgende Unterlagen vorlegen:  
+1. Eine Erklärung über den Verbleib der Rückstände,  
+2. eine Annahmeerklärung des Herstellers des Bauprodukts sowie  
+3. eine Bestätigung, dass die voraussichtliche Exposition durch Gammastrahlung nicht den Referenzwert nach § 133 StrlSchG überschreitet [StrlSchV.pdf--250712].  
+
+Die zuständige Behörde prüft dabei, ob das Dosiskriterium gemäß § 62 Absatz 3 Satz 1 des StrlSchG nicht verletzt wird. Zudem bleiben die Bestimmungen des Kreislaufwirtschaftsgesetzes unberührt [StrlSchV.pdf--250712].  
+
+Für die Freigabe radioaktiver Stoffe (§ 31 StrlSchV) ist sicherzustellen, dass eine effektive Dosis von maximal 10 Mikrosievert pro Kalenderjahr für Einzelpersonen der Bevölkerung entsteht. Eine Freigabe ersetzt keine Genehmigung nach § 7 Absatz 3 des Atomgesetzes (AtG) [StrlSchV.pdf--250712].  
+
+Die Entsorgung abgebrannter Brennelemente und radioaktiver Abfälle erfolgt im Rahmen eines abgestuften Konzepts, wobei die Kosten von den Erzeugern getragen werden. Dabei sind faktengestützte Entscheidungsprozesse sowie die Berücksichtigung der Sicherheit (inklusive Schutzmaßnahmen) vorgeschrieben [AtG.pdf--250712].  
+
+Zusätzlich gelten für die Überwachung und Verwertung von Rückständen im Rahmen des Strahlenschutzes strenge Vorschriften, darunter die Einhaltung internationaler Verpflichtungen und Sicherheitsstandards [StrlSchG.pdf--250712].
+Importance_score: 6.33
+Source_filename: StrlSchG.pdf--250712, AtG.pdf--250712, StrlSchV.pdf--250712
+Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/AtG.pdf, kb/insert_data/StrlSchV.pdf
+```
+
+**Metadata:**
+```json
+{
+  "position": 2,
+  "query": "Wie werden Risikobewertungen in der Entwicklung von Entsorgungsverfahren f\u00fcr radioaktive R\u00fcckst\u00e4nde integriert?",
   "name": [
     "StrlSchG.pdf--250712",
-    "StrlSchG.pdf--250712",
-    "strlschg_en_bf.pdf--250712"
+    "AtG.pdf--250712",
+    "StrlSchV.pdf--250712"
   ],
   "path": [
     "kb/insert_data/StrlSchG.pdf",
-    "kb/insert_data/StrlSchG.pdf",
-    "kb/insert_data/strlschg_en_bf.pdf"
+    "kb/insert_data/AtG.pdf",
+    "kb/insert_data/StrlSchV.pdf"
   ]
 }
-
-### Query: Gibt es bewährte Verfahren zur Minimierung der Umweltbelastung bei der Entsorgung von radioaktivem Material?
-
-Number of summaries: 1
-
-#### Summary 1
-
-```
-Content: Die im Texten genannten Gesetze und Verordnungen regeln die Überwachung der Umweltradioaktivität sowie die Abfallverwertung und -transport. Die zentralen Punkte sind wie folgt zusammengefasst:
-
-1. **Mess- und Datenübermittlung**:  
-   - Die Bundesbehörden (z.B. *Bundesamt für Strahlenschutz*) erheben datengetriebt die Umweltradioaktivität in verschiedenen Bereichen:  
-     - Lebensmittel, Trinkwasser, Boden, Abwässer und Klärschlamm.  
-     - Die Länder übermitteln ihre Daten an die *Zentralstelle des Bundes für die Überwachung der UmelrRadioaktivität* (§ 163).  
-
-2. **Messverfahren**:  
-   - Es werden Probenahme-, Analyse- und Messmethoden entwickelt, um die Umweltradioaktivität zu bestimmen.  
-   - Vergleichsmessungen und Analysen sind erforderlich, insbesondere bei der Bewertung von Daten (§ 162).  
-
-3. **Abfallverwertung**:  
-   - Radioaktive Abfälle aus Rekuperatoren oder Wiederaufarbeitungsprozessen müssen gemäß den Verordnungen dokumentiert und übermittelt werden, insbesondere bei der Lagerung in trockenen Zwischenlagerungen (§ 162).  
-
-4. **Entscheidungshilfesysteme**:  
-   - Die Entwicklung von Entscheidungsunterstützsystemen zur Bewertung der Umweltradioaktivität ist vorgesehen, um die Daten für politische und technische Entscheidungen zu nutzen (§ 162 Absatz 5).  
-
-5. **Transportverfahren**:  
-   - Transportmeldungen an die Aufsichtbehörden müssen mit Angaben zur Abfallart, Menge, Aktivität sowie Beförderungsgenehmigung beinhalten (§ 4 Absatz 2 Strahlenschutzgesetz).  
-
-6. **Länderverpflichtungen**:  
-   - Die Länder sind verpflichtet die Umweltradioaktivität in Lebensmitteln und anderen Bereichen zu überwachen, insbesondere bei der Erhebung von Daten (§ 162 Absatz 1).  
-
-Diese Regelung gewährleistet eine systematische Erfassung, Analyse und Verarbeitung der radioaktiven Stoffe im Umfeld, um die Sicherheit und Gesundheit sowie den Schutz des Ökosystems zu sichern.
-Importance_score: 6.00
-Source_filename: AtEV.pdf--250712, AtEV.pdf--250712, StrlSchG.pdf--250712
-Source_path: kb/insert_data/AtEV.pdf, kb/insert_data/AtEV.pdf, kb/insert_data/StrlSchG.pdf
 ```
 
-**Metadata:** {
-  "position": 4,
-  "query": "Gibt es bew\u00e4hrte Verfahren zur Minimierung der Umweltbelastung bei der Entsorgung von radioaktivem Material?",
+### Welche technischen Verfahren sind für die sichere Entsorgung von Überwachungsrückständen unter Berücksichtigung von Umweltstandards erforderlich?
+
+#### Item 1
+
+**Content:**
+```
+Content: Um die Beseitigung oder Verwertung von überwachungsbedürftigen Rückständen im Einklang mit rechtlichen Vorgaben durchzuführen, gelten folgende Regelungen:  
+
+1. **Anmeldung und Genehmigung**  
+   Nach § 62 Absatz 1 des Strahlenschutzgesetzes (StrlSchG) muss der Verpflichtete die beabsichtigte Verwertung oder Beseitigung von Rückständen unverzüglich bei der zuständigen Behörde anmelden. Die Entlassung aus der Überwachung erfolgt durch schriftlichen Bescheid, sofern:  
+   - Der Schutz der Bevölkerung vor Strahlungsexposition sichergestellt ist (§ 62 Absatz 2 Nummer 1),  
+   - Bei Beseitigung oder Verwertung die Körperdosis beruflich Exponierter nicht überschreitet (Nummer 2) und  
+   - Keine Bedenken gegen die abfallrechtliche Zulässigkeit des Weges bestehen (Nummer 3).  
+
+2. **Expositionsmaßstab**  
+   Der Schutz der Bevölkerung orientiert sich an einem Richtwert von einer effektiven Dosis von **1 Millisievert pro Kalenderjahr**, ohne weitere Maßnahmen nach Abschluss der Verwertung oder Beseitigung (§ 62 Absatz 3). Bei Verwendung als Bauprodukt müssen zudem die Anforderungen aus §§ 133 bis 135 erfüllt werden.  
+
+3. **Dokumentation und Nachweis**  
+   Für die Freigabe der Rückstände sind folgende Unterlagen erforderlich:  
+   - Ein Verpflichtungserklärung zur Beseitigung oder Verwertung (§ 62 Absatz 1),  
+   - Eine Akzeptanzbestätigung durch den Recycler oder Disposer,  
+   - Nachweis der Abgabe dieser Dokumente an die zuständige Behörde für das betroffene Facility.  
+
+4. **Grenzüberschreitende Verbringung**  
+   Die Beseitigung von Rückständen ins Inland aus dem Ausland ist verboten (§ 62 Absatz 5). Für die Einfuhr müssen zusätzliche Nachweise erbracht werden, dass Überwachungsgrenzen und Verwertungswege eingehalten werden.  
+
+5. **Verordnungsermächtigung**  
+   Die Bundesregierung kann durch Rechtsverordnungen (mit Zustimmung des Bundestags) folgende Regelungen festlegen:  
+   - Grundsätze zur Ermittlung von Expositionen bei Rückständen,  
+   - Bedingungen für die Annahme einer maximalen Dosis von 1 Millisievert pro Jahr ohne weitere Maßnahmen (§ 63 Absatz 2),  
+   - Verfahrensregeln für Entlassung aus der Überwachung, insbesondere bei grenzüberschreitender Nutzung oder Beseitigung.  
+
+Diese Regelungen sichern die Einhaltung von Sicherheitsstandards und ermöglichen eine rechtssichere Entsorgung unter Berücksichtigung technischer sowie abfallrechtlicher Anforderungen (StrlSchG, § 62–63; StrlSchV, §§ 1–7).
+Importance_score: 5.48
+Source_filename: StrlSchV.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712
+Source_path: kb/insert_data/StrlSchV.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf
+```
+
+**Metadata:**
+```json
+{
+  "position": 3,
+  "query": "Welche technischen Verfahren sind f\u00fcr die sichere Entsorgung von \u00dcberwachungsr\u00fcckst\u00e4nden unter Ber\u00fccksichtigung von Umweltstandards erforderlich?",
   "name": [
-    "AtEV.pdf--250712",
-    "AtEV.pdf--250712",
+    "StrlSchV.pdf--250712",
+    "StrlSchG.pdf--250712",
     "StrlSchG.pdf--250712"
   ],
   "path": [
-    "kb/insert_data/AtEV.pdf",
-    "kb/insert_data/AtEV.pdf",
+    "kb/insert_data/StrlSchV.pdf",
+    "kb/insert_data/StrlSchG.pdf",
     "kb/insert_data/StrlSchG.pdf"
   ]
 }
+```
 
-## Formatted Documents
+### Wie lassen sich branchenspezifische Anforderungen bei der Umsetzung regulierter Entsorgungspraktiken berücksichtigen?
 
-Number of formatted document sets: 0
+#### Item 1
 
-## Note on Query Processing
+**Content:**
+```
+Content: Rückstände aus der Überwachung mit erhöhten Konzentrationen natürlicher Radionuklide können gemäß § 95a des Strahlenschutzgesetzes (StrlSchG) entsorgt werden, wobei Ausnahmen nur erlaubt sind, wenn keine Gesundheitsrisiken bestehen und EU-Rechtsakte nicht verletzt werden [Source_filename]. Die Bundesregierung regelt durch Rechtsverordnung mit Zustimmung des Bundestages die Vermeidung, Beseitigung oder Bewirtschaftung solcher Rückstände sowie den Betrieb von Anlagen zur Behandlung kontaminierter Abfälle [Source_filename]. Kontaminationswerte für Abfälle und Stoffe werden festgelegt; bei Unterschreitung sind zusätzliche Schutzmaßnahmen nicht erforderlich, sofern der Schutz von Mensch und Umwelt durch Kreislaufwirtschaftsgesetze und andere Bundesgesetze gewährleistet ist [Source_filename]. Die zuständigen Behörden dürfen Ausnahmen erteilen, wenn die radiologische Lage und Notfallumstände dies angemessen erlauben. Eigentümer, Betreiber von Anlagen sowie Sammler/Transporteure sind verpflichtet, Informationen über kontaminierte Stoffe zu bereitstellen [Source_filename].
+Importance_score: 6.42
+Source_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712
+Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf
+```
 
-Queries are now processed directly without numerical mapping.
+**Metadata:**
+```json
+{
+  "position": 4,
+  "query": "Wie lassen sich branchenspezifische Anforderungen bei der Umsetzung regulierter Entsorgungspraktiken ber\u00fccksichtigen?",
+  "name": [
+    "StrlSchG.pdf--250712",
+    "StrlSchG.pdf--250712",
+    "StrlSchG.pdf--250712"
+  ],
+  "path": [
+    "kb/insert_data/StrlSchG.pdf",
+    "kb/insert_data/StrlSchG.pdf",
+    "kb/insert_data/StrlSchG.pdf"
+  ]
+}
+```
 
-## Complete State (Safe Serializable Keys)
+### Welche Compliance-Tools sind effektiv zur Sicherstellung der Einhaltung internationaler Vorgaben bei der Entsorgung von Radionuklid-Rückständen?
+
+#### Item 1
+
+**Content:**
+```
+Content: Die Entsorgung von Rückständen aus der Überwachung unterliegt strengen gesetzlichen Vorgaben und Compliance-Anforderungen. Für die sichere Entsorgung abgebrannter Brennelemente und radioaktiver Abfälle ist das Nationale Entsorgungsprogramm nach § 2c sowie dessen Umsetzung maßgeblich [AtG.pdf--250712]. Zudem sind Selbstbewertungen der kerntechnischen Anlagen erforderlich, wobei die Ergebnisse einer internationalen gegenseitigen Überprüfung durch das Bundesministerium für den Schutz des öffentlichen Lebens und die Strahlenschutzbehörden berücksichtigt werden [AtG.pdf--250712].  
+
+Für die Durchführung von Messungen mit erhöhter radioaktiver Konzentration müssen Sicherheitsmaßnahmen gemäß internationalen Verpflichtungen gewährleistet sein, wobei radioaktive Stoffe so gelagert werden müssen, dass die Sicherheitsvorschriften nicht beeinträchtigt werden [StrlSchV.pdf--250712]. Insbesondere Röntgeneinrichtungen und Anlagen zur Erzeugung ionisierender Strahlung sind mindestens alle fünf Jahre durch Sachverständige auf sicherheitstechnische Funktion, Sicherheit und Strahlenschutz zu prüfen [StrlSchV.pdf--250712].  
+
+Zur Überwachung von grenzüberschreitenden Transporten radioaktiver Substanzen ist eine Genehmigung durch die für die Beförderung zuständige Behörde erforderlich, wobei der Vertrag schriftformbedingt und vor Beginn der Beförderung abgeschlossen werden muss [StrlSchV.pdf--250712]. Die Bundesrepublik Deutschland setzt das Pariser Übereinkommen innerstaatlich um, soweit nicht gegenseitige Regelungen vorausgesetzt sind [AtG.pdf--250712].
+Importance_score: 5.20
+Source_filename: strlschg_en_bf.pdf--250712, AtG.pdf--250712, StrlSchV.pdf--250712
+Source_path: kb/insert_data/strlschg_en_bf.pdf, kb/insert_data/AtG.pdf, kb/insert_data/StrlSchV.pdf
+```
+
+**Metadata:**
+```json
+{
+  "position": 5,
+  "query": "Welche Compliance-Tools sind effektiv zur Sicherstellung der Einhaltung internationaler Vorgaben bei der Entsorgung von Radionuklid-R\u00fcckst\u00e4nden?",
+  "name": [
+    "strlschg_en_bf.pdf--250712",
+    "AtG.pdf--250712",
+    "StrlSchV.pdf--250712"
+  ],
+  "path": [
+    "kb/insert_data/strlschg_en_bf.pdf",
+    "kb/insert_data/AtG.pdf",
+    "kb/insert_data/StrlSchV.pdf"
+  ]
+}
+```
+
+## formatted_documents
+
+*Empty dictionary*
+
+## additional_context
+
+```
+1. Der Benutzer sucht nach Methoden zur sicheren Entsorgung von Materialien mit erhöhten Konzentrationen natürlicher Radionuklide, wobei gesetzliche Rahmenbedingungen und Compliance-Anforderungen im Vordergrund stehen.  
+2. Die Anforderungen beinhalten die Entwicklung von Verfahren, die sowohl technische als auch rechtliche Standards erfüllen, insbesondere in Bereichen wie Umweltüberwachung oder Energieversorgung.  
+3. Schwerpunkte liegen auf der Einhaltung nationaler und internationaler Vorgaben, der Integration von Compliance-Tools wie Risikobewertungen und der Bewältigung von Herausforderungen bei der Umsetzung regulierter Entsorgungspraktiken.  
+4. Die Lösungen müssen branchenspezifische Charakteristika berücksichtigen, um effiziente, nachhaltige und rechtlich abgesicherte Entsorgungsstrategien für radioaktive Rückstände zu gewährleisten.
+```
+
+---
+
+# FULL ResearcherStateV2 WORKFLOW STATE AT SUMMARIZE_QUERY_RESEARCH STEP
 
 ```json
 {
   "search_summaries": {
-    "Wie k\u00f6nnen R\u00fcckst\u00e4nde aus der \u00dcberwachung entlassen werden?": [
-      "page_content='Content: Die Entlassung von \u00fcberwachungsbed\u00fcrftigen R\u00fcckst\u00e4nden aus der \u00dcberwachung ist unter bestimmten Voraussetzungen zul\u00e4ssig. Diese sind:\n\n1. **Einhaltung der Sicherheitsma\u00dfnahmen**:  \n   Die Beh\u00f6rde muss sicherstellen, dass die Beseitigung oder Verwertung des Materials den Schutz der Bev\u00f6lkerung gew\u00e4hrleistet (maximal 1 Millisievert im Kalenderjahr Exposition ohne weiteren Ma\u00dfnahmen). Dies gilt insbesondere f\u00fcr Materialien wie Bauprodukte.\n\n2. **Einhaltung von Vorgaben**:  \n   - Die Verwertungswege m\u00fcssen gem\u00e4\u00df den in der Rechtsverordnung festgelegten \u00dcberwachungsgrenzen und -vorschriften eingehalten werden (z.B. Absatz 6 Nummer 1).  \n   - Bei der Beseitigung von R\u00fcckst\u00e4nden als Bauprodukte muss die Erf\u00fcllung der Anforderungen in \u00a7\u00a7 133 bis 135 gew\u00e4hrleistet sein.\n\n3. **Verpflichteter Hinweis**:  \n   Der Verpflichtete (z.B. Betreiber) muss unverz\u00fcglich bei Feststellung der \u00dcberwachungsbed\u00fcrftigkeit die Entlassung des Materials an die Beh\u00f6rde melden, soweit eine Anzeige nach Absatz 6 Nummer 1 erforderlich ist.\n\n4. **Ausnahmen**:  \n   - Die Beh\u00f6rde kann den Verpflichteten bei spezifischen Nutzungsvoraussetzungen (z.B. hoher Exposition) befreien, wenn die Sicherheitsma\u00dfnahmen erf\u00fcllt sind und das vorgesehene Verwertungs- oder Beseitigungsweg abfallrechtlich zul\u00e4ssig ist.\n\n**Zusammenfassung**:  \nDie Entlassung von R\u00fcckst\u00e4nden aus der \u00dcberwachung erfolgt unter strengen Sicherheitsvorschriften, wobei die Exposition auf maximal 1 Millisievert pro Jahr limitiert bleibt. Die Verwertungswege m\u00fcssen gem\u00e4\u00df gesetzlichen Vorgaben eingehalten werden, und es gibt Ausnahmen bei spezifischen Nutzungsvoraussetzungen.\nImportance_score: 5.80\nSource_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712\nSource_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf' metadata={'position': 0, 'query': 'Wie k\u00f6nnen R\u00fcckst\u00e4nde aus der \u00dcberwachung entlassen werden?', 'name': ['StrlSchG.pdf--250712', 'StrlSchG.pdf--250712', 'StrlSchG.pdf--250712'], 'path': ['kb/insert_data/StrlSchG.pdf', 'kb/insert_data/StrlSchG.pdf', 'kb/insert_data/StrlSchG.pdf']}"
+    "Wie können Rückstände aus der Überwachung entlassen werden?": [
+      {
+        "content": "Content: Die Entlassung von Rückständen aus der Überwachung erfolgt gemäß den Vorgaben des Strahlenschutzgesetzes (StrlSchG) unter strengen gesetzlichen Rahmenbedingungen:  \n\n1. **Voraussetzungen für die Entlassung**:  \n   - Die zuständige Behörde entlässt überwachungsbedürftige Rückstände aus der Überwachung, wenn durch Maßnahmen zur Verwertung oder Beseitigung der erforderliche Schutz vor Strahlung sicherstellt ist (§ 62 Abs. 2).  \n   - Die Körperdosis beruflich Exponierter darf die Werte für die Einstufung als „beruflich exponierte Person“ nicht überschreiten.  \n   - Keine Bedenken gegen die abfallrechtliche Zulässigkeit des Verwertungs- oder Beseitigungsweges bestehen (§ 62 Abs. 2).  \n\n2. **Schutz der Bevölkerung**:  \n   - Der Schutzmaßstab ist, dass die effektive Dosis von Einzelpersonen durch Beseitigung/Verwertung nicht mehr als **1 Millisievert im Kalenderjahr** überschreitet (§ 62 Abs. 3).  \n   - Bei Verwendung der Rückstände als Bauprodukte müssen zudem die Anforderungen von § 133–135 erfüllt sein.  \n\n3. **Verfahren und Dokumentation**:  \n   - Der verpflichtete Betreiber muss unverzüglich nach Feststellung der Überwachungsbedürftigkeit eine Anmeldung zur Verwertung/Beseitigung einreichen (§ 62 Abs. 1).  \n   - Bei Ablehnung einer Entlassungszulassung ist eine **Anzeige gemäß § 63** erforderlich, die innerhalb von einem Monat nach Feststellung der Überwachungsbedürftigkeit abzugeben ist (§ 63 Abs. 1).  \n   - Die Behörde kann verlangen, dass der Verbleib entfernter Kontaminationen nachgewiesen wird (§ 64 Abs. 2).  \n\n4. **Grenzüberschreitende Transporte**:  \n   - Die grenzüberschreitende Verbringung von Rückständen ins Inland zur Beseitigung ist **verboten** (§ 65 Abs. 7).  \n\n5. **Rechtliche Grundlagen**:  \n   - Eine abfallrechtliche Verwertung oder Beseitigung ohne Entlassung aus der Überwachung ist nicht zulässig (§ 62 Abs. 4).  \n   - Die Bundesregierung wird ermächtigt, durch Rechtsverordnung mit Zustimmung des Bundestags die konkreten Verwertungswege und Schutzmaßnahmen zu regeln (§ 63–65).  \n\n**Zusammenfassend**: Die Entlassung von Rückständen aus der Überwachung setzt eine umfassende Prüfung der Strahlenschutzanforderungen, die Einhaltung gesetzlicher Grenzwerte und die Zustimmung der zuständigen Behörde voraus. Zudem sind dokumentierte Nachweise zur Sicherheit und Verwertbarkeit erforderlich.\nImportance_score: 5.80\nSource_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712\nSource_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf",
+        "metadata": {
+          "position": 0,
+          "query": "Wie können Rückstände aus der Überwachung entlassen werden?",
+          "name": [
+            "StrlSchG.pdf--250712",
+            "StrlSchG.pdf--250712",
+            "StrlSchG.pdf--250712"
+          ],
+          "path": [
+            "kb/insert_data/StrlSchG.pdf",
+            "kb/insert_data/StrlSchG.pdf",
+            "kb/insert_data/StrlSchG.pdf"
+          ],
+          "importance_score": "N/A"
+        }
+      }
     ],
-    "Wie k\u00f6nnen Materialien mit erh\u00f6hten Gehalten an nat\u00fcrlich vorkommenden Radionukliden sicher entsorgt werden?": [
-      "page_content='Content: Die Entfernung und Abwasserung von radioaktivem Material aus \u00dcberwachungszielen unterliegen strengen gesetzlichen Vorschriften, die sich in den genannten Dokumenten detailliert beschreiben. Hier sind die zentralen Regelungen:\n\n1. **Genehmigungsverfahren**:  \n   - Die Transport oder Abgabe von Kernbrennstoffen und radioaktivem Material erfordert eine Genehmigung (\u00a7 3 AtG).  \n   - F\u00fcr den Ausfuhr- oder Einfuhrschein ist die Genehmigung nur in schwerwiegenden Gr\u00fcnden m\u00f6glich, wenn die Sicherheit der Nichtverbreitung von Kernbrennstoffen oder der Versorgung deutscher Forschungsreaktoren gew\u00e4hrleistet wird (\u00a7 6 AtG).\n\n2. **Sicherheitsvorschriften**:  \n   - Der Transporter muss sicherstellen, dass das Material nur an autorisierte Empf\u00e4nger \u00fcbergeben wird (\u00a7 95 StrlSchV).  \n   - Bei der Abgabe von St\u00f6rstrahlern ist eine Genehmigungsfreiheit vorgesehen, wenn die Sicherheitsvorschriften erf\u00fcllt sind (\u00a7 96 StrlSchV).\n\n3. **Verfahrensweise**:  \n   - Die Durchf\u00fchrung von Ma\u00dfnahmen erfolgt nach einem abgestuften Konzept (\u00a7 3 AtG).  \n   - Abgebrannte Brennelemente und radioaktive Abf\u00e4lle m\u00fcssen sicher entsorgt werden, wobei auch die Aspekte der **passiven Sicherheit** ber\u00fccksichtigt sind (\u00a7 3 Abs. 2 AtG).\n\n4. **Dokumentation**:  \n   - Ein faktengest\u00fctzter Entscheidungsprozess ist f\u00fcr alle Stufen der Abwasserung vorgeschrieben, um die Nachvollziehbarkeit und Sicherheit zu gew\u00e4hrleisten (\u00a7 3 Abs. 6 AtG).\n\n5. **Zus\u00e4tzliche Vorschriften**:  \n   - Die wechselseitigen Abh\u00e4ngigkeiten zwischen Anfall und Entsorgung m\u00fcssen abgebrannten Brennelementen ber\u00fccksichtigt werden (\u00a7 3 Abs. 2a AtG).  \n\n**Kurz zusammenfassend**: Radioaktive Residuen aus \u00dcberwachungszielen m\u00fcssen gem\u00e4\u00df den gesetzlichen Vorschriften genehmigter Transport und Abgabe erfolgen, mit Schwerpunkt auf Sicherheit (passiv & aktiv), Dokumentation und Compliance mit Rechtsvorschriften. Die Verfahren sind abgestuft und betonen die langfristige Risikobewertung sowie den Schutz der Allgemeinheit.\nImportance_score: 5.53\nSource_filename: StrlSchG.pdf--250712, StrlSchV.pdf--250712, AtG.pdf--250712\nSource_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchV.pdf, kb/insert_data/AtG.pdf' metadata={'position': 1, 'query': 'Wie k\u00f6nnen Materialien mit erh\u00f6hten Gehalten an nat\u00fcrlich vorkommenden Radionukliden sicher entsorgt werden?', 'name': ['StrlSchG.pdf--250712', 'StrlSchV.pdf--250712', 'AtG.pdf--250712'], 'path': ['kb/insert_data/StrlSchG.pdf', 'kb/insert_data/StrlSchV.pdf', 'kb/insert_data/AtG.pdf']}"
+    "Welche rechtlichen Rahmenbedingungen gelten für die Entsorgung von Materialien mit erhöhten Konzentrationen natürlicher Radionuklide?": [
+      {
+        "content": "Content: Die Entsorgung von Rückständen mit erhöhter Konzentration natürlicher Radionuklide unter Berücksichtigung rechtlicher Rahmenbedingungen erfolgt gemäß folgenden Vorschriften:  \n\n1. **Regeldeckungssummen (§ 8 Abs. 3–5, § 8a AtDeckV):**  \n   - Bei der Entsorgung radioaktiver Abfälle in einer Landessammelstelle oder zugelassener Einrichtung beträgt die Regeldeckungssumme **7 Millionen Euro**, sofern es sich nicht um eine Kernanlage handelt. Für Abfälle aus Anlagen im Sinne des Atomgesetzes (§ 7) steigt der Betrag auf **70 Millionen Euro**.  \n   - Bei Beförderung von radioaktiven Stoffen darf die Deckungssumme den Betrag von **35 Millionen Euro nicht überschreiten**, soweit dies angemessen ist (§ 8 Abs. 5).  \n\n2. **Entsorgungsbedingungen gemäß StrlSchG:**  \n   - Bei radioaktiver Kontamination durch einen Notfall gelten **Kontaminationswerte** als sicher, wenn die Abfälle in Anlagen entsorgt werden, die den Schutz von Mensch und Umwelt gewährleisten (§ 3 Abs. 1 StrlSchG).  \n   - Ausnahmen zur Rechtsvorschriften sind nur zulässig, **sofern keine Gesundheitsrisiken** entstehen oder EU-Recht verletzt wird (§ 2 Abs. 2 StrlSchG).  \n\n3. **Verbot der Wiederverwendung (AtG):**  \n   - Radioaktive Stoffe mit erhöhter Konzentration natürlicher Radionuklide dürfen nicht wiederaufgenommen oder verarbeitet werden, wenn sie gemäß einer Verordnung unter § 1 Abs. 1 Nr. 1 des Atomgesetzes (AtG) freigegeben wurden (§ 3 AtG).  \n\n4. **Kernmaterialien und Transport:**  \n   - Für den Transport von Kernmaterialien gilt eine Regeldeckungssumme von **80 Millionen Euro**, die bei bestimmten Mengen oder Aktivitäten auf bis zu **125 Millionen Euro erhöht** werden kann (§ 8a Abs. 1 AtDeckV).  \n\nDiese Vorschriften sichern den Schutz vor Strahlungseffekten und ermöglichen eine rechtliche Entsorgung unter Einhaltung der Kreislaufwirtschafts- sowie Atomgesetze. Ausnahmen sind nur bei unbedenklicher Risikominimierung zulässig (§ 2 Abs. 2 StrlSchG).\nImportance_score: 6.73\nSource_filename: AtG.pdf--250712, StrlSchG.pdf--250712, AtDeckV.pdf--250712\nSource_path: kb/insert_data/AtG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/AtDeckV.pdf",
+        "metadata": {
+          "position": 1,
+          "query": "Welche rechtlichen Rahmenbedingungen gelten für die Entsorgung von Materialien mit erhöhten Konzentrationen natürlicher Radionuklide?",
+          "name": [
+            "AtG.pdf--250712",
+            "StrlSchG.pdf--250712",
+            "AtDeckV.pdf--250712"
+          ],
+          "path": [
+            "kb/insert_data/AtG.pdf",
+            "kb/insert_data/StrlSchG.pdf",
+            "kb/insert_data/AtDeckV.pdf"
+          ],
+          "importance_score": "N/A"
+        }
+      }
     ],
-    "Welche rechtlichen und regulatorischen Anforderungen gelten f\u00fcr die Entsorgung solcher radioaktiver R\u00fcckst\u00e4nde?": [
-      "page_content='Content: Die Verordnung \u00fcber Anforderungen und Verfahren zur Entsorgung radioaktiver Abf\u00e4lle (Atomrechtliche Entsorgungsverordnung - AtEV) regelt die Pflichten bei der Ausgabe und Empfang von radioaktivem Material. Dabei sind folgende Aspekte relevant:\n\n1. **Aufzeichnungen in elektronischen Buchf\u00fchrungssystemen**:  \n   Die Verpflichteten (z.B. Arbeitgeber, Beh\u00f6rden) m\u00fcssen sicherstellen, dass die erfassten Angaben (wie Anfall und Verbleib von radioaktiven Abf\u00e4llen) in elektronischen Systemen aufgezeichnet werden, sodass sie unverz\u00fcglich zur Verf\u00fcgung gestellt werden k\u00f6nnen. Dies ist gem\u00e4\u00df \u00a7 2 Absatz 1 des AtEV vorgesehen.\n\n2. **Dokumentation der erfassten Angaben**:  \n   Die Angaben m\u00fcssen nach Ablieferung an Landessammelstellen oder Anlagen des Bundes mindestens ein Jahr lang bereitzustellt werden (\u00a7 3 Absatz 4). Dies umfasst den Erwarteten Anfall und Verbleib f\u00fcr das laufende Kalenderjahr sowie seit dem letzten Stichtag.\n\n3. **Behandlung und Verpackung**:  \n   Die Behandlungsart und Verpackung der Abf\u00e4lle m\u00fcssen entsprechend den Anforderungen des Betreibers (z.B. durch die Dritte nach \u00a7 9a Absatz 3 Satz 2) erfolgen. F\u00fcr Abf\u00e4lle, die an Landessammelstellen abgeliefert wurden, sind zus\u00e4tzliche Kosten f\u00fcr eine nachtr\u00e4gliche \u00c4nderung der Anforderungen festgelegt.\n\n4. **Kennzeichnung und Sicherheitstechnik**:  \n   Beh\u00e4lter oder Verpackungs-Unit m\u00fcssen mit Kennzeichnungen (gem\u00e4\u00df Anlage Teil B) versehen sein, um die Gefahren zu verhindern. Dies ist unber\u00fchrt von den Vorgaben des Gefahrgutbef\u00f6rderungsgesetzes.\n\n5. **Verpflichtungen bei der Ausgabe**:  \n   Wer radioaktive Abf\u00e4lle abgibt, muss vor Beginn einer T\u00e4tigkeit eine schriftliche Erkl\u00e4rung des Empf\u00e4ngers \u00fcber seine Annahmebereitschaft einholen und die erfassten Angaben (\u00a7 2 Absatz 1) dem Empf\u00e4nger zur Verf\u00fcgung stellen. Dies ist auch in elektronischer Form vorgesehen.\n\nDiese Regelungen sind Teil der Umsetzung der EU-Richtlinie 2013/59/Euratom, die den Schutz vor ionisierender Strahlung regelt (ABl. L 13 vom 17.1.2014). Die Verordnung ist am 31. Dezember 2018 in Kraft getreten und wurde mit Zustimmung mehrerer Ministerien beschlossen.\nImportance_score: 7.00\nSource_filename: AtG.pdf--250712, AtEV.pdf--250712, AtEV.pdf--250712\nSource_path: kb/insert_data/AtG.pdf, kb/insert_data/AtEV.pdf, kb/insert_data/AtEV.pdf' metadata={'position': 2, 'query': 'Welche rechtlichen und regulatorischen Anforderungen gelten f\u00fcr die Entsorgung solcher radioaktiver R\u00fcckst\u00e4nde?', 'name': ['AtG.pdf--250712', 'AtEV.pdf--250712', 'AtEV.pdf--250712'], 'path': ['kb/insert_data/AtG.pdf', 'kb/insert_data/AtEV.pdf', 'kb/insert_data/AtEV.pdf']}"
+    "Wie werden Risikobewertungen in der Entwicklung von Entsorgungsverfahren für radioaktive Rückstände integriert?": [
+      {
+        "content": "Content: Die Entlassung überwachungsbedürftiger Rückstände aus der Überwachtung zur Verwertung als Bauprodukt erfolgt gemäß § 30 des Strahlenschutzgesetzes (StrlSchV). Dazu muss der Antragsteller folgende Unterlagen vorlegen:  \n1. Eine Erklärung über den Verbleib der Rückstände,  \n2. eine Annahmeerklärung des Herstellers des Bauprodukts sowie  \n3. eine Bestätigung, dass die voraussichtliche Exposition durch Gammastrahlung nicht den Referenzwert nach § 133 StrlSchG überschreitet [StrlSchV.pdf--250712].  \n\nDie zuständige Behörde prüft dabei, ob das Dosiskriterium gemäß § 62 Absatz 3 Satz 1 des StrlSchG nicht verletzt wird. Zudem bleiben die Bestimmungen des Kreislaufwirtschaftsgesetzes unberührt [StrlSchV.pdf--250712].  \n\nFür die Freigabe radioaktiver Stoffe (§ 31 StrlSchV) ist sicherzustellen, dass eine effektive Dosis von maximal 10 Mikrosievert pro Kalenderjahr für Einzelpersonen der Bevölkerung entsteht. Eine Freigabe ersetzt keine Genehmigung nach § 7 Absatz 3 des Atomgesetzes (AtG) [StrlSchV.pdf--250712].  \n\nDie Entsorgung abgebrannter Brennelemente und radioaktiver Abfälle erfolgt im Rahmen eines abgestuften Konzepts, wobei die Kosten von den Erzeugern getragen werden. Dabei sind faktengestützte Entscheidungsprozesse sowie die Berücksichtigung der Sicherheit (inklusive Schutzmaßnahmen) vorgeschrieben [AtG.pdf--250712].  \n\nZusätzlich gelten für die Überwachung und Verwertung von Rückständen im Rahmen des Strahlenschutzes strenge Vorschriften, darunter die Einhaltung internationaler Verpflichtungen und Sicherheitsstandards [StrlSchG.pdf--250712].\nImportance_score: 6.33\nSource_filename: StrlSchG.pdf--250712, AtG.pdf--250712, StrlSchV.pdf--250712\nSource_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/AtG.pdf, kb/insert_data/StrlSchV.pdf",
+        "metadata": {
+          "position": 2,
+          "query": "Wie werden Risikobewertungen in der Entwicklung von Entsorgungsverfahren für radioaktive Rückstände integriert?",
+          "name": [
+            "StrlSchG.pdf--250712",
+            "AtG.pdf--250712",
+            "StrlSchV.pdf--250712"
+          ],
+          "path": [
+            "kb/insert_data/StrlSchG.pdf",
+            "kb/insert_data/AtG.pdf",
+            "kb/insert_data/StrlSchV.pdf"
+          ],
+          "importance_score": "N/A"
+        }
+      }
     ],
-    "Welche Techniken werden in der Praxis zur Behandlung von radioaktiv belasteten Materialien eingesetzt?": [
-      "page_content='Content: Die Entlassung von R\u00fcckst\u00e4nden aus der \u00dcberwachung unterliegt den gesetzlichen Vorgaben des Atomgesetzes und entsprechenden Rechtsverordnungen. Insbesondere sind Materialien, die in Verbindung mit nat\u00fcrlicher Radioaktivit\u00e4t angewendet werden (siehe Abschnitt 10), als \u201ePractices\u201c zu klassifizieren, wobei deren Isotopenprozentanteil oder Konzentrationen bestimmte Grenzen nicht \u00fcberschreiten. Diese Klassifikation beeinflusst die Lizenzvergabe und -erforderungen f\u00fcr ihre Verwendung sowie den Umgang mit ihnen. Zudem sind Kernbrennstoffe, die in der Natur auftreten oder als solche genutzt werden, unter bestimmten Bedingungen nicht zur \u00dcberwachung nach dem Atomgesetz unterliegen (siehe Abschnitt 3). Die Entsorgung solcher Materialien muss daher gem\u00e4\u00df den Vorschriften des Atomgesetzes und der Rechtsverordnungen erfolgen.\nImportance_score: 6.11\nSource_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, strlschg_en_bf.pdf--250712\nSource_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/strlschg_en_bf.pdf' metadata={'position': 3, 'query': 'Welche Techniken werden in der Praxis zur Behandlung von radioaktiv belasteten Materialien eingesetzt?', 'name': ['StrlSchG.pdf--250712', 'StrlSchG.pdf--250712', 'strlschg_en_bf.pdf--250712'], 'path': ['kb/insert_data/StrlSchG.pdf', 'kb/insert_data/StrlSchG.pdf', 'kb/insert_data/strlschg_en_bf.pdf']}"
+    "Welche technischen Verfahren sind für die sichere Entsorgung von Überwachungsrückständen unter Berücksichtigung von Umweltstandards erforderlich?": [
+      {
+        "content": "Content: Um die Beseitigung oder Verwertung von überwachungsbedürftigen Rückständen im Einklang mit rechtlichen Vorgaben durchzuführen, gelten folgende Regelungen:  \n\n1. **Anmeldung und Genehmigung**  \n   Nach § 62 Absatz 1 des Strahlenschutzgesetzes (StrlSchG) muss der Verpflichtete die beabsichtigte Verwertung oder Beseitigung von Rückständen unverzüglich bei der zuständigen Behörde anmelden. Die Entlassung aus der Überwachung erfolgt durch schriftlichen Bescheid, sofern:  \n   - Der Schutz der Bevölkerung vor Strahlungsexposition sichergestellt ist (§ 62 Absatz 2 Nummer 1),  \n   - Bei Beseitigung oder Verwertung die Körperdosis beruflich Exponierter nicht überschreitet (Nummer 2) und  \n   - Keine Bedenken gegen die abfallrechtliche Zulässigkeit des Weges bestehen (Nummer 3).  \n\n2. **Expositionsmaßstab**  \n   Der Schutz der Bevölkerung orientiert sich an einem Richtwert von einer effektiven Dosis von **1 Millisievert pro Kalenderjahr**, ohne weitere Maßnahmen nach Abschluss der Verwertung oder Beseitigung (§ 62 Absatz 3). Bei Verwendung als Bauprodukt müssen zudem die Anforderungen aus §§ 133 bis 135 erfüllt werden.  \n\n3. **Dokumentation und Nachweis**  \n   Für die Freigabe der Rückstände sind folgende Unterlagen erforderlich:  \n   - Ein Verpflichtungserklärung zur Beseitigung oder Verwertung (§ 62 Absatz 1),  \n   - Eine Akzeptanzbestätigung durch den Recycler oder Disposer,  \n   - Nachweis der Abgabe dieser Dokumente an die zuständige Behörde für das betroffene Facility.  \n\n4. **Grenzüberschreitende Verbringung**  \n   Die Beseitigung von Rückständen ins Inland aus dem Ausland ist verboten (§ 62 Absatz 5). Für die Einfuhr müssen zusätzliche Nachweise erbracht werden, dass Überwachungsgrenzen und Verwertungswege eingehalten werden.  \n\n5. **Verordnungsermächtigung**  \n   Die Bundesregierung kann durch Rechtsverordnungen (mit Zustimmung des Bundestags) folgende Regelungen festlegen:  \n   - Grundsätze zur Ermittlung von Expositionen bei Rückständen,  \n   - Bedingungen für die Annahme einer maximalen Dosis von 1 Millisievert pro Jahr ohne weitere Maßnahmen (§ 63 Absatz 2),  \n   - Verfahrensregeln für Entlassung aus der Überwachung, insbesondere bei grenzüberschreitender Nutzung oder Beseitigung.  \n\nDiese Regelungen sichern die Einhaltung von Sicherheitsstandards und ermöglichen eine rechtssichere Entsorgung unter Berücksichtigung technischer sowie abfallrechtlicher Anforderungen (StrlSchG, § 62–63; StrlSchV, §§ 1–7).\nImportance_score: 5.48\nSource_filename: StrlSchV.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712\nSource_path: kb/insert_data/StrlSchV.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf",
+        "metadata": {
+          "position": 3,
+          "query": "Welche technischen Verfahren sind für die sichere Entsorgung von Überwachungsrückständen unter Berücksichtigung von Umweltstandards erforderlich?",
+          "name": [
+            "StrlSchV.pdf--250712",
+            "StrlSchG.pdf--250712",
+            "StrlSchG.pdf--250712"
+          ],
+          "path": [
+            "kb/insert_data/StrlSchV.pdf",
+            "kb/insert_data/StrlSchG.pdf",
+            "kb/insert_data/StrlSchG.pdf"
+          ],
+          "importance_score": "N/A"
+        }
+      }
     ],
-    "Gibt es bew\u00e4hrte Verfahren zur Minimierung der Umweltbelastung bei der Entsorgung von radioaktivem Material?": [
-      "page_content='Content: Die im Texten genannten Gesetze und Verordnungen regeln die \u00dcberwachung der Umweltradioaktivit\u00e4t sowie die Abfallverwertung und -transport. Die zentralen Punkte sind wie folgt zusammengefasst:\n\n1. **Mess- und Daten\u00fcbermittlung**:  \n   - Die Bundesbeh\u00f6rden (z.B. *Bundesamt f\u00fcr Strahlenschutz*) erheben datengetriebt die Umweltradioaktivit\u00e4t in verschiedenen Bereichen:  \n     - Lebensmittel, Trinkwasser, Boden, Abw\u00e4sser und Kl\u00e4rschlamm.  \n     - Die L\u00e4nder \u00fcbermitteln ihre Daten an die *Zentralstelle des Bundes f\u00fcr die \u00dcberwachung der UmelrRadioaktivit\u00e4t* (\u00a7 163).  \n\n2. **Messverfahren**:  \n   - Es werden Probenahme-, Analyse- und Messmethoden entwickelt, um die Umweltradioaktivit\u00e4t zu bestimmen.  \n   - Vergleichsmessungen und Analysen sind erforderlich, insbesondere bei der Bewertung von Daten (\u00a7 162).  \n\n3. **Abfallverwertung**:  \n   - Radioaktive Abf\u00e4lle aus Rekuperatoren oder Wiederaufarbeitungsprozessen m\u00fcssen gem\u00e4\u00df den Verordnungen dokumentiert und \u00fcbermittelt werden, insbesondere bei der Lagerung in trockenen Zwischenlagerungen (\u00a7 162).  \n\n4. **Entscheidungshilfesysteme**:  \n   - Die Entwicklung von Entscheidungsunterst\u00fctzsystemen zur Bewertung der Umweltradioaktivit\u00e4t ist vorgesehen, um die Daten f\u00fcr politische und technische Entscheidungen zu nutzen (\u00a7 162 Absatz 5).  \n\n5. **Transportverfahren**:  \n   - Transportmeldungen an die Aufsichtbeh\u00f6rden m\u00fcssen mit Angaben zur Abfallart, Menge, Aktivit\u00e4t sowie Bef\u00f6rderungsgenehmigung beinhalten (\u00a7 4 Absatz 2 Strahlenschutzgesetz).  \n\n6. **L\u00e4nderverpflichtungen**:  \n   - Die L\u00e4nder sind verpflichtet die Umweltradioaktivit\u00e4t in Lebensmitteln und anderen Bereichen zu \u00fcberwachen, insbesondere bei der Erhebung von Daten (\u00a7 162 Absatz 1).  \n\nDiese Regelung gew\u00e4hrleistet eine systematische Erfassung, Analyse und Verarbeitung der radioaktiven Stoffe im Umfeld, um die Sicherheit und Gesundheit sowie den Schutz des \u00d6kosystems zu sichern.\nImportance_score: 6.00\nSource_filename: AtEV.pdf--250712, AtEV.pdf--250712, StrlSchG.pdf--250712\nSource_path: kb/insert_data/AtEV.pdf, kb/insert_data/AtEV.pdf, kb/insert_data/StrlSchG.pdf' metadata={'position': 4, 'query': 'Gibt es bew\u00e4hrte Verfahren zur Minimierung der Umweltbelastung bei der Entsorgung von radioaktivem Material?', 'name': ['AtEV.pdf--250712', 'AtEV.pdf--250712', 'StrlSchG.pdf--250712'], 'path': ['kb/insert_data/AtEV.pdf', 'kb/insert_data/AtEV.pdf', 'kb/insert_data/StrlSchG.pdf']}"
+    "Wie lassen sich branchenspezifische Anforderungen bei der Umsetzung regulierter Entsorgungspraktiken berücksichtigen?": [
+      {
+        "content": "Content: Rückstände aus der Überwachung mit erhöhten Konzentrationen natürlicher Radionuklide können gemäß § 95a des Strahlenschutzgesetzes (StrlSchG) entsorgt werden, wobei Ausnahmen nur erlaubt sind, wenn keine Gesundheitsrisiken bestehen und EU-Rechtsakte nicht verletzt werden [Source_filename]. Die Bundesregierung regelt durch Rechtsverordnung mit Zustimmung des Bundestages die Vermeidung, Beseitigung oder Bewirtschaftung solcher Rückstände sowie den Betrieb von Anlagen zur Behandlung kontaminierter Abfälle [Source_filename]. Kontaminationswerte für Abfälle und Stoffe werden festgelegt; bei Unterschreitung sind zusätzliche Schutzmaßnahmen nicht erforderlich, sofern der Schutz von Mensch und Umwelt durch Kreislaufwirtschaftsgesetze und andere Bundesgesetze gewährleistet ist [Source_filename]. Die zuständigen Behörden dürfen Ausnahmen erteilen, wenn die radiologische Lage und Notfallumstände dies angemessen erlauben. Eigentümer, Betreiber von Anlagen sowie Sammler/Transporteure sind verpflichtet, Informationen über kontaminierte Stoffe zu bereitstellen [Source_filename].\nImportance_score: 6.42\nSource_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712\nSource_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf",
+        "metadata": {
+          "position": 4,
+          "query": "Wie lassen sich branchenspezifische Anforderungen bei der Umsetzung regulierter Entsorgungspraktiken berücksichtigen?",
+          "name": [
+            "StrlSchG.pdf--250712",
+            "StrlSchG.pdf--250712",
+            "StrlSchG.pdf--250712"
+          ],
+          "path": [
+            "kb/insert_data/StrlSchG.pdf",
+            "kb/insert_data/StrlSchG.pdf",
+            "kb/insert_data/StrlSchG.pdf"
+          ],
+          "importance_score": "N/A"
+        }
+      }
+    ],
+    "Welche Compliance-Tools sind effektiv zur Sicherstellung der Einhaltung internationaler Vorgaben bei der Entsorgung von Radionuklid-Rückständen?": [
+      {
+        "content": "Content: Die Entsorgung von Rückständen aus der Überwachung unterliegt strengen gesetzlichen Vorgaben und Compliance-Anforderungen. Für die sichere Entsorgung abgebrannter Brennelemente und radioaktiver Abfälle ist das Nationale Entsorgungsprogramm nach § 2c sowie dessen Umsetzung maßgeblich [AtG.pdf--250712]. Zudem sind Selbstbewertungen der kerntechnischen Anlagen erforderlich, wobei die Ergebnisse einer internationalen gegenseitigen Überprüfung durch das Bundesministerium für den Schutz des öffentlichen Lebens und die Strahlenschutzbehörden berücksichtigt werden [AtG.pdf--250712].  \n\nFür die Durchführung von Messungen mit erhöhter radioaktiver Konzentration müssen Sicherheitsmaßnahmen gemäß internationalen Verpflichtungen gewährleistet sein, wobei radioaktive Stoffe so gelagert werden müssen, dass die Sicherheitsvorschriften nicht beeinträchtigt werden [StrlSchV.pdf--250712]. Insbesondere Röntgeneinrichtungen und Anlagen zur Erzeugung ionisierender Strahlung sind mindestens alle fünf Jahre durch Sachverständige auf sicherheitstechnische Funktion, Sicherheit und Strahlenschutz zu prüfen [StrlSchV.pdf--250712].  \n\nZur Überwachung von grenzüberschreitenden Transporten radioaktiver Substanzen ist eine Genehmigung durch die für die Beförderung zuständige Behörde erforderlich, wobei der Vertrag schriftformbedingt und vor Beginn der Beförderung abgeschlossen werden muss [StrlSchV.pdf--250712]. Die Bundesrepublik Deutschland setzt das Pariser Übereinkommen innerstaatlich um, soweit nicht gegenseitige Regelungen vorausgesetzt sind [AtG.pdf--250712].\nImportance_score: 5.20\nSource_filename: strlschg_en_bf.pdf--250712, AtG.pdf--250712, StrlSchV.pdf--250712\nSource_path: kb/insert_data/strlschg_en_bf.pdf, kb/insert_data/AtG.pdf, kb/insert_data/StrlSchV.pdf",
+        "metadata": {
+          "position": 5,
+          "query": "Welche Compliance-Tools sind effektiv zur Sicherstellung der Einhaltung internationaler Vorgaben bei der Entsorgung von Radionuklid-Rückständen?",
+          "name": [
+            "strlschg_en_bf.pdf--250712",
+            "AtG.pdf--250712",
+            "StrlSchV.pdf--250712"
+          ],
+          "path": [
+            "kb/insert_data/strlschg_en_bf.pdf",
+            "kb/insert_data/AtG.pdf",
+            "kb/insert_data/StrlSchV.pdf"
+          ],
+          "importance_score": "N/A"
+        }
+      }
     ]
   },
   "formatted_documents": {},
-  "additional_context": "Initial AI Question(s):\n1. Welche Art von R\u00fcckst\u00e4nden (z. B. Daten, chemische Substanzen, physische Objekte) sind im Kontext der \u00dcberwachung konkret gemeint?  \n2. In welchem spezifischen Bereich (z. B. IT-Sicherheit, Umwelt\u00fcberwachung, medizinische Diagnostik) erfolgt die \u00dcberwachung, um den Kontext der R\u00fcckst\u00e4nde zu kl\u00e4ren?  \n3. Welche methodischen oder rechtlichen Vorgaben (z. B. Datenschutz, Umweltstandards, technische Protokolle) sollen bei der L\u00f6sung ber\u00fccksichtigt werden?AI Question(s):\n1. Welche spezifischen Materialien oder Radionuklide sind im Fokus der Untersuchung, und welche Schwerpunkte sollen bei der Entsorgungstechnik ber\u00fccksichtigt werden?  \n2. Gibt es bereits bekannte Quellen oder Prozesse, die zu diesen R\u00fcckst\u00e4nden f\u00fchren, und welche regulatorischen Rahmenbedingungen sind in den betroffenen Regionen bereits vorhanden?  \n3. Welche Methoden oder Fallbeispiele aus der Praxis (z. B. Bergbau, Umwelt\u00fcberwachung) sollen bei der Entwicklung von L\u00f6sungen besonders ber\u00fccksichtigt werden?\n\nHuman Answer:\nEs sind MAterialien mit erh\u00f6hten Gehalten an nat\u00fcrlich vorkommenden Radionukliden.Final Knowledge Base Questions:\n['Wie k\u00f6nnen R\u00fcckst\u00e4nde aus der \u00dcberwachung entlassen werden?', 'Wie k\u00f6nnen Materialien mit erh\u00f6hten Gehalten an nat\u00fcrlich vorkommenden Radionukliden sicher entsorgt werden?', 'Welche rechtlichen und regulatorischen Anforderungen gelten f\u00fcr die Entsorgung solcher radioaktiver R\u00fcckst\u00e4nde?', 'Welche Techniken werden in der Praxis zur Behandlung von radioaktiv belasteten Materialien eingesetzt?', 'Gibt es bew\u00e4hrte Verfahren zur Minimierung der Umweltbelastung bei der Entsorgung von radioaktivem Material?']"
+  "additional_context": "1. Der Benutzer sucht nach Methoden zur sicheren Entsorgung von Materialien mit erhöhten Konzentrationen natürlicher Radionuklide, wobei gesetzliche Rahmenbedingungen und Compliance-Anforderungen im Vordergrund stehen.  \n2. Die Anforderungen beinhalten die Entwicklung von Verfahren, die sowohl technische als auch rechtliche Standards erfüllen, insbesondere in Bereichen wie Umweltüberwachung oder Energieversorgung.  \n3. Schwerpunkte liegen auf der Einhaltung nationaler und internationaler Vorgaben, der Integration von Compliance-Tools wie Risikobewertungen und der Bewältigung von Herausforderungen bei der Umsetzung regulierter Entsorgungspraktiken.  \n4. Die Lösungen müssen branchenspezifische Charakteristika berücksichtigen, um effiziente, nachhaltige und rechtlich abgesicherte Entsorgungsstrategien für radioaktive Rückstände zu gewährleisten."
 }
 ```
+

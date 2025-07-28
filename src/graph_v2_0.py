@@ -294,14 +294,18 @@ def generate_knowledge_base_questions(state: InitState, config: RunnableConfig):
     
     # Parse knowledge base questions into a list of research queries
     import re
-    research_queries = []
+    generated_queries = []
     for line in knowledge_base_questions.split('\n'):
         # Extract questions using regex pattern for numbered lists (1. Question)
         match = re.match(r'\d+\.\s*(.*)', line.strip())
         if match:
-            research_queries.append(match.group(1).strip())
+            generated_queries.append(match.group(1).strip())
     
-    print(f"  [DEBUG] Parsed {len(research_queries)} research queries from knowledge base questions")
+    # Always include the original user query as the first research query
+    research_queries = [query]  # Start with original query
+    research_queries.extend(generated_queries)  # Add generated queries
+    
+    print(f"  [DEBUG] Parsed {len(generated_queries)} generated queries + 1 original query = {len(research_queries)} total research queries")
     assert isinstance(research_queries, list), "research_queries must be a list"
     
     # Debug logging to show the final research queries
@@ -414,56 +418,124 @@ def summarize_query_research(state: ResearcherStateV2, config: RunnableConfig):
         
         print(f"  [DEBUG] Writing debug state to {debug_filepath}")
         
-        # Format state as markdown
+        # Format full state as markdown with hierarchical headings
         with open(debug_filepath, 'w', encoding='utf-8') as f:
             f.write(f"# Summarize Query Research Debug Output - {timestamp}\n\n")
             
-            # Write original state keys
-            f.write("## Original State Keys\n\n")
-            f.write(", ".join(state.keys()) + "\n\n")
+            # Write the complete state with proper markdown hierarchy
+            f.write("# Full State Dump\n\n")
             
-            # Write result keys
-            f.write("## Result Keys\n\n")
-            f.write(", ".join(result.keys()) + "\n\n")
-            
-            # Write search summaries if available
-            if "search_summaries" in result:
-                f.write("## Search Summaries\n\n")
-                search_summaries = result["search_summaries"]
-                f.write(f"Number of queries with summaries: {len(search_summaries)}\n\n")
-                
-                for query, summaries in search_summaries.items():
-                    f.write(f"### Query: {query}\n\n")
-                    f.write(f"Number of summaries: {len(summaries)}\n\n")
-                    
-                    for i, summary in enumerate(summaries):
-                        f.write(f"#### Summary {i+1}\n\n")
-                        f.write(f"```\n{summary.page_content}\n```\n\n")
-                        f.write(f"**Metadata:** {json.dumps(summary.metadata, indent=2, default=str)}\n\n")
-            
-            # Write formatted documents if available
-            if "formatted_documents" in result:
-                f.write("## Formatted Documents\n\n")
-                f.write(f"Number of formatted document sets: {len(result['formatted_documents'])}\n\n")
-            
-            # Query mapping has been removed from workflow
-            f.write("## Note on Query Processing\n\n")
-            f.write("Queries are now processed directly without numerical mapping.\n\n")
-                
-            f.write("## Complete State (Safe Serializable Keys)\n\n")
-            # Only include serializable data in the complete state dump
-            safe_state = {}
+            # Process all state variables as ## headings
             for key, value in result.items():
-                try:
-                    # Test if value is JSON serializable
-                    json.dumps({key: value}, default=str)
-                    safe_state[key] = value
-                except (TypeError, OverflowError):
-                    safe_state[key] = f"[Not serializable: {type(value).__name__}]"
+                f.write(f"## {key}\n\n")
+                
+                # Handle different data types with appropriate formatting
+                if isinstance(value, dict):
+                    if not value:
+                        f.write("*Empty dictionary*\n\n")
+                    else:
+                        for sub_key, sub_value in value.items():
+                            f.write(f"### {sub_key}\n\n")
+                            
+                            if isinstance(sub_value, list):
+                                if not sub_value:
+                                    f.write("*Empty list*\n\n")
+                                else:
+                                    for i, item in enumerate(sub_value):
+                                        f.write(f"#### Item {i+1}\n\n")
+                                        if hasattr(item, 'page_content'):
+                                            # Document object
+                                            f.write(f"**Content:**\n```\n{item.page_content}\n```\n\n")
+                                            if hasattr(item, 'metadata'):
+                                                f.write(f"**Metadata:**\n```json\n{json.dumps(item.metadata, indent=2, default=str)}\n```\n\n")
+                                        else:
+                                            # Regular item
+                                            f.write(f"```\n{str(item)}\n```\n\n")
+                            elif isinstance(sub_value, dict):
+                                f.write(f"```json\n{json.dumps(sub_value, indent=2, default=str)}\n```\n\n")
+                            else:
+                                f.write(f"```\n{str(sub_value)}\n```\n\n")
+                                
+                elif isinstance(value, list):
+                    if not value:
+                        f.write("*Empty list*\n\n")
+                    else:
+                        for i, item in enumerate(value):
+                            f.write(f"### Item {i+1}\n\n")
+                            if hasattr(item, 'page_content'):
+                                # Document object
+                                f.write(f"**Content:**\n```\n{item.page_content}\n```\n\n")
+                                if hasattr(item, 'metadata'):
+                                    f.write(f"**Metadata:**\n```json\n{json.dumps(item.metadata, indent=2, default=str)}\n```\n\n")
+                            else:
+                                # Regular item
+                                f.write(f"```\n{str(item)}\n```\n\n")
+                                
+                elif isinstance(value, str):
+                    if value.strip():
+                        # Check if it looks like JSON
+                        try:
+                            parsed_json = json.loads(value)
+                            f.write(f"```json\n{json.dumps(parsed_json, indent=2, default=str)}\n```\n\n")
+                        except (json.JSONDecodeError, TypeError):
+                            # Regular string content
+                            if len(value) > 200:
+                                f.write(f"```\n{value}\n```\n\n")
+                            else:
+                                f.write(f"{value}\n\n")
+                    else:
+                        f.write("*Empty string*\n\n")
+                        
+                elif value is None:
+                    f.write("*None*\n\n")
+                    
+                else:
+                    # Handle other types (int, float, bool, etc.)
+                    try:
+                        # Try to serialize as JSON for complex objects
+                        json_str = json.dumps(value, indent=2, default=str)
+                        f.write(f"```json\n{json_str}\n```\n\n")
+                    except (TypeError, OverflowError):
+                        f.write(f"```\n{str(value)}\n```\n\n")
             
+            # Add full ResearcherStateV2 workflow state dump at the end
+            f.write("---\n\n")
+            f.write("# FULL ResearcherStateV2 WORKFLOW STATE AT SUMMARIZE_QUERY_RESEARCH STEP\n\n")
+            
+            # Create a clean state dict for JSON serialization
+            clean_state = {}
+            for key, value in result.items():
+                if key == 'retrieved_documents':
+                    # Simplify document objects for JSON
+                    clean_state[key] = {
+                        query: [f"Document objects with metadata containing {', '.join(set([doc.metadata.get('name', ['Unknown'])[0] if isinstance(doc.metadata.get('name'), list) else doc.metadata.get('name', 'Unknown') for doc in docs]))} references"] 
+                        for query, docs in value.items()
+                    }
+                elif key == 'search_summaries':
+                    # Include full search summaries with complete content and metadata
+                    clean_state[key] = {}
+                    for query, docs in value.items():
+                        if docs:
+                            clean_state[key][query] = []
+                            for doc in docs:
+                                doc_info = {
+                                    "content": doc.page_content,  # Full content, no truncation
+                                    "metadata": {
+                                        "position": doc.metadata.get('position', 'N/A'),
+                                        "query": doc.metadata.get('query', 'N/A'),
+                                        "name": doc.metadata.get('name', ['Unknown']),
+                                        "path": doc.metadata.get('path', ['Unknown']),
+                                        "importance_score": doc.metadata.get('importance_score', 'N/A')
+                                    }
+                                }
+                                clean_state[key][query].append(doc_info)
+                else:
+                    clean_state[key] = value
+            
+            # Write the clean state as JSON
             f.write("```json\n")
-            f.write(json.dumps(safe_state, indent=2, default=str))
-            f.write("\n```\n")
+            f.write(json.dumps(clean_state, indent=2, default=str, ensure_ascii=False))
+            f.write("\n```\n\n")
             
         print(f"  [DEBUG] Successfully wrote debug state to {debug_filepath}")
     except Exception as e:
@@ -534,7 +606,7 @@ def rerank_summaries(state: ResearcherStateV2, config: RunnableConfig):
             })
         
         # Rerank this query's summaries
-        reranked_results = _rerank_query_summaries(
+        reranked_results = rerank_query_summaries(
             initial_query=user_query,
             query=query,
             summaries=summary_list,
@@ -573,51 +645,24 @@ def rerank_summaries(state: ResearcherStateV2, config: RunnableConfig):
         
         print(f"  [DEBUG] Writing reranked debug state to {debug_filepath}")
         
-        # Format state as markdown
+        # Format full state as markdown with hierarchical headings
         with open(debug_filepath, 'w', encoding='utf-8') as f:
             f.write(f"# Reranked Summaries Debug Output - {timestamp}\n\n")
             
-            # Write original state info
-            f.write("## Original State Info\n\n")
-            f.write(f"- User Query: {user_query}\n")
-            f.write(f"- Additional Context: {additional_context}\n")
-            f.write(f"- Report LLM: {report_llm}\n")
-            f.write(f"- Detected Language: {detected_language}\n")
-            f.write(f"- Number of queries processed: {len(reranked_summaries)}\n\n")
+            # Write the complete state with proper markdown hierarchy
+            f.write("# Full State Dump\n\n")
             
-            # Write reranked summaries details
-            f.write("## Reranked Summaries\n\n")
+            # Create a comprehensive state object for the reranker
+            full_state = {
+                "user_query": user_query,
+                "additional_context": additional_context,
+                "report_llm": report_llm,
+                "detected_language": detected_language,
+                "search_summaries": reranked_summaries,
+                "scoring_statistics": {}
+            }
             
-            for query, summaries in reranked_summaries.items():
-                f.write(f"### Query: {query}\n\n")
-                f.write(f"Number of summaries: {len(summaries)}\n\n")
-                
-                for i, summary_doc in enumerate(summaries):
-                    f.write(f"#### Summary {i+1} (Rank {i+1})\n\n")
-                    
-                    # Extract rerank score and original index from metadata
-                    rerank_score = summary_doc.metadata.get('rerank_score', 'N/A')
-                    original_index = summary_doc.metadata.get('original_index', 'N/A')
-                    
-                    f.write(f"**Rerank Score:** {rerank_score}\n")
-                    f.write(f"**Original Index:** {original_index}\n")
-                    f.write(f"**Position:** {summary_doc.metadata.get('position', 'N/A')}\n\n")
-                    
-                    # Extract and display the content
-                    content = summary_doc.page_content
-                    if "Content: " in content:
-                        summary_text = content.split("Content: ")[1].split("\n")[0]
-                        f.write(f"**Summary Content:**\n```\n{summary_text}\n```\n\n")
-                    else:
-                        f.write(f"**Summary Content:**\n```\n{content}\n```\n\n")
-                    
-                    # Write full metadata
-                    f.write(f"**Full Metadata:**\n```json\n{json.dumps(summary_doc.metadata, indent=2, default=str)}\n```\n\n")
-                    
-                f.write("---\n\n")
-            
-            # Write scoring statistics
-            f.write("## Scoring Statistics\n\n")
+            # Calculate scoring statistics
             all_scores = []
             for summaries in reranked_summaries.values():
                 for summary_doc in summaries:
@@ -626,36 +671,144 @@ def rerank_summaries(state: ResearcherStateV2, config: RunnableConfig):
                         all_scores.append(score)
             
             if all_scores:
-                f.write(f"- Total summaries scored: {len(all_scores)}\n")
-                f.write(f"- Average score: {sum(all_scores)/len(all_scores):.2f}\n")
-                f.write(f"- Highest score: {max(all_scores):.2f}\n")
-                f.write(f"- Lowest score: {min(all_scores):.2f}\n\n")
+                full_state["scoring_statistics"] = {
+                    "total_summaries_scored": len(all_scores),
+                    "average_score": sum(all_scores)/len(all_scores),
+                    "highest_score": max(all_scores),
+                    "lowest_score": min(all_scores),
+                    "number_of_queries_processed": len(reranked_summaries)
+                }
             else:
-                f.write("- No valid scores found\n\n")
+                full_state["scoring_statistics"] = {
+                    "total_summaries_scored": 0,
+                    "message": "No valid scores found",
+                    "number_of_queries_processed": len(reranked_summaries)
+                }
             
-            # Write complete reranked state (safe serializable keys)
-            f.write("## Complete Reranked State (Safe Serializable Keys)\n\n")
-            safe_state = {
-                "search_summaries": {},
-                "user_query": user_query,
-                "additional_context": additional_context,
-                "report_llm": report_llm,
-                "detected_language": detected_language
-            }
+            # Process all state variables as ## headings
+            for key, value in full_state.items():
+                f.write(f"## {key}\n\n")
+                
+                # Handle different data types with appropriate formatting
+                if isinstance(value, dict):
+                    if not value:
+                        f.write("*Empty dictionary*\n\n")
+                    else:
+                        for sub_key, sub_value in value.items():
+                            f.write(f"### {sub_key}\n\n")
+                            
+                            if isinstance(sub_value, list):
+                                if not sub_value:
+                                    f.write("*Empty list*\n\n")
+                                else:
+                                    for i, item in enumerate(sub_value):
+                                        f.write(f"#### Item {i+1} (Rank {i+1})\n\n")
+                                        if hasattr(item, 'page_content'):
+                                            # Document object with reranking info
+                                            rerank_score = item.metadata.get('rerank_score', 'N/A')
+                                            original_index = item.metadata.get('original_index', 'N/A')
+                                            position = item.metadata.get('position', 'N/A')
+                                            
+                                            f.write(f"**Rerank Score:** {rerank_score}\n")
+                                            f.write(f"**Original Index:** {original_index}\n")
+                                            f.write(f"**Position:** {position}\n\n")
+                                            
+                                            f.write(f"**Content:**\n```\n{item.page_content}\n```\n\n")
+                                            if hasattr(item, 'metadata'):
+                                                f.write(f"**Metadata:**\n```json\n{json.dumps(item.metadata, indent=2, default=str)}\n```\n\n")
+                                        else:
+                                            # Regular item
+                                            f.write(f"```\n{str(item)}\n```\n\n")
+                            elif isinstance(sub_value, dict):
+                                f.write(f"```json\n{json.dumps(sub_value, indent=2, default=str)}\n```\n\n")
+                            else:
+                                f.write(f"```\n{str(sub_value)}\n```\n\n")
+                                
+                elif isinstance(value, list):
+                    if not value:
+                        f.write("*Empty list*\n\n")
+                    else:
+                        for i, item in enumerate(value):
+                            f.write(f"### Item {i+1}\n\n")
+                            if hasattr(item, 'page_content'):
+                                # Document object
+                                f.write(f"**Content:**\n```\n{item.page_content}\n```\n\n")
+                                if hasattr(item, 'metadata'):
+                                    f.write(f"**Metadata:**\n```json\n{json.dumps(item.metadata, indent=2, default=str)}\n```\n\n")
+                            else:
+                                # Regular item
+                                f.write(f"```\n{str(item)}\n```\n\n")
+                                
+                elif isinstance(value, str):
+                    if value.strip():
+                        # Check if it looks like JSON
+                        try:
+                            parsed_json = json.loads(value)
+                            f.write(f"```json\n{json.dumps(parsed_json, indent=2, default=str)}\n```\n\n")
+                        except (json.JSONDecodeError, TypeError):
+                            # Regular string content
+                            if len(value) > 200:
+                                f.write(f"```\n{value}\n```\n\n")
+                            else:
+                                f.write(f"{value}\n\n")
+                    else:
+                        f.write("*Empty string*\n\n")
+                        
+                elif value is None:
+                    f.write("*None*\n\n")
+                    
+                else:
+                    # Handle other types (int, float, bool, etc.)
+                    try:
+                        # Try to serialize as JSON for complex objects
+                        json_str = json.dumps(value, indent=2, default=str)
+                        f.write(f"```json\n{json_str}\n```\n\n")
+                    except (TypeError, OverflowError):
+                        f.write(f"```\n{str(value)}\n```\n\n")
             
-            # Add serializable summary info
-            for query, summaries in reranked_summaries.items():
-                safe_state["search_summaries"][query] = []
-                for summary_doc in summaries:
-                    safe_summary = {
-                        "content_preview": summary_doc.page_content[:200] + "..." if len(summary_doc.page_content) > 200 else summary_doc.page_content,
-                        "metadata": summary_doc.metadata
+            # Add full ResearcherStateV2 workflow state dump at the end
+            f.write("---\n\n")
+            f.write("# FULL ResearcherStateV2 WORKFLOW STATE AT RERANK_SUMMARIES STEP\n\n")
+            
+            # Create a comprehensive state dict that includes the full workflow state
+            complete_state = dict(state)  # Start with the original state
+            complete_state["search_summaries"] = reranked_summaries  # Update with reranked summaries
+            
+            # Create a clean state dict for JSON serialization
+            clean_state = {}
+            for key, value in complete_state.items():
+                if key == 'retrieved_documents':
+                    # Simplify document objects for JSON
+                    clean_state[key] = {
+                        query: [f"Document objects with metadata containing {', '.join(set([doc.metadata.get('name', ['Unknown'])[0] if isinstance(doc.metadata.get('name'), list) else doc.metadata.get('name', 'Unknown') for doc in docs]))} references"] 
+                        for query, docs in value.items()
                     }
-                    safe_state["search_summaries"][query].append(safe_summary)
+                elif key == 'search_summaries':
+                    # Include reranked summaries with scores and metadata
+                    clean_state[key] = {}
+                    for query, docs in value.items():
+                        if docs:
+                            clean_state[key][query] = []
+                            for doc in docs:
+                                doc_info = {
+                                    "content": doc.page_content,  # Full content, no truncation
+                                    "metadata": {
+                                        "position": doc.metadata.get('position', 'N/A'),
+                                        "query": doc.metadata.get('query', 'N/A'),
+                                        "name": doc.metadata.get('name', ['Unknown']),
+                                        "path": doc.metadata.get('path', ['Unknown']),
+                                        "rerank_score": doc.metadata.get('rerank_score', 'N/A'),
+                                        "original_index": doc.metadata.get('original_index', 'N/A')
+                                    }
+                                }
+                                clean_state[key][query].append(doc_info)
+                else:
+                    clean_state[key] = value
             
+            # Write the clean state as JSON
             f.write("```json\n")
-            f.write(json.dumps(safe_state, indent=2, default=str))
-            f.write("\n```\n")
+            f.write(json.dumps(clean_state, indent=2, default=str, ensure_ascii=False))
+            f.write("\n```\n\n")
             
         print(f"  [DEBUG] Successfully wrote reranked debug state to {debug_filepath}")
     except Exception as e:
@@ -667,7 +820,7 @@ def rerank_summaries(state: ResearcherStateV2, config: RunnableConfig):
     }
 
 
-def _rerank_query_summaries(initial_query: str, query: str, summaries: list[dict], 
+def rerank_query_summaries(initial_query: str, query: str, summaries: list[dict], 
                            additional_context: str, llm_model: str, language: str) -> list[dict]:
     """
     Rerank a list of summaries based on relevance & accuracy.
@@ -688,7 +841,7 @@ def _rerank_query_summaries(initial_query: str, query: str, summaries: list[dict
     results = []
     for idx, s in enumerate(summaries):
         content = s["Content"]
-        score = _score_summary(initial_query, query, content, additional_context, llm_model, language)
+        score = score_summary(initial_query, query, content, additional_context, llm_model, language)
         results.append({
             "summary": s,
             "score": score,
@@ -698,7 +851,7 @@ def _rerank_query_summaries(initial_query: str, query: str, summaries: list[dict
     return sorted(results, key=lambda x: x["score"], reverse=True)
 
 
-def _score_summary(initial_query: str, query: str, content: str, context: str, 
+def score_summary(initial_query: str, query: str, content: str, context: str, 
                   llm_model: str, language: str) -> float:
     """
     Ask the LLM to score a single summary 0–10.
@@ -727,12 +880,12 @@ SCORING CRITERIA (weights in parentheses):
 4. Factual accuracy and completeness (15%)
 
 INSTRUCTIONS:
-Return ONLY a number between 0 and 10:
+Return ONLY a number between 0 and 10 using the following ranges:
 - 10 = perfectly relevant and accurate
-- 8-9 = very relevant with strong detail
-- 6-7 = relevant but somewhat incomplete
-- 4-5 = partially relevant
-- 0-3 = poorly relevant or inaccurate
+- 9-8 = very relevant with strong detail
+- 7-6 = relevant but somewhat incomplete
+- 5-4 = partially relevant
+- 3-0 = poorly relevant or inaccurate
 
 Respond in {language}.
 """
@@ -753,10 +906,10 @@ Respond in {language}.
             return max(0.0, min(10.0, score))
         else:
             print(f"  [WARNING] Could not extract score from LLM response: {response[:100]}...")
-            return 5.0
+            return 1.0
     except Exception as e:
         print(f"  [ERROR] Failed to score summary: {str(e)}")
-        return 5.0
+        return 1.0
 
 def generate_final_answer(state: ResearcherStateV2, config: RunnableConfig):
     """Enhanced final answer generation that makes stronger use of reranked summaries."""
