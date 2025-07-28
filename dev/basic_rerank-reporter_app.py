@@ -5,13 +5,17 @@ import json
 import re
 from typing import Dict, List, Any
 from pathlib import Path
+from typing_extensions import TypedDict
 
 # Add project root to Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Import required modules
 from src.rag_helpers_v1_1 import get_report_llm_models, invoke_ollama
+from src.state_v2_0 import ResearcherStateV2
 from langchain_core.documents import Document
+from langgraph.graph import StateGraph, END
+from langgraph.types import RunnableConfig
 
 # Page configuration
 st.set_page_config(
@@ -80,38 +84,68 @@ Respond in {language}.
         return 1.0
 
 
-def rerank_query_summaries(initial_query: str, query: str, summaries: List[Document], 
-                           additional_context: str, llm_model: str, language: str = "English") -> List[Dict]:
+def reranker_node(state: ResearcherStateV2, config: RunnableConfig) -> ResearcherStateV2:
     """
-    Rerank a list of Document summaries based on relevance & accuracy.
+    LangGraph node that reranks summaries based on relevance & accuracy.
     
     Args:
-        initial_query: The original user question.
-        query: The specific research query being processed.
-        summaries: List of Document objects with page_content.
-        additional_context: Conversation history or domain context.
-        llm_model: LLM model to use for scoring.
-        language: Detected language for the evaluation.
+        state: ResearcherStateV2 containing search_summaries and other state
+        config: RunnableConfig for the graph
     
     Returns:
-        A list of dicts with keys: 'summary', 'score', 'original_index',
-        sorted by descending score.
+        Updated ResearcherStateV2 with reranked summaries
     """
-    results = []
+    print("--- Starting reranker node ---")
     
-    with st.spinner(f"Reranking {len(summaries)} summaries for query: {query[:50]}..."):
+    # Extract state variables
+    user_query = state.get("user_query", "")
+    search_summaries = state.get("search_summaries", {})
+    additional_context = state.get("additional_context", "")
+    report_llm = state.get("report_llm", "qwen3:latest")
+    detected_language = state.get("detected_language", "English")
+    
+    if not search_summaries:
+        print("  [WARNING] No search summaries found for reranking")
+        return state
+    
+    # Rerank summaries for each research query
+    all_reranked_summaries = []
+    
+    for query, summaries in search_summaries.items():
+        if not summaries:
+            continue
+            
+        # Rerank summaries for this query
+        reranked = []
         for idx, doc in enumerate(summaries):
             content = doc.page_content
-            score = score_summary(initial_query, query, content, additional_context, llm_model, language)
-            results.append({
-                "summary": doc,
-                "score": score,
-                "original_index": idx,
-                "query": query
+            score = score_summary(
+                initial_query=user_query,
+                query=query,
+                content=content,
+                context=additional_context,
+                llm_model=report_llm,
+                language=detected_language
+            )
+            
+            reranked.append({
+                'summary': content,
+                'score': score,
+                'original_index': idx,
+                'document': doc,
+                'query': query
             })
+        
+        # Sort by score descending
+        reranked.sort(key=lambda x: x['score'], reverse=True)
+        all_reranked_summaries.extend(reranked)
     
-    # Sort highest score first
-    return sorted(results, key=lambda x: x["score"], reverse=True)
+    # Store reranked summaries in state
+    state["all_reranked_summaries"] = all_reranked_summaries
+    state["current_position"] = "reranker"
+    
+    print(f"  [INFO] Reranked {len(all_reranked_summaries)} total summaries")
+    return state
 
 
 def generate_final_answer_prompt(initial_query: str, reranked_summaries: List[Dict], 
@@ -133,7 +167,7 @@ CONTEXT:
 RANKED SUMMARIES (ordered by relevance):
 
 PRIMARY SOURCE (Highest Relevance - Score: {reranked_summaries[0]['score']:.1f}):
-{reranked_summaries[0]['summary'].page_content}
+{reranked_summaries[0]['summary']}
 
 SUPPORTING SOURCES:"""
 
@@ -142,7 +176,7 @@ SUPPORTING SOURCES:"""
         prompt += f"""
 
 Source {i} (Score: {item['score']:.1f}):
-{item['summary'].page_content}"""
+{item['summary']}"""
 
     prompt += f"""
 
@@ -161,36 +195,76 @@ Generate a comprehensive answer that prioritizes the most relevant information w
     return prompt
 
 
-def generate_final_report(initial_query: str, all_reranked_summaries: List[Dict], 
-                         additional_context: str, llm_model: str, language: str = "English") -> str:
+def report_writer_node(state: ResearcherStateV2, config: RunnableConfig) -> ResearcherStateV2:
     """
-    Generate the final report using reranked summaries.
-    """
-    if not all_reranked_summaries:
-        return "Error: No summaries available for generating final report."
+    LangGraph node that generates the final report using reranked summaries.
     
-    # Generate the enhanced prompt using reranked summaries
-    final_answer_prompt = generate_final_answer_prompt(
-        initial_query=initial_query,
+    Args:
+        state: ResearcherStateV2 containing reranked summaries and other state
+        config: RunnableConfig for the graph
+    
+    Returns:
+        Updated ResearcherStateV2 with final answer
+    """
+    print("--- Starting report writer node ---")
+    
+    # Extract state variables
+    user_query = state.get("user_query", "")
+    all_reranked_summaries = state.get("all_reranked_summaries", [])
+    additional_context = state.get("additional_context", "")
+    report_llm = state.get("report_llm", "qwen3:latest")
+    detected_language = state.get("detected_language", "English")
+    
+    if not all_reranked_summaries:
+        state["final_answer"] = "No relevant information found to generate a report."
+        state["current_position"] = "report_writer"
+        return state
+    
+    # Generate final report
+    prompt = generate_final_answer_prompt(
+        initial_query=user_query,
         reranked_summaries=all_reranked_summaries,
         additional_context=additional_context,
-        language=language
+        language=detected_language
     )
     
     try:
-        with st.spinner(f"Generating final report using {llm_model}..."):
-            # Generate final answer using the enhanced prompt
-            final_answer = invoke_ollama(
-                system_prompt=f"You are an expert assistant providing comprehensive answers. Respond in {language}.",
-                user_prompt=final_answer_prompt,
-                model=llm_model
-            )
-        
-        return final_answer
+        response = invoke_ollama(
+            system_prompt="You are an expert research analyst. Provide comprehensive, well-structured reports based on the provided information.",
+            user_prompt=prompt,
+            model=report_llm
+        )
+        state["final_answer"] = response
         
     except Exception as e:
         st.error(f"Exception in final report generation: {str(e)}")
         return f"Error occurred during final report generation: {str(e)}. Check logs for details."
+
+
+def create_rerank_reporter_graph():
+    """
+    Create the LangGraph workflow for reranking and report generation.
+    
+    Returns:
+        Compiled LangGraph workflow
+    """
+    print("Creating rerank-reporter graph...")
+    
+    # Create the workflow
+    workflow = StateGraph(ResearcherStateV2)
+    
+    # Add nodes
+    workflow.add_node("reranker", reranker_node)
+    workflow.add_node("report_writer", report_writer_node)
+    
+    # Add edges
+    workflow.add_edge("reranker", "report_writer")
+    workflow.add_edge("report_writer", END)
+    
+    # Set entry point
+    workflow.set_entry_point("reranker")
+    
+    return workflow.compile()
 
 
 def create_sample_documents() -> Dict[str, List[Document]]:
@@ -224,9 +298,31 @@ def create_sample_documents() -> Dict[str, List[Document]]:
     return sample_docs
 
 
+def generate_graph_visualization():
+    """Generate and display the LangGraph workflow visualization."""
+    try:
+        graph = create_rerank_reporter_graph()
+        
+        # Try to get Mermaid PNG
+        try:
+            img = graph.get_graph().draw_mermaid_png()
+            return img, "png"
+        except Exception as e:
+            # Fallback to Mermaid text
+            mermaid_code = graph.get_graph().draw_mermaid()
+            return mermaid_code, "mermaid"
+            
+    except Exception as e:
+        return f"Error generating visualization: {str(e)}", "error"
+
+
 def main():
-    st.title("📊 Basic Rerank & Reporter")
-    st.markdown("*Test reranking and report generation functionality*")
+    st.title("📊 LangGraph Rerank & Reporter")
+    st.markdown("*Advanced reranking and report generation using LangGraph state logic*")
+    
+    # Initialize session state
+    if "graph" not in st.session_state:
+        st.session_state.graph = create_rerank_reporter_graph()
     
     # Sidebar for configuration
     with st.sidebar:
@@ -243,174 +339,187 @@ def main():
         selected_model = st.selectbox(
             "Select LLM Model",
             options=report_llm_models,
-            index=0,
-            help="Choose the LLM model for reranking and report generation"
+            index=0
         )
         
         # Language selection
         language = st.selectbox(
-            "Response Language",
-            options=["English", "German", "French", "Spanish"],
+            "Language",
+            options=["English", "German"],
             index=0
         )
         
-        # Use sample data option
-        use_sample_data = st.checkbox("Use Sample Data", value=True, help="Load sample documents for testing")
+        # Additional context input
+        additional_context = st.text_area(
+            "Additional Context",
+            placeholder="Enter any additional context or conversation history...",
+            height=100
+        )
+        
+        # Graph visualization in sidebar
+        st.subheader("🕸️ Workflow Graph")
+        try:
+            graph_result, graph_type = generate_graph_visualization()
+            
+            if graph_type == "png":
+                st.image(graph_result, caption="LangGraph Workflow", use_container_width=True)
+            elif graph_type == "mermaid":
+                st.code(graph_result, language="mermaid")
+            else:
+                st.error(graph_result)
+                
+        except Exception as e:
+            st.warning(f"Could not generate graph visualization: {str(e)}")
+            st.text("reranker → report_writer → END")
     
     # Main content area
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.header("📝 Input Data")
+        st.header("📝 Input")
         
-        if use_sample_data:
-            st.info("Using sample data for demonstration")
-            search_summaries = create_sample_documents()
-            queries = list(search_summaries.keys())
-            initial_query = st.selectbox("Select Initial Query", queries, index=0)
-            additional_context = st.text_area(
-                "Additional Context", 
-                value="User is researching renewable energy for a sustainability report.",
-                height=100
-            )
+        # User query input
+        initial_query = st.text_area(
+            "Initial Query",
+            placeholder="Enter your research question...",
+            height=100,
+            key="initial_query"
+        )
+        
+        # Sample documents section
+        st.subheader("📄 Sample Data")
+        use_sample = st.checkbox("Use sample documents", value=True)
+        
+        if use_sample:
+            sample_docs = create_sample_documents()
+            
+            # Display sample documents structure
+            st.info(f"Using {len(sample_docs)} sample research queries with documents")
+            for query, docs in sample_docs.items():
+                with st.expander(f"Query: {query} ({len(docs)} docs)"):
+                    for i, doc in enumerate(docs, 1):
+                        st.write(f"**Document {i}:**")
+                        st.write(doc.page_content[:200] + "...")
+                        st.caption(f"Source: {doc.metadata.get('source', 'Unknown')}")
+        
         else:
-            # Manual input
-            initial_query = st.text_input("Initial Query", placeholder="Enter your main question...")
+            st.info("Manual input mode - configure research queries and summaries below")
             
-            additional_context = st.text_area(
-                "Additional Context", 
-                placeholder="Enter any additional context or conversation history...",
-                height=100
+            # Manual input for research queries and summaries
+            research_queries_input = st.text_area(
+                "Research Queries (one per line)",
+                placeholder="What are the benefits of renewable energy?\nHow does solar power work?",
+                height=100,
+                key="research_queries"
             )
             
-            # Query input
-            st.subheader("Research Queries")
-            num_queries = st.number_input("Number of Queries", min_value=1, max_value=10, value=2)
+            # Document content input
+            st.subheader("📄 Document Summaries")
+            st.write("Enter summaries for each query above:")
             
-            queries = []
-            search_summaries = {}
-            
-            for i in range(num_queries):
-                query = st.text_input(f"Query {i+1}", key=f"query_{i}")
-                if query:
-                    queries.append(query)
-                    
-                    # Document input for this query
-                    st.write(f"Documents for Query {i+1}:")
-                    num_docs = st.number_input(f"Number of Documents for Query {i+1}", min_value=1, max_value=5, value=2, key=f"num_docs_{i}")
-                    
-                    docs = []
-                    for j in range(num_docs):
-                        doc_content = st.text_area(f"Document {j+1} Content", key=f"doc_{i}_{j}", height=100)
-                        if doc_content:
-                            docs.append(Document(
-                                page_content=doc_content,
-                                metadata={"source": f"doc_{i}_{j}", "query_index": i}
-                            ))
-                    
-                    if docs:
-                        search_summaries[query] = docs
+            if research_queries_input:
+                research_queries = [q.strip() for q in research_queries_input.split('\n') if q.strip()]
+                
+                # Create input fields for each query
+                custom_summaries = {}
+                for i, query in enumerate(research_queries):
+                    st.write(f"**Query {i+1}:** {query}")
+                    summary_text = st.text_area(
+                        f"Summary for query {i+1}",
+                        placeholder="Enter document summary content...",
+                        height=100,
+                        key=f"summary_{i}"
+                    )
+                    if summary_text:
+                        custom_summaries[query] = [Document(page_content=summary_text, metadata={"custom": True})]
     
     with col2:
         st.header("📊 Results")
         
-        if st.button("🚀 Process Reranking & Report Generation", type="primary"):
+        if st.button("🚀 Process with LangGraph", type="primary"):
             if not initial_query:
-                st.error("Please provide an initial query")
+                st.error("Please enter an initial query.")
                 return
             
-            if not search_summaries:
-                st.error("Please provide search summaries")
-                return
-            
-            # Process reranking
-            st.subheader("🔄 Reranking Results")
-            
-            all_reranked_summaries = []
-            
-            # Create tabs for each query
-            if len(search_summaries) > 1:
-                tabs = st.tabs([f"Query {i+1}" for i in range(len(search_summaries))])
+            try:
+                # Prepare data based on input method
+                if use_sample:
+                    search_summaries = create_sample_documents()
+                else:
+                    if not research_queries_input:
+                        st.error("Please provide research queries.")
+                        return
+                    
+                    research_queries = [q.strip() for q in research_queries_input.split('\n') if q.strip()]
+                    search_summaries = {}
+                    
+                    for i, query in enumerate(research_queries):
+                        summary_key = f"summary_{i}"
+                        if summary_key in st.session_state and st.session_state[summary_key]:
+                            docs = [Document(page_content=st.session_state[summary_key], metadata={"custom": True})]
+                            search_summaries[query] = docs
                 
-                for idx, (query, summaries) in enumerate(search_summaries.items()):
-                    with tabs[idx]:
-                        st.write(f"**Query:** {query}")
+                if not search_summaries:
+                    st.error("No summaries provided. Please add document content.")
+                    return
+                
+                # Process with LangGraph
+                with st.spinner("🔄 Processing with LangGraph workflow..."):
+                    # Prepare initial state
+                    initial_state = {
+                        "user_query": initial_query,
+                        "search_summaries": search_summaries,
+                        "additional_context": additional_context,
+                        "report_llm": selected_model,
+                        "detected_language": language,
+                        "current_position": 0,
+                        "research_queries": list(search_summaries.keys()),
+                        "final_answer": "",
+                        "all_reranked_summaries": []
+                    }
+                    
+                    # Execute the graph
+                    final_state = st.session_state.graph.invoke(initial_state)
+                    
+                    # Display results
+                    st.success("✅ LangGraph processing complete!")
+                    
+                    # Display processing steps
+                    with st.expander("🔍 Processing Details", expanded=True):
+                        st.write(f"**Current Position:** {final_state.get('current_position', 'unknown')}")
+                        st.write(f"**Research Queries Processed:** {len(final_state.get('research_queries', []))}")
                         
-                        # Rerank summaries for this query
-                        reranked = rerank_query_summaries(
-                            initial_query=initial_query,
-                            query=query,
-                            summaries=summaries,
-                            additional_context=additional_context,
-                            llm_model=selected_model,
-                            language=language
+                        # Display reranked summaries
+                        reranked_summaries = final_state.get("all_reranked_summaries", [])
+                        if reranked_summaries:
+                            st.subheader("📊 Reranked Summaries")
+                            for idx, item in enumerate(reranked_summaries):
+                                with st.expander(f"Summary {idx+1} (Score: {item.get('score', 'N/A')}/10)"):
+                                    st.write(item.get('summary', 'No summary available'))
+                                    st.caption(f"Original Index: {item.get('original_index', 'N/A')}")
+                    
+                    # Display final report
+                    if final_state.get("final_answer"):
+                        st.subheader("📋 Final Report")
+                        st.markdown(final_state["final_answer"])
+                        
+                        # Copy functionality
+                        st.download_button(
+                            label="📥 Download Report",
+                            data=final_state["final_answer"],
+                            file_name="research_report.md",
+                            mime="text/markdown"
                         )
-                        
-                        # Display ranked results
-                        for rank, item in enumerate(reranked, 1):
-                            with st.expander(f"Rank {rank} - Score: {item['score']:.1f}"):
-                                st.write("**Content:**")
-                                st.write(item['summary'].page_content)
-                                st.write("**Metadata:**")
-                                st.json(item['summary'].metadata)
-                        
-                        all_reranked_summaries.extend(reranked)
-            else:
-                # Single query
-                query, summaries = next(iter(search_summaries.items()))
-                st.write(f"**Query:** {query}")
-                
-                reranked = rerank_query_summaries(
-                    initial_query=initial_query,
-                    query=query,
-                    summaries=summaries,
-                    additional_context=additional_context,
-                    llm_model=selected_model,
-                    language=language
-                )
-                
-                # Display ranked results
-                for rank, item in enumerate(reranked, 1):
-                    with st.expander(f"Rank {rank} - Score: {item['score']:.1f}"):
-                        st.write("**Content:**")
-                        st.write(item['summary'].page_content)
-                        st.write("**Metadata:**")
-                        st.json(item['summary'].metadata)
-                
-                all_reranked_summaries = reranked
-            
-            # Sort all summaries by score (highest first)
-            all_reranked_summaries.sort(key=lambda x: x['score'], reverse=True)
-            
-            # Generate final report
-            st.subheader("📋 Final Report")
-            
-            final_report = generate_final_report(
-                initial_query=initial_query,
-                all_reranked_summaries=all_reranked_summaries,
-                additional_context=additional_context,
-                llm_model=selected_model,
-                language=language
-            )
-            
-            st.markdown("### Generated Report:")
-            st.markdown(final_report)
-            
-            # Summary statistics
-            st.subheader("📈 Summary Statistics")
-            col_a, col_b, col_c = st.columns(3)
-            
-            with col_a:
-                st.metric("Total Summaries", len(all_reranked_summaries))
-            
-            with col_b:
-                avg_score = sum(item['score'] for item in all_reranked_summaries) / len(all_reranked_summaries)
-                st.metric("Average Score", f"{avg_score:.2f}")
-            
-            with col_c:
-                highest_score = max(item['score'] for item in all_reranked_summaries)
-                st.metric("Highest Score", f"{highest_score:.1f}")
-
+                    
+            except Exception as e:
+                st.error(f"Error during processing: {str(e)}")
+                st.exception(e)
+        
+    # Debug information
+    with st.expander("🔧 Debug Information"):
+        st.write("**Session State Keys:**")
+        st.write(list(st.session_state.keys()))
+        st.write("**Graph Available:**", st.session_state.graph is not None)
 
 if __name__ == "__main__":
     main()
