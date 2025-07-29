@@ -23,6 +23,7 @@ class ResearcherStateV2(TypedDict):
     
     # Reranking fields for basic_rerank-reporter_app.py
     all_reranked_summaries: Optional[list[dict[str, Any]]]  # Reranked summaries with scores
+    reflection_count: int = 0  # Counter for quality checker reflection loops
     
     # New HITL fields (extending from InitState in basic_HITL_app.py)
     human_feedback: Optional[str]  # Latest human feedback message

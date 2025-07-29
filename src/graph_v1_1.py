@@ -1101,30 +1101,96 @@ def quality_checker(state: ResearcherState, config: RunnableConfig):
         user_prompt=human_prompt
     )
     
-    # Parse the assessment to extract the overall score
+    # Parse the JSON assessment response
     assessment_text = quality_assessment if isinstance(quality_assessment, str) else str(quality_assessment)
     
-    # Extract overall score using regex pattern
+    # Try to parse JSON response
+    import json
     import re
-    score_match = re.search(r'Overall Score:.*?([0-9]+)/400', assessment_text)
-    overall_score = int(score_match.group(1)) if score_match else 0
     
-    # Determine pass/fail based on score threshold (>300/400)
-    passes_quality = overall_score > 300
+    try:
+        # Clean the response by removing <think> tags and their content
+        # Handle both <think>...</think> and <think>...<think> patterns
+        cleaned_text = re.sub(r'<think>.*?(?:</think>|<think>)', '', assessment_text, flags=re.DOTALL | re.IGNORECASE)
+        cleaned_text = cleaned_text.strip()
+        
+        print(f"  [DEBUG] Original response length: {len(assessment_text)}")
+        print(f"  [DEBUG] Cleaned response length: {len(cleaned_text)}")
+        print(f"  [DEBUG] Cleaned response preview: {cleaned_text[:200]}...")
+        
+        # Try multiple patterns to extract JSON
+        json_patterns = [
+            r'\{[^{}]*"quality_score"[^{}]*\}',  # Simple single-level JSON
+            r'\{(?:[^{}]|\{[^{}]*\})*"quality_score"(?:[^{}]|\{[^{}]*\})*\}',  # Nested JSON
+            r'\{.*?"quality_score".*?\}',  # More flexible pattern
+        ]
+        
+        assessment_data = None
+        json_str = None
+        
+        for pattern in json_patterns:
+            json_match = re.search(pattern, cleaned_text, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(0)
+                try:
+                    assessment_data = json.loads(json_str)
+                    print(f"  [DEBUG] Successfully parsed JSON with pattern: {pattern[:30]}...")
+                    break
+                except json.JSONDecodeError:
+                    continue
+        
+        if assessment_data:
+            
+            # Extract values from JSON response
+            quality_score = assessment_data.get("quality_score", 0)
+            is_accurate = assessment_data.get("is_accurate", False)
+            improvement_needed = assessment_data.get("improvement_needed", True)
+            improvement_suggestions = assessment_data.get("improvement_suggestions", "")
+            issues_found = assessment_data.get("issues_found", [])
+            missing_elements = assessment_data.get("missing_elements", [])
+            citation_issues = assessment_data.get("citation_issues", [])
+            
+            print(f"  [INFO] LLM Quality Assessment Score: {quality_score}/400")
+            print(f"  [INFO] Quality Assessment Result: {'PASS' if is_accurate else 'FAIL'}")
+            
+        else:
+            # Fallback to regex if JSON parsing fails
+            print("  [WARNING] Could not parse JSON response, using fallback parsing")
+            score_match = re.search(r'"quality_score":\s*(\d+)', assessment_text)
+            quality_score = int(score_match.group(1)) if score_match else 0
+            is_accurate = quality_score > 300
+            improvement_needed = not is_accurate
+            improvement_suggestions = "Please improve based on the quality assessment."
+            issues_found = []
+            missing_elements = []
+            citation_issues = []
+            
+    except (json.JSONDecodeError, AttributeError, ValueError) as e:
+        print(f"  [ERROR] Failed to parse quality assessment response: {e}")
+        # Fallback values
+        quality_score = 0
+        is_accurate = False
+        improvement_needed = True
+        improvement_suggestions = "Quality assessment parsing failed. Please review the answer."
+        issues_found = ["Assessment parsing error"]
+        missing_elements = []
+        citation_issues = []
     
-    print(f"  [INFO] LLM Quality Assessment Score: {overall_score}/400")
-    print(f"  [INFO] Quality Assessment Result: {'PASS' if passes_quality else 'FAIL'}")
-    
-    # Create structured quality check result
+    # Create structured quality check result (maintaining backward compatibility)
     quality_result = {
         "enabled": True,
-        "assessment_type": "llm_fidelity_assessment",
-        "overall_score": overall_score,
+        "assessment_type": "llm_json_assessment",
+        "overall_score": quality_score,  # For UI compatibility
         "max_score": 400,
-        "passes_quality": passes_quality,
+        "passes_quality": is_accurate,  # For UI compatibility
+        "needs_improvement": improvement_needed,  # For UI compatibility
+        "improvement_suggestions": improvement_suggestions,  # For UI compatibility
         "threshold": 300,
         "full_assessment": assessment_text,
-        "score": overall_score  # For compatibility with quality_router
+        "score": quality_score,  # For compatibility with quality_router
+        "issues_found": issues_found,
+        "missing_elements": missing_elements,
+        "citation_issues": citation_issues
     }
     
     # If quality assessment fails, generate improved answer

@@ -224,7 +224,7 @@ IMPORTANT: You MUST write your entire response in {language} language only.
 
 # Quality checking prompts
 # New LLM-based Quality Assessment Prompt
-LLM_QUALITY_CHECKER_SYSTEM_PROMPT = """You are an expert quality assessment specialist for research reports and document summaries.
+LLM_QUALITY_CHECKER_SYSTEM_PROMPT_BUP = """You are an expert quality assessment specialist for research reports and document summaries.
 
 Your task is to evaluate the fidelity and quality of a final answer against the source documents it was derived from.
 
@@ -250,43 +250,42 @@ Evaluate the following four dimensions (each scored 0-100):
 - Check that all claims are properly attributed
 - Ensure no missing citations for factual claims
 
-For your response, STRICTLY use the following language: {language}
+The overall quality score is the sum of the four dimensions.
 
 ## Response Structure
-Always format your assessment as:
+Respond ONLY with a valid JSON object with the following structure and no prefix or suffix:
+{{
+  "quality_score": 330,
+  "is_accurate": True,
+  "issues_found": "my issues",
+  "missing_elements": "my missing elements",
+  "citation_issues": "my citation issues",
+  "improvement_needed": False,
+  "improvement_suggestions": "my improvements"
+}}
 
-**FIDELITY ASSESSMENT REPORT**
+IMPORTANT: If quality_score is above 300, the answer PASSES quality assessment and "is_accurate"=True.
+If quality_score is 300 or below, the answer FAILS and needs improvement. Then "is_accurate"=False and "improvement_needed"=True.
 
-- Factual Fidelity: [X/100] - [Brief justification]
-- Semantic Fidelity: [X/100] - [Brief justification]
-- Structural Fidelity: [X/100] - [Brief justification]
-- Source Fidelity: [X/100] - [Brief justification]
-- Overall Score: (sum of scores) - [X/400]
-
-**KEY FINDINGS**
-- [Bullet point list of main observations]
-
-**IMPROVEMENT RECOMMENDATIONS**
-- [Prioritized list of specific suggestions]
-
-**CONFIDENCE LEVEL**: [High/Medium/Low]
-
-IMPORTANT: If Overall Score is above 300/400, the answer PASSES quality assessment.
-If Overall Score is 300 or below, the answer FAILS and needs improvement.
+CRITICAL:
+- Your "improvement_suggestions" MUST be a SINGLE STRING, not a list or any other structure. It MUST prioritize the best ranked summary. It MUST STRICTLY use the following language: {language}
+- Respond ONLY with a valid JSON object with the given structure and no prefix or suffix.
 """
 
-LLM_QUALITY_CHECKER_HUMAN_PROMPT = """Please evaluate the quality of this final answer against the source documents.
+LLM_QUALITY_CHECKER_HUMAN_PROMPT_BUP = """Please evaluate the quality of this final answer against the source documents.
 
 ## Final Answer to Evaluate:
 {final_answer}
 
-## Source Documents for Comparison:
-{source_documents}
+## Reranked Source Documents for Comparison:
+{all_reranked_summaries}
 
 ## Original Query:
 {query}
 
-Provide your assessment following the exact format specified in the system prompt.
+CRITICAL:
+- Your "improvement_suggestions" MUST STRICTLY use the following language: {language}
+- Respond ONLY with a valid JSON object with the given structure and no prefix or suffix.
 """
 
 # Legacy Quality Checker Prompt (kept for compatibility)
@@ -324,6 +323,93 @@ Summary to evaluate:
 
 Source Documents for comparison:
 {documents}"""
+
+
+LLM_QUALITY_CHECKER_SYSTEM_PROMPT = """
+You are an expert quality assessment specialist for research reports and document summaries.
+
+Your task is to score and analyze the quality of a FINAL ANSWER by directly comparing it to its SOURCE DOCUMENTS.
+
+Evaluate the FINAL ANSWER on these four dimensions (0-100 each):
+
+1. FACTUAL FIDELITY (0-100):  
+   - Does the answer accurately reflect facts from the source documents?
+   - Check for factual errors, contradictions, false claims, or fabrication.
+   - Verify specific data: numbers, dates, names, and critical facts.
+
+2. SEMANTIC FIDELITY (0-100):  
+   - Does the answer preserve the meaning and intent of the sources?
+   - Are interpretations accurate and context intact?
+   - Ensure no important nuance is lost or misrepresented.
+
+3. STRUCTURAL FIDELITY (0-100):  
+   - Is the answer logical, well-organized, and comprehensive?
+   - Is it clear, readable, and easy to follow?
+   - Are all relevant points from the sources included and connected?
+
+4. SOURCE FIDELITY (0-100):  
+   - Are all claims properly cited using the format [Source_filename]?
+   - Are attributions accurate and citations not missing?
+   - Is every factual claim clearly linked to its source?
+
+Calculate the total:  
+quality_score = FACTUAL FIDELITY score + SEMANTIC FIDELITY score + STRUCTURAL FIDELITY score + SOURCE FIDELITY score.
+
+**Response Format:**
+Respond ONLY with a valid JSON object. Do NOT write any preamble or explanation—respond with JSON only in the exact structure below:
+
+{{
+  "quality_score": 0,
+  "is_accurate": false,
+  "issues_found": "",
+  "missing_elements": "",
+  "citation_issues": "",
+  "improvement_needed": false,
+  "improvement_suggestions": ""
+}}
+
+- "quality_score": Sum of the four dimensions (0-400).
+- "is_accurate": true if quality_score > 300, else false.
+- "issues_found": Summarize identified factual, semantic, or structural issues.
+- "missing_elements": Explain any relevant content missing from the final answer.
+- "citation_issues": Explain any problems with citations.
+- "improvement_needed": true if quality_score <= 300, else false.
+- "improvement_suggestions": A SINGLE STRING (not a list). Your suggestions must use {language}. Focus improvement only on the best ranked summary.
+
+**Important:**
+- If "quality_score" > 300, "is_accurate" must be true and "improvement_needed" false.
+- If "quality_score" <= 300, "is_accurate" must be false and "improvement_needed" true.
+- Output VALID JSON ONLY, with NO text before or after.
+"""
+
+LLM_QUALITY_CHECKER_HUMAN_PROMPT = """
+Please assess the following FINAL ANSWER based on the provided source documents.
+
+FINAL ANSWER TO EVALUATE:
+{final_answer}
+
+SOURCE DOCUMENT SUMMARIES:
+{all_reranked_summaries}
+
+ORIGINAL USER QUERY:
+{query}
+
+Evaluate on the same four dimensions from 0-100 (see SYSTEM PROMPT for definitions). Produce the following JSON object ONLY (no extra commentary):
+{{
+  "quality_score": 0,
+  "is_accurate": false,
+  "issues_found": "",
+  "missing_elements": "",
+  "citation_issues": "",
+  "improvement_needed": false,
+  "improvement_suggestions": ""
+}}
+
+INSTRUCTIONS:
+- Output ONLY a valid JSON object in this structure.
+- "improvement_suggestions" must be a SINGLE STRING using {language}, focused on improving the best ranked summary.
+- No lists, no explanations, no preamble—just the JSON object.
+"""
 
 
 # Summary improvement prompts
