@@ -3,6 +3,7 @@ import sys
 import os
 import json
 import re
+from datetime import datetime
 from typing import Dict, List, Any
 from pathlib import Path
 from typing_extensions import TypedDict
@@ -11,7 +12,8 @@ from typing_extensions import TypedDict
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Import required modules
-from src.rag_helpers_v1_1 import get_report_llm_models, invoke_ollama
+from src.rag_helpers_v1_1 import get_report_llm_models
+from src.utils_v1_1 import invoke_ollama
 from src.state_v2_0 import ResearcherStateV2
 from langchain_core.documents import Document
 from langgraph.graph import StateGraph, END
@@ -32,7 +34,8 @@ def score_summary(initial_query: str, query: str, content: str, context: str,
     prompt = f"""
 You are an expert evaluator of document summary relevance.
 
-TASK: Score the following summary for its relevance and accuracy regarding the original query and the given context.
+TASK: Make a deep analysis of the following summary and score it for its relevance and accuracy regarding the original query and the given context.
+Ignore any scoring that is already within the SUMMARY TO ASSESS section.
 
 ORIGINAL USER QUERY:
 {initial_query}
@@ -47,10 +50,11 @@ SUMMARY TO ASSESS:
 {content}
 
 SCORING CRITERIA (weights in parentheses):
-1. Direct relevance to the original user query (40%)
-2. Specificity and level of detail (25%)
-3. Alignment with the research query context (20%)
-4. Factual accuracy and completeness (15%)
+1. Direct relevance to the original user query (50%) – Penalize mismatches in key terms (deduct 1-2 points if exact terms are not used, e.g., 'transportation' instead of 'local public transport').
+2. Specificity and level of detail (20%) – Reward precise matches to query intent.
+3. Alignment with the research query context (20%) – Ensure partial alignment doesn't inflate scores.
+4. Factual accuracy and completeness (10%) – Deduct for inaccuracies or unrelated additions.
+Example: "Score 10 only for perfect alignment; 7-8 for partial matches with some deviations; 5-6 for broad relevance without specifics."
 
 INSTRUCTIONS:
 Return ONLY a number between 0 and 10 using the following ranges:
@@ -59,29 +63,43 @@ Return ONLY a number between 0 and 10 using the following ranges:
 - 7-6 = relevant but somewhat incomplete
 - 5-4 = partially relevant
 - 3-0 = poorly relevant or inaccurate
+Be strictly critical: Reserve 10 for exact matches to the original query. 
+Differentiate by prioritizing exact terms e.g. 'local public transport' from the user query and additional context over broader terms, e.g. 'transportation'. 
+Compute sub-scores for each criterion, weight them, and average to final score. Output ONLY the final number (0-10, decimals allowed).
+That is: Sub-score each criterion (0-10), multiply by weight, sum, and divide by 100 for final score. E.g., (Criterion1 * 0.5) + (Criterion2 * 0.2) + ...
+
+One-Shot Example:
+1. Perfect match to 'local public transport' matters: Score 10.
+2. Partial relevance with public transport in general but not direct query: Score 7-8.
+3. Discusses general transportation: Score 5-6 max.
 
 Respond in {language}.
 """
     
     try:
         response = invoke_ollama(
-            system_prompt="You are an expert document evaluator. Provide only numerical scores.",
+            system_prompt="""You are a strict expert evaluator. 
+            Provide only a single numerical score (0-10, with decimals) based on critical analysis; no explanations.""",
             user_prompt=prompt,
             model=llm_model
         )
         
+        print(f"  [DEBUG] LLM scoring response: {response[:100]}...")
+        
         # Extract numerical score from response
-        match = re.search(r"\b(\d+(?:\.\d+)?)\b", response)
+        match = re.search(r'\b(\d{1,2}(?:\.\d{1,2})?)\b', response)
         if match:
             score = float(match.group(1))
             # Ensure score is within valid range
-            return max(0.0, min(10.0, score))
+            final_score = max(0.0, min(10.0, score))
+            print(f"  [DEBUG] Extracted score: {final_score}")
+            return final_score
         else:
-            st.warning(f"Could not extract score from LLM response: {response[:100]}...")
-            return 1.0
+            print(f"  [WARNING] Could not extract score from LLM response: {response[:100]}...")
+            return 5.0  # Default to middle score instead of 1.0
     except Exception as e:
-        st.error(f"Failed to score summary: {str(e)}")
-        return 1.0
+        print(f"  [ERROR] Failed to score summary: {str(e)}")
+        return 5.0  # Default to middle score instead of 1.0
 
 
 def reranker_node(state: ResearcherStateV2, config: RunnableConfig) -> ResearcherStateV2:
@@ -104,6 +122,11 @@ def reranker_node(state: ResearcherStateV2, config: RunnableConfig) -> Researche
     report_llm = state.get("report_llm", "qwen3:latest")
     detected_language = state.get("detected_language", "English")
     
+    print(f"  [DEBUG] User query: {user_query}")
+    print(f"  [DEBUG] Search summaries keys: {list(search_summaries.keys())}")
+    print(f"  [DEBUG] Report LLM: {report_llm}")
+    print(f"  [DEBUG] Language: {detected_language}")
+    
     if not search_summaries:
         print("  [WARNING] No search summaries found for reranking")
         return state
@@ -112,13 +135,19 @@ def reranker_node(state: ResearcherStateV2, config: RunnableConfig) -> Researche
     all_reranked_summaries = []
     
     for query, summaries in search_summaries.items():
+        print(f"  [DEBUG] Processing query: {query} with {len(summaries)} summaries")
+        
         if not summaries:
+            print(f"  [WARNING] No summaries for query: {query}")
             continue
             
         # Rerank summaries for this query
         reranked = []
         for idx, doc in enumerate(summaries):
             content = doc.page_content
+            print(f"  [DEBUG] Scoring summary {idx+1}/{len(summaries)} for query: {query[:50]}...")
+            print(f"  [DEBUG] Content preview: {content[:100]}...")
+            
             score = score_summary(
                 initial_query=user_query,
                 query=query,
@@ -128,6 +157,8 @@ def reranker_node(state: ResearcherStateV2, config: RunnableConfig) -> Researche
                 language=detected_language
             )
             
+            print(f"  [DEBUG] Score for summary {idx+1}: {score}")
+            
             reranked.append({
                 'summary': content,
                 'score': score,
@@ -136,15 +167,21 @@ def reranker_node(state: ResearcherStateV2, config: RunnableConfig) -> Researche
                 'query': query
             })
         
-        # Sort by score descending
+        # Sort by score descending within this query
         reranked.sort(key=lambda x: x['score'], reverse=True)
         all_reranked_summaries.extend(reranked)
+        print(f"  [DEBUG] Added {len(reranked)} reranked summaries for query: {query[:50]}...")
+    
+    # CRITICAL: Global sort by score after collecting all summaries from all queries
+    all_reranked_summaries.sort(key=lambda x: x['score'], reverse=True)
+    print(f"  [DEBUG] Applied global sort by score")
     
     # Store reranked summaries in state
     state["all_reranked_summaries"] = all_reranked_summaries
     state["current_position"] = "reranker"
     
     print(f"  [INFO] Reranked {len(all_reranked_summaries)} total summaries")
+    print(f"  [DEBUG] Final scores after global sort: {[item['score'] for item in all_reranked_summaries]}")
     return state
 
 
@@ -215,12 +252,25 @@ def report_writer_node(state: ResearcherStateV2, config: RunnableConfig) -> Rese
     report_llm = state.get("report_llm", "qwen3:latest")
     detected_language = state.get("detected_language", "English")
     
+    print(f"  [DEBUG] User query: {user_query}")
+    print(f"  [DEBUG] Reranked summaries count: {len(all_reranked_summaries)}")
+    print(f"  [DEBUG] Report LLM: {report_llm}")
+    print(f"  [DEBUG] Language: {detected_language}")
+    
     if not all_reranked_summaries:
+        print("  [WARNING] No reranked summaries found - cannot generate report")
         state["final_answer"] = "No relevant information found to generate a report."
         state["current_position"] = "report_writer"
         return state
     
+    # Show sample of reranked summaries for debugging
+    print(f"  [DEBUG] Sample reranked summaries:")
+    for i, item in enumerate(all_reranked_summaries[:2]):
+        print(f"    Summary {i+1}: Score={item.get('score', 'N/A')}, Query={item.get('query', 'N/A')[:50]}...")
+        print(f"    Content preview: {str(item.get('summary', 'N/A'))[:100]}...")
+    
     # Generate final report
+    print("  [DEBUG] Generating final answer prompt...")
     prompt = generate_final_answer_prompt(
         initial_query=user_query,
         reranked_summaries=all_reranked_summaries,
@@ -228,17 +278,31 @@ def report_writer_node(state: ResearcherStateV2, config: RunnableConfig) -> Rese
         language=detected_language
     )
     
+    print(f"  [DEBUG] Prompt length: {len(prompt)} characters")
+    print(f"  [DEBUG] Prompt preview: {prompt[:200]}...")
+    
     try:
+        print(f"  [DEBUG] Calling invoke_ollama with model: {report_llm}")
         response = invoke_ollama(
             system_prompt="You are an expert research analyst. Provide comprehensive, well-structured reports based on the provided information.",
             user_prompt=prompt,
             model=report_llm
         )
+        
+        print(f"  [DEBUG] LLM response length: {len(response)} characters")
+        print(f"  [DEBUG] Response preview: {response[:200]}...")
+        
         state["final_answer"] = response
+        print("  [INFO] Final report generated successfully")
         
     except Exception as e:
-        st.error(f"Exception in final report generation: {str(e)}")
-        return f"Error occurred during final report generation: {str(e)}. Check logs for details."
+        print(f"  [ERROR] Exception in final report generation: {str(e)}")
+        state["final_answer"] = f"Error occurred during final report generation: {str(e)}. Check logs for details."
+        state["current_position"] = "report_writer_error"
+        return state
+    
+    state["current_position"] = "report_writer"
+    return state
 
 
 def create_rerank_reporter_graph():
@@ -489,27 +553,94 @@ def main():
                         st.write(f"**Current Position:** {final_state.get('current_position', 'unknown')}")
                         st.write(f"**Research Queries Processed:** {len(final_state.get('research_queries', []))}")
                         
-                        # Display reranked summaries
+                        # Debug state keys
+                        st.write("**State Keys:**", list(final_state.keys()))
+                        st.write("**Reranked summaries count:**", len(final_state.get("all_reranked_summaries", [])))
+                        st.write("**Reranked summaries (alt):**", len(final_state.get("reranked_summaries", [])))
+                        
+                        # Display reranked documents
                         reranked_summaries = final_state.get("all_reranked_summaries", [])
+                        # Also check for reranked_summaries in the state
+                        if not reranked_summaries:
+                            reranked_summaries = final_state.get("reranked_summaries", [])
                         if reranked_summaries:
-                            st.subheader("📊 Reranked Summaries")
-                            for idx, item in enumerate(reranked_summaries):
-                                with st.expander(f"Summary {idx+1} (Score: {item.get('score', 'N/A')}/10)"):
-                                    st.write(item.get('summary', 'No summary available'))
-                                    st.caption(f"Original Index: {item.get('original_index', 'N/A')}")
+                            st.subheader("📊 Reranked Documents")
+                            
+                            # Summary statistics
+                            total_docs = len(reranked_summaries)
+                            avg_score = sum(item.get('score', 0) for item in reranked_summaries) / total_docs if total_docs > 0 else 0
+                            
+                            col_stats1, col_stats2, col_stats3 = st.columns(3)
+                            with col_stats1:
+                                st.metric("Total Documents", total_docs)
+                            with col_stats2:
+                                st.metric("Average Score", f"{avg_score:.2f}/10")
+                            with col_stats3:
+                                max_score = max([item.get('score', 0) for item in reranked_summaries], default=0)
+                                st.metric("Highest Score", f"{max_score:.2f}/10")
+                            
+                            # Display reranked documents in ranked order
+                            for rank, item in enumerate(reranked_summaries, 1):
+                                score = item.get('score', 0)
+                                summary_data = item.get('summary', {})
+                                
+                                # Handle different summary formats
+                                if isinstance(summary_data, dict):
+                                    content = summary_data.get('Content', str(summary_data))
+                                    source = summary_data.get('Source', 'Unknown')
+                                else:
+                                    # Handle Document objects or string content
+                                    if hasattr(summary_data, 'page_content'):
+                                        content = summary_data.page_content
+                                        source = summary_data.metadata.get('source', 'Unknown') if hasattr(summary_data, 'metadata') else 'Unknown'
+                                    else:
+                                        content = str(summary_data)
+                                        source = 'Unknown'
+                                
+                                with st.expander(f"🥇 Rank #{rank} (Score: {score:.2f}/10)", expanded=rank <= 3):
+                                    st.markdown(f"**Score:** {score:.2f}/10")
+                                    st.markdown(f"**Query:** {item.get('query', 'N/A')}")
+                                    st.markdown(f"**Source:** {source}")
+                                    st.markdown(f"**Original Index:** {item.get('original_index', 'N/A')}")
+                                    
+                                    st.markdown("**Content:**")
+                                    st.markdown(content)
+                                    
+                                    # Add separator except for last item
+                                    if rank < len(reranked_summaries):
+                                        st.divider()
+                        else:
+                            st.warning("No reranked summaries found. Check input data.")
                     
                     # Display final report
-                    if final_state.get("final_answer"):
+                    final_answer = final_state.get("final_answer", "")
+                    if final_answer and final_answer.strip():
                         st.subheader("📋 Final Report")
-                        st.markdown(final_state["final_answer"])
+                        st.markdown(final_answer)
                         
-                        # Copy functionality
+                        # Download button for the report
                         st.download_button(
                             label="📥 Download Report",
-                            data=final_state["final_answer"],
-                            file_name="research_report.md",
+                            data=final_answer,
+                            file_name=f"research_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
                             mime="text/markdown"
                         )
+                    else:
+                        st.subheader("📄 Final Report")
+                        st.warning("No report generated. This could be due to:")
+                        st.markdown("- No reranked summaries found")
+                        st.markdown("- All summaries scored below relevance threshold")
+                        st.markdown("- Report generation failed")
+                        
+                        # Show debug info
+                        with st.expander("🔧 Debug Information"):
+                            st.json({
+                                "has_final_answer": bool(final_answer),
+                                "final_answer_length": len(final_answer) if final_answer else 0,
+                                "reranked_summaries_count": len(reranked_summaries),
+                                "research_queries": final_state.get("research_queries", []),
+                                "user_query": final_state.get("user_query", "")
+                            })
                     
             except Exception as e:
                 st.error(f"Error during processing: {str(e)}")

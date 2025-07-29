@@ -21,6 +21,9 @@ class ResearcherStateV2(TypedDict):
     summarization_llm: str  # LLM model used for document summarization
     enable_quality_checker: bool = False  # Flag to enable/disable quality checker
     
+    # Reranking fields for basic_rerank-reporter_app.py
+    all_reranked_summaries: Optional[list[dict[str, Any]]]  # Reranked summaries with scores
+    
     # New HITL fields (extending from InitState in basic_HITL_app.py)
     human_feedback: Optional[str]  # Latest human feedback message
     analysis: Optional[str]  # Analysis of the conversation, including the latest human feedback
