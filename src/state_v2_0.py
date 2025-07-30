@@ -25,6 +25,7 @@ class ResearcherStateV2(TypedDict):
     all_reranked_summaries: Optional[list[dict[str, Any]]]  # Reranked summaries with scores
     reflection_count: int = 0  # Counter for quality checker reflection loops
     internet_result: Optional[str] = None  # Internet search results from Tavily
+    internet_search_term: Optional[str] = None  # Generated search term used for Tavily search
     web_search_enabled: bool = False  # Flag to enable/disable web search
     
     # New HITL fields (extending from InitState in basic_HITL_app.py)

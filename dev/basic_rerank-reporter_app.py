@@ -753,7 +753,8 @@ Search Term:"""
             print(f"  Search failed: {search_results}")
             return {
                 **state,
-                "internet_result": f"Internet search failed: {search_results}"
+                "internet_result": f"Internet search failed: {search_results}",
+                "internet_search_term": search_term
             }
         
         print(f"  Search completed. Results length: {len(search_results)} characters")
@@ -796,15 +797,19 @@ Summary:"""
         
         return {
             **state,
-            "internet_result": internet_result
+            "internet_result": internet_result,
+            "internet_search_term": search_term
         }
         
     except Exception as e:
         error_msg = f"Error in web_tavily_searcher_node: {str(e)}"
         print(f"  ERROR: {error_msg}")
+        # Try to include search_term if it was generated before the error
+        search_term = locals().get('search_term', 'Not generated due to error')
         return {
             **state,
-            "internet_result": error_msg
+            "internet_result": error_msg,
+            "internet_search_term": search_term
         }
 
 
@@ -1104,7 +1109,8 @@ def main():
                         "quality_check": None,
                         "reflection_count": 0,
                         "web_search_enabled": enable_web_search,
-                        "internet_result": None
+                        "internet_result": None,
+                        "internet_search_term": None
                     }
                     
                     # Execute the graph
@@ -1179,6 +1185,7 @@ def main():
                     
                     # Display internet search results if available
                     internet_result = final_state.get("internet_result")
+                    internet_search_term = final_state.get("internet_search_term")
                     if internet_result and internet_result.strip():
                         st.subheader("🌐 Internet Search Results")
                         
@@ -1188,6 +1195,10 @@ def main():
                             st.success("✅ Web search was enabled and executed successfully")
                         else:
                             st.info("ℹ️ Web search was not enabled for this query")
+                        
+                        # Display the generated search term if available
+                        if internet_search_term:
+                            st.info(f"🔍 **Generated Search Term:** `{internet_search_term}`")
                         
                         # Display the internet search results
                         with st.expander("📄 Internet Search Summary", expanded=True):
