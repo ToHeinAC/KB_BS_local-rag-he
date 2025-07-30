@@ -552,7 +552,7 @@ def execute_retrieval_summarization_phase(use_ext_database=False, selected_datab
         retrieval_graph = create_retrieval_summarization_graph()
         
         # Execute retrieval-summarization graph
-        retrieval_status_text.text("🚀 Starting retrieval and summarization...")
+        retrieval_status_text.text("🔍 Retrieving relevant documents...")
         
         retrieval_final_state = retrieval_state
         step_count = 0
@@ -565,9 +565,9 @@ def execute_retrieval_summarization_phase(use_ext_database=False, selected_datab
             
             # Update status based on current step
             if step_count == 1:
-                retrieval_status_text.text("🔍 Retrieving relevant documents...")
-            elif step_count == 2:
                 retrieval_status_text.text("📋 Summarizing research findings...")
+            elif step_count == 2:
+                retrieval_status_text.text("✅ Retrieval and summarization completed")
             
             # Get the latest state from the step output
             for node_name, node_state in step_output.items():
@@ -1139,21 +1139,15 @@ def main():
             except Exception as e:
                 st.error(f"Could not generate reporting graph: {str(e)}")
     
-    # Current phase info box
-    phase_info = {
-        "hitl": "🤝 **Current Phase: Human-in-the-Loop** - Interactive conversation to refine your research needs.",
-        "retrieval_summarization": "📚 **Current Phase: Retrieval & Summarization** - Retrieving documents and generating summaries.",
-        "reporting": "📄 **Current Phase: Reporting** - Reranking summaries and generating final report."
-    }
-    st.warning(phase_info.get(st.session_state.workflow_phase, "🔬 **Current Phase: Research Workflow**"))
-    
     # Three-Phase Tabs
     tab1, tab2, tab3 = st.tabs(["🤝 Phase 1: HITL", "📚 Phase 2: Retrieval-Summarization", "📄 Phase 3: Reporting"])
     
     # Phase 1: HITL
     with tab1:
+        # Dynamic phase info for HITL tab
+        st.warning("🤝 **Current Phase: Human-in-the-Loop** - Interactive conversation to refine your research needs.")
+        
         if st.session_state.workflow_phase == "hitl":
-            st.info("📝 **Current Phase: Human-in-the-Loop** - Interactive conversation to refine your research needs.")
             
             # Initialize HITL session state variables if they don't exist
             if "hitl_conversation_history" not in st.session_state:
@@ -1319,6 +1313,9 @@ def main():
     
     # Phase 2: Retrieval-Summarization
     with tab2:
+        # Dynamic phase info for Retrieval-Summarization tab
+        st.warning("📚 **Current Phase: Retrieval & Summarization** - Retrieving documents and generating summaries.")
+        
         if st.session_state.workflow_phase == "retrieval_summarization":
             st.markdown("### 📚 Retrieval & Summarization Phase")
             st.markdown("The system will now retrieve relevant documents and generate summaries based on your HITL input.")
@@ -1422,6 +1419,9 @@ def main():
     
     # Phase 3: Reporting
     with tab3:
+        # Dynamic phase info for Reporting tab
+        st.warning("📄 **Current Phase: Reporting** - Reranking summaries and generating final report.")
+        
         if st.session_state.workflow_phase == "reporting":
             st.markdown("### 📄 Reporting Phase")
             st.markdown("The system will now rerank the summaries and generate a comprehensive final report.")
