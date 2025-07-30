@@ -215,10 +215,14 @@ def generate_knowledge_base_questions(state: InitState, config: RunnableConfig):
     human_feedback = state.get("human_feedback", "")
     additional_context = state.get("additional_context", "")
     
+    # Get max_search_queries from config or state
+    max_search_queries = config["configurable"].get("max_search_queries", state.get("max_search_queries", 3))
+    
     # Use the report writer LLM for both analysis and question generation
     model_to_use = state.get("report_llm", config["configurable"].get("report_llm", "deepseek-r1:latest"))
     print(f"  [DEBUG] Knowledge Base Query LLM (report_llm): {model_to_use}")
     print(f"  [DEBUG] Detected language: {detected_language}")
+    print(f"  [DEBUG] Max search queries: {max_search_queries}")
     
     # ========================================
     # FIRST LLM CALL: Deep Analysis
@@ -276,7 +280,8 @@ def generate_knowledge_base_questions(state: InitState, config: RunnableConfig):
     kb_human_prompt = KNOWLEDGE_BASE_SEARCH_HUMAN_PROMPT.format(
         query=query,
         deep_analysis=deep_analysis,
-        language=detected_language
+        language=detected_language,
+        max_queries=max_search_queries
     )
     
     # Second LLM invocation: Generate knowledge base questions
@@ -301,9 +306,16 @@ def generate_knowledge_base_questions(state: InitState, config: RunnableConfig):
         if match:
             generated_queries.append(match.group(1).strip())
     
+    # Limit the number of generated queries to respect max_search_queries
+    # Since we always include the original query, we can add (max_search_queries - 1) additional queries
+    max_additional_queries = max(0, max_search_queries - 1)  # Ensure non-negative
+    if len(generated_queries) > max_additional_queries:
+        generated_queries = generated_queries[:max_additional_queries]
+        print(f"  [DEBUG] Limited generated queries to {max_additional_queries} (max_search_queries={max_search_queries})")
+    
     # Always include the original user query as the first research query
     research_queries = [query]  # Start with original query
-    research_queries.extend(generated_queries)  # Add generated queries
+    research_queries.extend(generated_queries)  # Add limited generated queries
     
     print(f"  [DEBUG] Parsed {len(generated_queries)} generated queries + 1 original query = {len(research_queries)} total research queries")
     assert isinstance(research_queries, list), "research_queries must be a list"

@@ -47,6 +47,7 @@ logging.getLogger("streamlit").setLevel(logging.ERROR)
 # Import ResearcherStateV2 and InitState for the enhanced workflow with HITL
 from src.state_v2_0 import ResearcherStateV2, InitState
 from src.graph_v2_0 import hitl_graph, main_graph, create_hitl_graph, researcher_main
+from src.graph_retrieval_summarization import create_retrieval_summarization_graph
 from src.utils_v1_1 import get_report_structures, process_uploaded_files, clear_cuda_memory
 from src.rag_helpers_v1_1 import (
     get_report_llm_models, 
@@ -367,14 +368,22 @@ def generate_workflow_visualization(researcher, return_mermaid_only=False):
     Otherwise, it returns the Mermaid representation.
     """
     return create_mermaid_representation(researcher)
-
-# Import the HITL functions from correct locations
-# detect_language is in basic_HITL_app.py, others are in src.graph_v2_0
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'dev'))
 from basic_HITL_app import detect_language
-from src.graph_v2_0 import analyse_user_feedback as _analyse_user_feedback
-from src.graph_v2_0 import generate_follow_up_questions as _generate_follow_up_questions
-from src.graph_v2_0 import generate_knowledge_base_questions as _generate_knowledge_base_questions
+
+# Import from hyphenated filename using importlib
+import importlib.util
+rerank_reporter_path = os.path.join(os.path.dirname(__file__), '..', 'dev', 'basic_rerank-reporter_app.py')
+spec = importlib.util.spec_from_file_location("basic_rerank_reporter_app", rerank_reporter_path)
+basic_rerank_reporter_app = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(basic_rerank_reporter_app)
+create_rerank_reporter_graph = basic_rerank_reporter_app.create_rerank_reporter_graph
+from src.graph_v2_0 import (
+    analyse_user_feedback as _analyse_user_feedback,
+    generate_follow_up_questions as _generate_follow_up_questions,
+    generate_knowledge_base_questions as _generate_knowledge_base_questions
+)
+from src.graph_retrieval_summarization import create_retrieval_summarization_graph
 from langchain_core.runnables.config import RunnableConfig
 
 # Create wrapper functions that handle the config parameter
@@ -490,12 +499,10 @@ def finalize_hitl_conversation(state):
     return f"Based on our conversation, here are targeted knowledge base search questions:\n\n{kb_questions_content}"
 
 
-def execute_main_workflow(enable_web_search, report_structure, max_search_queries, 
-                         enable_quality_checker, quality_check_loops=1, 
-                         use_ext_database=False, selected_database=None, k_results=3):
+def execute_retrieval_summarization_phase(use_ext_database=False, selected_database=None, k_results=3):
     """
-    Execute the main research workflow using HITL results from session state.
-    Returns the final research results.
+    Execute Phase 2: Retrieval-Summarization workflow using HITL results from session state.
+    Returns the state with retrieved documents and summaries.
     """
     if not st.session_state.hitl_result:
         st.error("No HITL results found. Please complete the HITL workflow first.")
@@ -504,16 +511,9 @@ def execute_main_workflow(enable_web_search, report_structure, max_search_querie
     # Clear CUDA memory before starting
     clear_cuda_memory()
     
-    # Configuration for the main graph
+    # Configuration for the retrieval-summarization graph
     config = {
         "configurable": {
-            "report_structure": report_structure,
-            "max_search_queries": max_search_queries,
-            "report_llm": st.session_state.hitl_result["report_llm"],
-            "summarization_llm": st.session_state.hitl_result["summarization_llm"],
-            "enable_web_search": enable_web_search,
-            "enable_quality_checker": enable_quality_checker,
-            "quality_check_loops": quality_check_loops,
             "use_ext_database": use_ext_database,
             "selected_database": selected_database,
             "k_results": k_results
@@ -521,10 +521,10 @@ def execute_main_workflow(enable_web_search, report_structure, max_search_querie
     }
     
     try:
-        # Initialize main workflow state using HITL results
-        main_state = ResearcherStateV2(
+        # Initialize retrieval-summarization state using HITL results
+        retrieval_state = ResearcherStateV2(
             user_query=st.session_state.hitl_result["user_query"],
-            current_position=st.session_state.hitl_result["current_position"],
+            current_position=0,
             detected_language=st.session_state.hitl_result["detected_language"],
             research_queries=st.session_state.hitl_result["research_queries"],
             retrieved_documents={},
@@ -534,8 +534,7 @@ def execute_main_workflow(enable_web_search, report_structure, max_search_querie
             additional_context=st.session_state.hitl_result["additional_context"],
             report_llm=st.session_state.hitl_result["report_llm"],
             summarization_llm=st.session_state.hitl_result["summarization_llm"],
-            query_mapping=None,
-            enable_quality_checker=enable_quality_checker,
+            enable_quality_checker=False,  # Not used in this phase
             # Transfer HITL fields
             human_feedback=st.session_state.hitl_result["human_feedback"],
             analysis=st.session_state.hitl_result["analysis"],
@@ -545,272 +544,193 @@ def execute_main_workflow(enable_web_search, report_structure, max_search_querie
         # Create progress tracking
         progress_container = st.container()
         with progress_container:
-            st.subheader("🔬 Main Research Workflow")
-            main_progress_bar = st.progress(0)
-            main_status_text = st.empty()
-            step_details = st.empty()
+            st.subheader("🔍 Phase 2: Retrieval & Summarization")
+            retrieval_progress_bar = st.progress(0)
+            retrieval_status_text = st.empty()
         
-        # Define main workflow steps
-        main_steps = ["retrieve_rag_documents", "update_position", "summarize_query_research", "generate_final_answer"]
-        if enable_quality_checker:
-            main_steps.append("quality_checker")
+        # Create retrieval-summarization graph
+        retrieval_graph = create_retrieval_summarization_graph()
         
-        # Execute main graph
-        main_current_step = 0
-        main_final_state = main_state  # Initialize with main_state to avoid None
+        # Execute retrieval-summarization graph
+        retrieval_status_text.text("🚀 Starting retrieval and summarization...")
         
-        main_status_text.text("🚀 Starting main research workflow...")
+        retrieval_final_state = retrieval_state
+        step_count = 0
+        total_steps = 2  # retrieve_documents, summarize_documents
         
-        for step_output in main_graph.stream(main_state, config):
-            # Update progress
-            main_current_step += 1
-            main_progress = min(main_current_step / len(main_steps), 1.0)
-            main_progress_bar.progress(main_progress)
+        for step_output in retrieval_graph.stream(retrieval_state, config):
+            step_count += 1
+            progress = min(step_count / total_steps, 1.0)
+            retrieval_progress_bar.progress(progress)
             
             # Update status based on current step
-            if main_current_step == 1:
-                main_status_text.text("🔍 Retrieving relevant documents...")
-            elif main_current_step == 2:
-                main_status_text.text("📍 Updating research position...")
-            elif main_current_step == 3:
-                main_status_text.text("📋 Summarizing research findings...")
-                # Debug info for summarization
-                summarization_info = st.empty()
-            elif main_current_step == 4:
-                main_status_text.text("✍️ Generating final answer...")
-            elif main_current_step == 5 and enable_quality_checker:
-                main_status_text.text("✅ Checking answer quality...")
+            if step_count == 1:
+                retrieval_status_text.text("🔍 Retrieving relevant documents...")
+            elif step_count == 2:
+                retrieval_status_text.text("📋 Summarizing research findings...")
             
             # Get the latest state from the step output
-            print(f"  [DEBUG] Processing step output: {list(step_output.keys())}")
             for node_name, node_state in step_output.items():
-                print(f"  [DEBUG] Processing node: {node_name}, state type: {type(node_state)}")
-                if node_state is not None:  # Only update if node_state is not None
-                    print(f"  [DEBUG] Updating main_final_state from {node_name}")
-                    main_final_state = node_state
-                    # Debug print the state keys if available
-                    if hasattr(main_final_state, 'keys'):
-                        try:
-                            print(f"  [DEBUG] State keys: {list(main_final_state.keys())}")
-                            if 'final_answer' in main_final_state:
-                                print(f"  [DEBUG] Final answer length: {len(main_final_state['final_answer']) if main_final_state['final_answer'] else 0} chars")
-                        except Exception as e:
-                            print(f"  [DEBUG] Could not inspect state keys: {str(e)}")
-                
-                # Show summarization debugging info when summarize_query_research node runs
-                if node_name == "summarize_query_research" and node_state is not None:
-                    # Display summarization debugging info in the UI
-                    try:
-                        # Get the summarization LLM from session state
-                        summarization_llm = st.session_state.get('summarization_llm', 'Unknown')
-                        
-                        # Get document counts if available
-                        doc_count = 0
-                        query_count = 0
-                        if hasattr(node_state, 'get') and node_state.get('search_summaries'):
-                            search_summaries = node_state.get('search_summaries')
-                            if isinstance(search_summaries, dict):
-                                query_count = len(search_summaries)
-                                doc_count = sum(len(docs) for docs in search_summaries.values() if isinstance(docs, list))
-                        
-                        # Create debug message
-                        debug_message = f"""**🔍 Summarization Debug Info:**
-- Using LLM: `{summarization_llm}`
-- Processing {query_count} research queries
-- Found {query_count} x {st.session_state.k_results} total chunks
-- Analysed {doc_count} summarized documents"""
-                        
-                        # Add research queries if available
-                        if hasattr(node_state, 'get') and node_state.get('research_queries'):
-                            research_queries = node_state.get('research_queries')
-                            if isinstance(research_queries, list) and research_queries:
-                                debug_message += f"\n\n**Current Research Queries ({len(research_queries)}):**\n"
-                                for i, query in enumerate(research_queries):
-                                    debug_message += f"\n{i+1}. {query}"
-                        
-                        # Display in the UI
-                        summarization_info.markdown(debug_message)
-                    except Exception as e:
-                        print(f"[ERROR] Error displaying summarization debug info: {str(e)}")
-                        summarization_info.error(f"Error displaying summarization debug info: {str(e)}")
-                
-                # Show retrieved documents after retrieve_rag_documents step
-                if node_name == "retrieve_rag_documents" and node_state is not None and "retrieved_documents" in node_state:
-                    with st.expander("📄 Retrieved Documents by Query", expanded=False):
-                        retrieved_docs = node_state["retrieved_documents"]
-                        research_queries = node_state.get("research_queries", [])
-                        
-                        if isinstance(retrieved_docs, dict):
-                            for query_key, documents in retrieved_docs.items():
-                                # Extract the actual query text (remove numbering prefix if present)
-                                if ':' in query_key:
-                                    query_display = query_key.split(':', 1)[1].strip()
-                                else:
-                                    query_display = query_key
-                                
-                                st.markdown(f"**Query:** {query_display}")
-                                st.markdown(f"**Documents found:** {len(documents)}")
-                                
-                                # Show each document
-                                for i, doc in enumerate(documents, 1):
-                                    with st.expander(f"Document {i}", expanded=False):
-                                        if hasattr(doc, 'page_content'):
-                                            st.text_area(f"Content", doc.page_content, height=150, key=f"doc_{query_key}_{i}")
-                                        if hasattr(doc, 'metadata'):
-                                            st.json(doc.metadata)
-                                        elif isinstance(doc, dict):
-                                            st.json(doc)
-                                st.divider()
-                        else:
-                            st.write("No retrieved documents found or unexpected format.")
-            
-            # Display step details
-            step_details.info(f"Main Step {main_current_step}/{len(main_steps)} completed")
-            time.sleep(0.1)
+                if node_state is not None:
+                    retrieval_final_state = node_state
         
-        # Complete main phase
-        main_progress_bar.progress(1.0)
-        main_status_text.text("✅ Research completed")
+        # Complete retrieval-summarization phase
+        retrieval_progress_bar.progress(1.0)
+        retrieval_status_text.text("✅ Retrieval and summarization completed")
         
-        # Use the final state from main workflow with defensive programming
-        try:
-            # Add detailed debugging for final state
-            print(f"\n[DEBUG] === FINAL STATE PROCESSING START ===")
-            print(f"[DEBUG] main_final_state type: {type(main_final_state)}")
-            
-            # Debug print the entire main_final_state if possible
-            try:
-                import json
-                print(f"[DEBUG] main_final_state content: {json.dumps({k: str(v)[:200] + '...' if isinstance(v, (str, bytes)) else v 
-                                 for k, v in main_final_state.items()}, indent=2, default=str)}")
-            except Exception as e:
-                print(f"[DEBUG] Could not serialize main_final_state: {str(e)}")
-                
-            if main_final_state is not None:
-                print(f"[DEBUG] main_final_state keys: {list(main_final_state.keys()) if hasattr(main_final_state, 'keys') else 'No keys attribute'}")
-                if hasattr(main_final_state, 'get') and 'final_answer' in main_final_state:
-                    print(f"[DEBUG] Final answer exists, length: {len(main_final_state['final_answer']) if main_final_state['final_answer'] else 0} chars")
-            else:
-                print(f"[WARNING] main_final_state is None, falling back to main_state")
-                print(f"[DEBUG] Main state type: {type(main_state)}")
-                print(f"[DEBUG] Main state keys: {list(main_state.keys()) if hasattr(main_state, 'keys') else 'No keys attribute'}")
-            
-            # Safely get final state
-            final_state = main_final_state if main_final_state is not None else main_state
-            
-            # Ensure final_state is a dictionary-like object
-            if not hasattr(final_state, 'get') or not hasattr(final_state, 'keys'):
-                print(f"[WARNING] Converting final_state to dictionary from {type(final_state)}")
-                # Try different ways to convert to dict
-                try:
-                    if isinstance(final_state, dict):
-                        pass  # Already a dict
-                    elif hasattr(final_state, 'dict') and callable(getattr(final_state, 'dict')):
-                        final_state = final_state.dict()
-                    elif hasattr(final_state, '__dict__'):
-                        final_state = final_state.__dict__
-                    else:
-                        # Last resort - try to create a dict from object attributes
-                        final_state = {attr: getattr(final_state, attr) for attr in dir(final_state) 
-                                     if not attr.startswith('_') and not callable(getattr(final_state, attr))}
-                except Exception as e:
-                    print(f"[ERROR] Error converting final_state to dict: {str(e)}")
-                    final_state = {"final_answer": "Error: Could not process final state. See logs for details."}
-                
-                print(f"[DEBUG] After conversion, final_state type: {type(final_state)}")
-                
-        except Exception as e:
-            print(f"[ERROR] Error in final state processing: {str(e)}", exc_info=True)
-            final_state = {"final_answer": f"Error occurred during final state processing: {str(e)}. Check logs for details."}
+        # Display results
+        st.subheader("📋 Phase 2 Results")
         
-        print(f"[DEBUG] === FINAL STATE PROCESSING COMPLETE ===\n")
+        # Display retrieved documents
+        if "retrieved_documents" in retrieval_final_state and retrieval_final_state["retrieved_documents"]:
+            with st.expander("📄 Retrieved Documents by Query", expanded=False):
+                retrieved_docs = retrieval_final_state["retrieved_documents"]
+                for query, documents in retrieved_docs.items():
+                    st.markdown(f"**Query:** {query}")
+                    st.markdown(f"**Documents found:** {len(documents)}")
+                    
+                    for i, doc in enumerate(documents, 1):
+                        with st.expander(f"Document {i}", expanded=False):
+                            if hasattr(doc, 'page_content'):
+                                st.text_area(f"Content", doc.page_content, height=150, key=f"ret_doc_{hash(query)}_{i}")
+                            if hasattr(doc, 'metadata'):
+                                st.json(doc.metadata)
+                    st.divider()
         
-        # Display results section
-        st.subheader("📋 Research Results")
+        # Display summaries
+        if "search_summaries" in retrieval_final_state and retrieval_final_state["search_summaries"]:
+            with st.expander("📝 Generated Summaries", expanded=True):
+                search_summaries = retrieval_final_state["search_summaries"]
+                for query, summaries in search_summaries.items():
+                    st.markdown(f"**Query:** {query}")
+                    for i, summary in enumerate(summaries, 1):
+                        if hasattr(summary, 'page_content'):
+                            st.markdown(f"**Summary {i}:**")
+                            st.markdown(summary.page_content)
+                        elif isinstance(summary, str):
+                            st.markdown(f"**Summary {i}:**")
+                            st.markdown(summary)
+                    st.divider()
         
-        # Display the final answer with robust error handling
-        try:
-            print("\n[DEBUG] === FINAL ANSWER RENDERING START ===")
+        # Store results in session state for next phase
+        st.session_state.retrieval_summarization_result = retrieval_final_state
+        
+        return retrieval_final_state
+        
+    except Exception as e:
+        st.error(f"Error in retrieval-summarization phase: {str(e)}")
+        print(f"[ERROR] Retrieval-summarization phase error: {str(e)}")
+        return None
+
+
+def execute_reporting_phase(enable_web_search=False):
+    """
+    Execute Phase 3: Reporting workflow using results from Phase 2.
+    Returns the final research results with reranked summaries and final report.
+    """
+    if not st.session_state.retrieval_summarization_result:
+        st.error("No retrieval-summarization results found. Please complete Phase 2 first.")
+        return None
+    
+    # Clear CUDA memory before starting
+    clear_cuda_memory()
+    
+    try:
+        # Initialize reporting state using Phase 2 results
+        reporting_state = ResearcherStateV2(
+            **st.session_state.retrieval_summarization_result,
+            # Add reporting-specific fields
+            web_search_enabled=enable_web_search,
+            all_reranked_summaries=None,
+            reflection_count=0,
+            internet_result=None,
+            internet_search_term=None
+        )
+        
+        # Create progress tracking
+        progress_container = st.container()
+        with progress_container:
+            st.subheader("📊 Phase 3: Reranking & Report Generation")
+            reporting_progress_bar = st.progress(0)
+            reporting_status_text = st.empty()
+        
+        # Create rerank-reporter graph
+        reporting_graph = create_rerank_reporter_graph()
+        
+        # Execute reporting graph
+        reporting_status_text.text("🚀 Starting reranking and report generation...")
+        
+        reporting_final_state = reporting_state
+        step_count = 0
+        
+        for step_output in reporting_graph.stream(reporting_state):
+            step_count += 1
+            progress = min(step_count / 4, 1.0)  # Approximate steps: reranker, report_writer, quality_checker
+            reporting_progress_bar.progress(progress)
             
-            # Safely extract final_answer with multiple fallback methods
-            final_answer = None
-            
-            # Method 1: Try direct attribute access
-            try:
-                if hasattr(final_state, 'get') and callable(final_state.get):
-                    final_answer = final_state.get('final_answer')
-                    print("[DEBUG] Extracted final_answer using .get() method")
-            except Exception as e:
-                print(f"[DEBUG] Error with .get() method: {str(e)}")
-            
-            # Method 2: Try dictionary access
-            if final_answer is None and isinstance(final_state, dict):
-                try:
-                    final_answer = final_state.get('final_answer')
-                    print("[DEBUG] Extracted final_answer using dict access")
-                except Exception as e:
-                    print(f"[DEBUG] Error with dict access: {str(e)}")
-            
-            # Method 3: Try attribute access
-            if final_answer is None and hasattr(final_state, 'final_answer'):
-                try:
-                    final_answer = final_state.final_answer
-                    print("[DEBUG] Extracted final_answer using attribute access")
-                except Exception as e:
-                    print(f"[DEBUG] Error with attribute access: {str(e)}")
-            
-            # If we still don't have an answer, try to convert to dict
-            if final_answer is None:
-                try:
-                    if hasattr(final_state, 'dict') and callable(getattr(final_state, 'dict')):
-                        final_state_dict = final_state.dict()
-                        final_answer = final_state_dict.get('final_answer')
-                        print("[DEBUG] Converted to dict and extracted final_answer")
-                except Exception as e:
-                    print(f"[DEBUG] Error converting to dict: {str(e)}")
-            
-            print(f"[DEBUG] Final answer type: {type(final_answer) if final_answer is not None else 'None'}")
-            print(f"[DEBUG] Final answer preview: {str(final_answer)[:200]}..." if final_answer else "[DEBUG] No final answer found")
-            
-            # Display the final answer with error handling
-            if final_answer:
-                st.markdown("### 📄 Final Report")
-                try:
-                    # First try to render as markdown
-                    st.markdown(final_answer, unsafe_allow_html=True)
-                    print("[DEBUG] Successfully rendered final answer as markdown")
-                except Exception as e:
-                    print(f"[ERROR] Error rendering markdown: {str(e)}")
-                    try:
-                        # Fallback to text area if markdown fails
-                        st.text_area("Final Report (Raw Text)", str(final_answer), height=400)
-                        print("[DEBUG] Rendered final answer in text area")
-                    except Exception as e2:
-                        print(f"[ERROR] Error in text area fallback: {str(e2)}")
-                        st.error("Could not display the final report. Please check the logs for details.")
+            # Update status based on current step
+            for node_name, node_state in step_output.items():
+                if node_name == "reranker":
+                    reporting_status_text.text("🔄 Reranking summaries by relevance...")
+                elif node_name == "web_tavily_searcher":
+                    reporting_status_text.text("🌐 Searching the internet for additional information...")
+                elif node_name == "report_writer":
+                    reporting_status_text.text("✍️ Generating final report...")
+                elif node_name == "quality_checker":
+                    reporting_status_text.text("✅ Checking report quality...")
                 
-                # Add copy to clipboard button with error handling
-                if st.button("📋 Copy Report to Clipboard"):
-                    try:
-                        copy_to_clipboard(final_answer)
-                        st.success("Report copied to clipboard!")
-                    except Exception as e:
-                        print(f"  [ERROR] Error copying to clipboard: {str(e)}")
-                        st.error(f"Could not copy to clipboard: {str(e)}")
-            else:
-                st.error("No final report was generated. Check logs for errors.")
-                print("  [ERROR] No final_answer found in final_state")
-        except Exception as e:
-            st.error(f"Error displaying final report: {str(e)}")
-            print(f"  [ERROR] Exception in final answer display: {str(e)}")
+                if node_state is not None:
+                    reporting_final_state = node_state
+        
+        # Complete reporting phase
+        reporting_progress_bar.progress(1.0)
+        reporting_status_text.text("✅ Report generation completed")
+        
+        # Display results
+        st.subheader("📋 Phase 3 Results")
+        
+        # Display reranked summaries
+        if "all_reranked_summaries" in reporting_final_state and reporting_final_state["all_reranked_summaries"]:
+            with st.expander("🏆 Reranked Summaries", expanded=False):
+                reranked_summaries = reporting_final_state["all_reranked_summaries"]
+                for i, summary in enumerate(reranked_summaries, 1):
+                    score = summary.get('score', 0)
+                    query = summary.get('query', 'Unknown')
+                    content = summary.get('content', 'No content')
+                    
+                    st.markdown(f"**Rank #{i} - Score: {score:.1f}**")
+                    st.markdown(f"**Query:** {query}")
+                    with st.expander(f"Summary Content", expanded=False):
+                        st.markdown(content)
+                    st.divider()
+        
+        # Display internet search results if available
+        if enable_web_search and "internet_result" in reporting_final_state and reporting_final_state["internet_result"]:
+            with st.expander("🌐 Internet Search Results", expanded=False):
+                if "internet_search_term" in reporting_final_state and reporting_final_state["internet_search_term"]:
+                    st.markdown(f"🔍 **Generated Search Term:** `{reporting_final_state['internet_search_term']}`")
+                st.markdown(reporting_final_state["internet_result"])
+        
+        # Display final report
+        if "final_answer" in reporting_final_state and reporting_final_state["final_answer"]:
+            st.markdown("### 📄 Final Report")
+            st.markdown(reporting_final_state["final_answer"])
+            
+            # Add copy to clipboard button
+            if st.button("📋 Copy Report to Clipboard"):
+                try:
+                    copy_to_clipboard(reporting_final_state["final_answer"])
+                    st.success("Report copied to clipboard!")
+                except Exception as e:
+                    st.error(f"Could not copy to clipboard: {str(e)}")
         
         # Display quality check results if available
-        if enable_quality_checker and "quality_check" in final_state and final_state["quality_check"]:
-            quality_check = final_state["quality_check"]
+        if "quality_check" in reporting_final_state and reporting_final_state["quality_check"]:
+            quality_check = reporting_final_state["quality_check"]
             
             # Check if this is the new LLM-based assessment
             if quality_check.get("assessment_type") == "llm_fidelity_assessment":
-                st.markdown("### 🔍 LLM-Based Quality Assessment")
+                st.markdown("### 🔍 Quality Assessment")
                 
                 # Display score and pass/fail status
                 overall_score = quality_check.get("overall_score", 0)
@@ -843,22 +763,33 @@ def execute_main_workflow(enable_web_search, report_structure, max_search_querie
                     )
                 
                 # Display full assessment in expandable section
-                with st.expander("📊 Detailed Fidelity Assessment", expanded=False):
+                with st.expander("📊 Detailed Assessment", expanded=False):
                     full_assessment = quality_check.get("full_assessment", "No detailed assessment available.")
                     st.markdown(full_assessment)
-                    
-            else:
-                # Legacy quality check display
-                st.markdown("### ✅ Quality Check Results")
-                st.info(quality_check)
         
-        # Store results in session state
-        st.session_state.research_results = final_state
+        # Clean the final answer from <think> blocks if present
+        if "final_answer" in reporting_final_state and reporting_final_state["final_answer"]:
+            import re
+            raw_answer = reporting_final_state["final_answer"]
+            
+            # Remove <think> blocks from the final answer
+            clean_answer = re.sub(r'<think>.*?(?:</think>|<think>)', '', raw_answer, flags=re.DOTALL | re.IGNORECASE)
+            clean_answer = clean_answer.strip()
+            
+            # Store both raw and clean versions
+            reporting_final_state["final_answer_raw"] = raw_answer
+            reporting_final_state["final_answer"] = clean_answer
         
-        return final_state
+        # Store final results in session state
+        st.session_state.reporting_result = reporting_final_state
+        st.session_state.research_results = reporting_final_state  # Keep for backward compatibility
+        st.session_state.workflow_phase = "completed"  # Mark workflow as completed
+        
+        return reporting_final_state
         
     except Exception as e:
-        st.error(f"Error in main workflow: {str(e)}")
+        st.error(f"Error in reporting phase: {str(e)}")
+        print(f"[ERROR] Reporting phase error: {str(e)}")
         return None
 
 
@@ -868,21 +799,51 @@ def generate_response(user_input, enable_web_search, report_structure, max_searc
                      human_feedback="", additional_context=""):
     """
     Simplified response generation that delegates to appropriate workflow based on phase.
-    This function is kept for backward compatibility but now uses the new two-phase approach.
+    This function is kept for backward compatibility but now uses the new three-phase approach.
     """
     
     # Check current workflow phase
     if st.session_state.workflow_phase == "hitl":
-        # Execute HITL workflow
-        success = execute_hitl_workflow(user_input, report_llm, additional_context, human_feedback)
-        if success:
-            st.session_state.workflow_phase = "main"  # Move to main phase
+        # HITL phase is handled in the main GUI
         return None
+    elif st.session_state.workflow_phase == "retrieval_summarization":
+        # Execute retrieval-summarization phase
+        return execute_retrieval_summarization_phase(use_ext_database, selected_database, k_results)
+    elif st.session_state.workflow_phase == "reporting":
+        # Execute reporting phase
+        return execute_reporting_phase(enable_web_search)
     else:
-        # Execute main workflow
-        return execute_main_workflow(enable_web_search, report_structure, max_search_queries, 
-                                   enable_quality_checker, quality_check_loops, 
-                                   use_ext_database, selected_database, k_results)
+        st.error(f"Unknown workflow phase: {st.session_state.workflow_phase}")
+        return None
+
+
+def clear_chat():
+    """Clear the chat history and reset session state"""
+    keys_to_clear = [
+        'messages', 'research_results', 'current_query', 'hitl_feedback',
+        'hitl_analysis', 'hitl_questions', 'hitl_context', 'hitl_result',
+        'hitl_conversation_history', 'hitl_state', 'waiting_for_human_input',
+        'conversation_ended', 'input_counter', 'retrieval_summarization_result'
+    ]
+    for key in keys_to_clear:
+        if key in st.session_state:
+            del st.session_state[key]
+    
+    # Reset workflow phase to HITL
+    st.session_state.workflow_phase = "hitl"
+    st.rerun()
+
+
+def copy_to_clipboard(text):
+    """Safely copy text to clipboard if pyperclip is available"""
+    try:
+        import pyperclip
+        pyperclip.copy(text)
+        return True
+    except ImportError:
+        st.warning("pyperclip not available. Please install it for clipboard functionality.")
+        return False
+
 
 def clear_chat():
     """Clear the chat history and reset session state"""
@@ -938,9 +899,16 @@ def main():
     if "hitl_result" not in st.session_state:
         st.session_state.hitl_result = None
     
+    # Session state for storing phase results
+    if "retrieval_summarization_result" not in st.session_state:
+        st.session_state.retrieval_summarization_result = None
+    
+    if "reporting_result" not in st.session_state:
+        st.session_state.reporting_result = None
+    
     # Workflow phase tracking
     if "workflow_phase" not in st.session_state:
-        st.session_state.workflow_phase = "hitl"  # "hitl" or "main"
+        st.session_state.workflow_phase = "hitl"  # "hitl", "retrieval_summarization", "reporting"
     
     # Model selection session state
     if "report_llm" not in st.session_state:
@@ -950,9 +918,9 @@ def main():
     
     if "summarization_llm" not in st.session_state:
         summarization_llm_models = get_summarization_llm_models()
-        # Set default to qwen3:1.7b if available, otherwise first model
-        if "qwen3:1.7b" in summarization_llm_models:
-            st.session_state.summarization_llm = "qwen3:1.7b"
+        # Set default to qwen3:latest if available, otherwise first model
+        if "qwen3:latest" in summarization_llm_models:
+            st.session_state.summarization_llm = "qwen3:latest"
         else:
             st.session_state.summarization_llm = summarization_llm_models[0] if summarization_llm_models else "deepseek-r1:latest"
     
@@ -977,76 +945,7 @@ def main():
     with st.sidebar:
         st.header("⚙️ Configuration")
         
-        # Model Selection
-        st.subheader("🤖 Model Selection")
-        
-        # Report writing LLM
-        st.session_state.report_llm = st.sidebar.selectbox(
-            "Report Writing LLM",
-            options=report_llm_models,
-            index=report_llm_models.index(st.session_state.report_llm) if st.session_state.report_llm in report_llm_models else 0,
-            help="Choose the LLM model to use for final report generation; loaded from global report_llms.md configuration"
-        )
-        
-        # Summarization LLM
-        st.session_state.summarization_llm = st.sidebar.selectbox(
-            "Summarization LLM",
-            options=summarization_llm_models,
-            index=summarization_llm_models.index(st.session_state.summarization_llm) if st.session_state.summarization_llm in summarization_llm_models else (summarization_llm_models.index("qwen3:1.7b") if "qwen3:1.7b" in summarization_llm_models else 0),
-            help="Choose the LLM model to use for document summarization; loaded from global summarization_llms.md configuration"
-        )
-        
-        st.divider()
-        
-        # Research Configuration
-        st.subheader("🔬 Research Settings")
-        
-        # Report structure
-        report_structures = get_report_structures()
-        report_structure = st.selectbox(
-            "Report Structure",
-            options=list(report_structures.keys()),
-            index=0,
-            help="Choose the structure for the final report"
-        )
-        
-        # Max search queries
-        max_search_queries = st.slider(
-            "Number of Additional Research Queries",
-            min_value=1,
-            max_value=10,
-            value=5,
-            help="Number of additional research queries to generate"
-        )
-        
-        # Enable web search
-        enable_web_search = st.checkbox(
-            "Enable Web Search",
-            value=False,
-            help="Enable web search in addition to local document retrieval"
-        )
-        
-        # Quality checker settings
-        enable_quality_checker = st.checkbox(
-            "Enable Quality Checker",
-            value=False,
-            help="Enable quality checking and improvement of the final report"
-        )
-        
-        if enable_quality_checker:
-            quality_check_loops = st.slider(
-                "Quality Check Iterations",
-                min_value=1,
-                max_value=3,
-                value=1,
-                help="Number of quality check and improvement iterations"
-            )
-        else:
-            quality_check_loops = 1
-        
-        st.divider()
-        
-        # External Database Configuration (matching app_v1_1.py)
+        # External Database Configuration (moved to top)
         st.subheader("🗄️ External Database")
         
         # Define DATABASE_PATH like in app_v1_1.py
@@ -1110,7 +1009,65 @@ def main():
         else:
             selected_database = None
             k_results = 3
-            
+        
+        st.divider()
+        
+        # Research Configuration
+        st.subheader("🔬 Research Settings")
+        
+        # Report structure
+        report_structures = get_report_structures()
+        report_structure = st.selectbox(
+            "Report Structure",
+            options=list(report_structures.keys()),
+            index=0,
+            help="Choose the structure for the final report"
+        )
+        
+        # Max search queries
+        max_search_queries = st.slider(
+            "Number of Additional Research Queries",
+            min_value=1,
+            max_value=10,
+            value=3,
+            help="Number of additional research queries to generate"
+        )
+        
+        # Enable web search
+        enable_web_search = st.checkbox(
+            "Enable Web Search",
+            value=False,
+            help="Enable web search in addition to local document retrieval"
+        )
+        
+        # Quality checker settings
+        enable_quality_checker = st.checkbox(
+            "Enable Quality Checker",
+            value=True,
+            help="Enable LLM-based quality assessment of the final report"
+        )
+        
+        st.divider()
+        
+        # Model Selection (moved to bottom)
+        st.subheader("🤖 Model Selection")
+        
+        # Report writing LLM
+        st.session_state.report_llm = st.sidebar.selectbox(
+            "Report Writing LLM",
+            options=report_llm_models,
+            index=report_llm_models.index(st.session_state.report_llm) if st.session_state.report_llm in report_llm_models else 0,
+            help="Choose the LLM model to use for final report generation; loaded from global report_llms.md configuration"
+        )
+        
+        # Summarization LLM
+        st.session_state.summarization_llm = st.sidebar.selectbox(
+            "Summarization LLM",
+            options=summarization_llm_models,
+            index=summarization_llm_models.index(st.session_state.summarization_llm) if st.session_state.summarization_llm in summarization_llm_models else (summarization_llm_models.index("qwen3:latest") if "qwen3:latest" in summarization_llm_models else 0),
+            help="Choose the LLM model to use for document summarization; loaded from global summarization_llms.md configuration"
+        )
+        
         use_ext_database = st.session_state.use_ext_database
         
         st.divider()
@@ -1132,76 +1089,69 @@ def main():
     if "input_counter" not in st.session_state:
         st.session_state.input_counter = 0
     
-    # Workflow Visualization Expander (moved here to be visible from the beginning)
-    with st.expander("🔄 Show Workflow Graphs", expanded=False):
-        st.markdown("### RAG Deep Researcher v2.0 - Workflow Graphs")
+       
+    # Three-Phase Workflow Visualization Expander (moved here to be visible from the beginning)
+    with st.expander("🔄 Show Three-Phase Workflow Graphs", expanded=False):
+        st.markdown("### RAG Deep Researcher v2.0 - Three-Phase Workflow")
         
         # Display embedding model information
-        from src.configuration_v1_1 import get_config_instance
-        config_instance = get_config_instance()
-        st.info(f"**Embedding Model:** {config_instance.embedding_model}")
+        try:
+            if st.session_state.get('use_ext_database', False) and st.session_state.get('selected_database', ''):
+                # Use the selected external database
+                embedding_model_name = extract_embedding_model(st.session_state.selected_database)
+                st.info(f"📊 **Current Embedding Model:** `{embedding_model_name}` (from selected database: `{st.session_state.selected_database}`)") 
+            else:
+                # No external database selected, show default
+                st.info(f"📊 **Current Embedding Model:** Default (no external database selected)")
+        except Exception as e:
+            st.warning(f"Could not determine embedding model: {str(e)}")
         
-        # Create two columns for HITL and Main graphs (side-by-side)
-        col1, col2 = st.columns(2)
+        # Create three columns for the three phase graphs (side-by-side)
+        col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.markdown("#### 🤝 Human-in-the-Loop (HITL) Workflow")
+            st.markdown("#### 🤝 Phase 1: HITL Workflow")
             try:
                 # Generate HITL graph visualization
-                hitl_png = hitl_graph.get_graph().draw_mermaid_png()
-                st.image(hitl_png, caption="HITL Workflow Graph", width=350)
+                hitl_graph = create_hitl_graph()
+                hitl_png = hitl_graph.get_graph(xray=True).draw_mermaid_png()
+                st.image(hitl_png, caption="HITL Workflow Graph", use_container_width=True)
             except Exception as e:
-                st.error(f"Could not generate HITL graph visualization: {str(e)}")
+                st.error(f"Could not generate HITL graph: {str(e)}")
         
         with col2:
-            st.markdown("#### 🔬 Main Research Workflow")
+            st.markdown("#### 📚 Phase 2: Retrieve & Summry")
             try:
-                # Generate main graph visualization
-                main_png = main_graph.get_graph().draw_mermaid_png()
-                st.image(main_png, caption="Main Research Workflow Graph", width=350)
+                # Generate retrieval-summarization graph visualization
+                retrieval_graph = create_retrieval_summarization_graph()
+                retrieval_png = retrieval_graph.get_graph(xray=True).draw_mermaid_png()
+                st.image(retrieval_png, caption="Retrieval & Summarize Graph", use_container_width=True)
             except Exception as e:
-                st.error(f"Could not generate main graph visualization: {str(e)}")
+                st.error(f"Could not generate retrieval-summarization graph: {str(e)}")
+        
+        with col3:
+            st.markdown("#### 📄 Phase 3: QA & Reporting")
+            try:
+                # Generate reporting graph visualization
+                reporting_graph = create_rerank_reporter_graph()
+                reporting_png = reporting_graph.get_graph(xray=True).draw_mermaid_png()
+                st.image(reporting_png, caption="QA & Reporting Graph", use_container_width=True)
+            except Exception as e:
+                st.error(f"Could not generate reporting graph: {str(e)}")
     
-    # Initialize session state for robust tab switching
-    if "active_tab" not in st.session_state:
-        st.session_state.active_tab = "HITL Phase"
+    # Current phase info box
+    phase_info = {
+        "hitl": "🤝 **Current Phase: Human-in-the-Loop** - Interactive conversation to refine your research needs.",
+        "retrieval_summarization": "📚 **Current Phase: Retrieval & Summarization** - Retrieving documents and generating summaries.",
+        "reporting": "📄 **Current Phase: Reporting** - Reranking summaries and generating final report."
+    }
+    st.warning(phase_info.get(st.session_state.workflow_phase, "🔬 **Current Phase: Research Workflow**"))
     
-    # Define tab options
-    if st.session_state.workflow_phase == "hitl":
-        tab_options = ["📝 HITL Phase (Active)", "🔬 Main Research Phase"]
-        # Automatically switch to Main Research when HITL completes
-        if st.session_state.active_tab == "Main Research Phase":
-            # User manually switched, keep their choice
-            pass
-        else:
-            st.session_state.active_tab = "HITL Phase"
-    else:
-        tab_options = ["📝 HITL Phase (Completed)", "🔬 Main Research Phase (Active)"]
-        # Automatically switch to Main Research when workflow phase changes
-        if st.session_state.active_tab == "HITL Phase":
-            st.session_state.active_tab = "Main Research Phase"
-            # Add a visual indicator that we've automatically switched
-            if "phase_switch_notified" not in st.session_state:
-                st.success("✨ **Automatically switched to Main Research Phase!** The HITL phase has been completed.")
-                st.session_state.phase_switch_notified = True
+    # Three-Phase Tabs
+    tab1, tab2, tab3 = st.tabs(["🤝 Phase 1: HITL", "📚 Phase 2: Retrieval-Summarization", "📄 Phase 3: Reporting"])
     
-    # Create radio button for tab selection with automatic switching
-    selected_tab = st.radio(
-        "Select workflow phase:",
-        tab_options,
-        index=tab_options.index([opt for opt in tab_options if "Main Research" in opt][0]) if st.session_state.active_tab == "Main Research Phase" else 0,
-        key="workflow_tab_radio",
-        horizontal=True
-    )
-    
-    # Update session state based on selection
-    if "HITL" in selected_tab:
-        st.session_state.active_tab = "HITL Phase"
-    else:
-        st.session_state.active_tab = "Main Research Phase"
-    
-    # HITL Phase Content
-    if st.session_state.active_tab == "HITL Phase":
+    # Phase 1: HITL
+    with tab1:
         if st.session_state.workflow_phase == "hitl":
             st.info("📝 **Current Phase: Human-in-the-Loop** - Interactive conversation to refine your research needs.")
             
@@ -1285,7 +1235,7 @@ def main():
             if st.session_state.waiting_for_human_input and not st.session_state.conversation_ended:
                 # Use a dynamic key that changes after each submission to force widget reset
                 human_feedback = st.text_area(
-                    "Your response (type /end to finish and proceed to main research):", 
+                    "Your response (type `/end` to finish and proceed to main research):", 
                     value="", 
                     height=100, 
                     key=f"human_feedback_area_{st.session_state.input_counter}"
@@ -1326,8 +1276,8 @@ def main():
                             "human_feedback": st.session_state.hitl_state["human_feedback"]
                         }
                         
-                        # Move to main workflow phase
-                        st.session_state.workflow_phase = "main"
+                        # Move to retrieval-summarization workflow phase
+                        st.session_state.workflow_phase = "retrieval_summarization"
                         
                         # Increment input counter to reset widgets
                         st.session_state.input_counter += 1
@@ -1352,82 +1302,482 @@ def main():
                         st.session_state.input_counter += 1
                         st.rerun()
         else:
-            # HITL phase completed - show summary without conversation history
-            st.markdown("📋 HITL Phase Results (Completed)")
+            # HITL phase completed - show summary
             st.success("✅ HITL Phase completed successfully!")
-                
             if st.session_state.hitl_result:
-                st.markdown("### 📝 Query Analysis")
-                st.write(f"**Original Query:** {st.session_state.hitl_result['user_query']}")
-                st.write(f"**Detected Language:** {st.session_state.hitl_result['detected_language']}")
-                
-                # Display deep analysis and knowledge base questions following basic_HITL_app.py pattern
-                if 'additional_context' in st.session_state.hitl_result and st.session_state.hitl_result['additional_context']:
-                    st.markdown("### 🧠 Deep Analysis of Your Information Needs")
-                    st.write(st.session_state.hitl_result['additional_context'])
+                with st.expander("📋 HITL Phase Results (Completed)", expanded=False):
+                    st.markdown("**Research Queries Generated:**")
+                    research_queries = st.session_state.hitl_result.get("research_queries", [])
+                    for i, query in enumerate(research_queries, 1):
+                        st.markdown(f"**{i}.** {query}")
                     
-                    st.markdown("### 🎯 Targeted Knowledge Base Search Questions")
-                    st.write("Based on our conversation and the analysis above, here are targeted knowledge base search questions:")
-                    # Display the research queries in a formatted way
-                    for i, query in enumerate(st.session_state.hitl_result['research_queries'], 1):
-                        st.write(f"{i}. {query}")
-                
-                # Note: Conversation history is preserved in session state but not displayed in GUI during Main phase
-                st.info("💬 Conversation history has been preserved but is hidden during the Main Research phase for a cleaner interface.")
+                    st.markdown("**Original Query:**")
+                    st.markdown(st.session_state.hitl_result.get("user_query", "N/A"))
+                    
+                    st.markdown("**Additional Context:**")
+                    st.markdown(st.session_state.hitl_result.get("additional_context", "N/A"))
     
-    # Main Research Phase Content
-    elif st.session_state.active_tab == "Main Research Phase":
-        if st.session_state.workflow_phase == "main":
-            st.info("🔬 **Current Phase: Main Research** - The system will now execute the full research workflow using your HITL input.")
-            with st.expander("### 🧠 Deep Analysis of Your Information Needs"):
-                st.write(st.session_state.hitl_result['additional_context'])
-                st.markdown("### 🎯 Targeted Knowledge Base Search Questions")
-                st.write("Based on our conversation and the analysis above, here are targeted knowledge base search questions:")
-                # Display the research queries in a formatted way
-                for i, query in enumerate(st.session_state.hitl_result['research_queries'], 1):
-                    st.write(f"{i}. {query}")
-            # Main Research Phase
-            if not st.session_state.hitl_result:
-                st.error("No HITL results found. Please restart and complete the HITL phase first.")
-                if st.button("🔄 Restart HITL Phase"):
-                    st.session_state.workflow_phase = "hitl"
-                    st.rerun()
-                return
+    # Phase 2: Retrieval-Summarization
+    with tab2:
+        if st.session_state.workflow_phase == "retrieval_summarization":
+            st.markdown("### 📚 Retrieval & Summarization Phase")
+            st.markdown("The system will now retrieve relevant documents and generate summaries based on your HITL input.")
             
-            # Execute main research workflow automatically
-            if not st.session_state.research_results:
-                st.info("🔬 Starting main research workflow automatically...")
-                with st.spinner("Executing main research workflow..."):
-                    results = execute_main_workflow(
-                        enable_web_search=enable_web_search,
-                        report_structure=report_structure,
-                        max_search_queries=max_search_queries,
-                        enable_quality_checker=enable_quality_checker,
-                        quality_check_loops=quality_check_loops,
+            if not st.session_state.hitl_result:
+                st.warning("⚠️ Please complete the HITL phase first.")
+            else:
+                # Show HITL context
+                with st.expander("🔗 Using HITL Results", expanded=False):
+                    research_queries = st.session_state.hitl_result.get("research_queries", [])
+                    st.markdown(f"**Research Queries ({len(research_queries)}):**")
+                    for i, query in enumerate(research_queries, 1):
+                        st.markdown(f"**{i}.** {query}")
+                
+                # Execute button
+                if st.button("🔍 Start Retrieval & Summarization", type="primary"):
+                    result = execute_retrieval_summarization_phase(
                         use_ext_database=use_ext_database,
                         selected_database=selected_database,
                         k_results=k_results
                     )
-                    
-                    if results:
-                        st.session_state.research_results = results
-            else:
-                st.success("✅ Main research workflow completed! Results are displayed above.")
+                    if result:
+                        st.session_state.workflow_phase = "reporting"
+                        st.rerun()
+        
+        elif st.session_state.workflow_phase == "reporting" and st.session_state.retrieval_summarization_result:
+            # Show completed retrieval-summarization results
+            st.success("✅ Retrieval & Summarization Phase completed successfully!")
+            
+            with st.expander("📚 Retrieval & Summarization Results (Completed)", expanded=True):
+                result = st.session_state.retrieval_summarization_result
                 
-                # Option to restart
-                if st.button("🔄 Start New Research"):
+                # Show retrieved documents summary
+                retrieved_docs = result.get("retrieved_documents", {})
+                total_docs = sum(len(docs) for docs in retrieved_docs.values())
+                st.markdown(f"**Total Documents Retrieved:** {total_docs}")
+                
+                # Show summaries summary
+                search_summaries = result.get("search_summaries", {})
+                total_summaries = sum(len(summaries) for summaries in search_summaries.values())
+                st.markdown(f"**Total Summaries Generated:** {total_summaries}")
+                
+                st.divider()
+                
+                # Show detailed results for each research query
+                for i, (query, docs) in enumerate(retrieved_docs.items(), 1):
+                    st.markdown(f"### 🔍 Query {i}: {query[:100]}{'...' if len(query) > 100 else ''}")
+                    
+                    # Retrieved documents for this query
+                    with st.expander(f"📄 Retrieved Documents ({len(docs)} documents)", expanded=False):
+                        if docs:
+                            for j, doc in enumerate(docs):
+                                st.markdown(f"**Document {j+1}:**")
+                                # Show content preview
+                                content_preview = doc.page_content[:500] + "..." if len(doc.page_content) > 500 else doc.page_content
+                                st.text(content_preview)
+                                
+                                # Show metadata if available
+                                if hasattr(doc, 'metadata') and doc.metadata:
+                                    with st.expander(f"📋 Document {j+1} Metadata", expanded=False):
+                                        st.json(doc.metadata)
+                                st.divider()
+                        else:
+                            st.warning("No documents retrieved for this query.")
+                    
+                    # Summary for this query
+                    query_summaries = search_summaries.get(query, [])
+                    if query_summaries:
+                        with st.expander(f"📝 Generated Summary", expanded=True):
+                            for summary_doc in query_summaries:
+                                st.markdown("**Summary Content:**")
+                                st.markdown(summary_doc.page_content)
+                                
+                                # Show summary metadata
+                                if hasattr(summary_doc, 'metadata') and summary_doc.metadata:
+                                    with st.expander("📊 Summary Metadata", expanded=False):
+                                        metadata_display = {
+                                            "LLM Model": summary_doc.metadata.get("llm_model", "N/A"),
+                                            "Language": summary_doc.metadata.get("language", "N/A"),
+                                            "Document Count": summary_doc.metadata.get("document_count", "N/A"),
+                                            "Source Documents": summary_doc.metadata.get("source_documents", []),
+                                            "Source Paths": summary_doc.metadata.get("source_paths", [])
+                                        }
+                                        st.json(metadata_display)
+                                
+                                # Copy button for summary
+                                if st.button(f"📋 Copy Summary {i}", key=f"copy_summary_{i}"):
+                                    try:
+                                        import pyperclip
+                                        pyperclip.copy(summary_doc.page_content)
+                                        st.success(f"Summary {i} copied to clipboard!")
+                                    except ImportError:
+                                        st.warning("pyperclip not available. Please install it to enable copying.")
+                    else:
+                        st.warning("No summary generated for this query.")
+                    
+                    st.divider()
+        
+        else:
+            st.info("📝 Complete the HITL phase first to proceed with retrieval and summarization.")
+    
+    # Phase 3: Reporting
+    with tab3:
+        if st.session_state.workflow_phase == "reporting":
+            st.markdown("### 📄 Reporting Phase")
+            st.markdown("The system will now rerank the summaries and generate a comprehensive final report.")
+            
+            if not st.session_state.retrieval_summarization_result:
+                st.warning("⚠️ Please complete the Retrieval & Summarization phase first.")
+            else:
+                # Show retrieval-summarization context
+                with st.expander("🔗 Using Retrieval & Summarization Results", expanded=False):
+                    result = st.session_state.retrieval_summarization_result
+                    search_summaries = result.get("search_summaries", {})
+                    total_summaries = sum(len(summaries) for summaries in search_summaries.values())
+                    st.markdown(f"**Total Summaries to Process:** {total_summaries}")
+                
+                # Execute button
+                if st.button("📊 Start Reporting Phase", type="primary"):
+                    result = execute_reporting_phase(enable_web_search=enable_web_search)
+                    if result:
+                        st.success("✅ All phases completed successfully!")
+                        st.rerun()
+        
+        elif st.session_state.reporting_result:
+            # Show completed reporting results
+            st.success("✅ Reporting Phase completed successfully!")
+            
+            result = st.session_state.reporting_result
+            
+            # Processing details section
+            with st.expander("🔍 Processing Details", expanded=False):
+                st.write(f"**Current Position:** {result.get('current_position', 'unknown')}")
+                st.write(f"**Research Queries Processed:** {len(result.get('research_queries', []))}")
+                st.write(f"**Reflection Count:** {result.get('reflection_count', 0)}")
+                
+                # Show reranked summaries statistics
+                reranked_summaries = result.get("all_reranked_summaries", [])
+                if reranked_summaries:
+                    st.subheader("📊 Reranked Documents")
+                    
+                    # Summary statistics
+                    total_docs = len(reranked_summaries)
+                    avg_score = sum(item.get('score', 0) for item in reranked_summaries) / total_docs if total_docs > 0 else 0
+                    max_score = max([item.get('score', 0) for item in reranked_summaries], default=0)
+                    
+                    col_stats1, col_stats2, col_stats3 = st.columns(3)
+                    with col_stats1:
+                        st.metric("Total Documents", total_docs)
+                    with col_stats2:
+                        st.metric("Average Score", f"{avg_score:.2f}/10")
+                    with col_stats3:
+                        st.metric("Highest Score", f"{max_score:.2f}/10")
+                    
+                    # Display reranked documents in ranked order
+                    for rank, item in enumerate(reranked_summaries, 1):
+                        score = item.get('score', 0)
+                        summary_data = item.get('summary', {})
+                        
+                        # Handle different summary formats
+                        if isinstance(summary_data, dict):
+                            content = summary_data.get('Content', str(summary_data))
+                            source = summary_data.get('Source', 'Unknown')
+                        else:
+                            # Handle Document objects or string content
+                            if hasattr(summary_data, 'page_content'):
+                                content = summary_data.page_content
+                                source = summary_data.metadata.get('source', 'Unknown') if hasattr(summary_data, 'metadata') else 'Unknown'
+                            else:
+                                content = str(summary_data)
+                                source = 'Unknown'
+                        
+                        with st.expander(f"🥇 Rank #{rank} (Score: {score:.2f}/10)", expanded=rank <= 3):
+                            st.markdown(f"**Score:** {score:.2f}/10")
+                            st.markdown(f"**Query:** {item.get('query', 'N/A')}")
+                            st.markdown(f"**Source:** {source}")
+                            st.markdown(f"**Original Index:** {item.get('original_index', 'N/A')}")
+                            
+                            st.markdown("**Content:**")
+                            st.markdown(content)
+                            
+                            # Add separator except for last item
+                            if rank < len(reranked_summaries):
+                                st.divider()
+                else:
+                    st.warning("No reranked summaries found. Check input data.")
+            
+            # Internet search results section
+            internet_result = result.get("internet_result")
+            internet_search_term = result.get("internet_search_term")
+            if internet_result and internet_result.strip():
+                st.subheader("🌐 Internet Search Results")
+                
+                # Check if web search was enabled
+                web_search_enabled = result.get("web_search_enabled", False)
+                if web_search_enabled:
+                    st.success("✅ Web search was enabled and executed successfully")
+                else:
+                    st.info("ℹ️ Web search was not enabled for this query")
+                
+                # Display the generated search term if available
+                if internet_search_term:
+                    st.info(f"🔍 **Generated Search Term:** `{internet_search_term}`")
+                
+                # Display the internet search results
+                with st.expander("📄 Internet Search Summary", expanded=False):
+                    st.markdown(internet_result)
+            elif result.get("web_search_enabled", False):
+                st.subheader("🌐 Internet Search Results")
+                st.warning("⚠️ Web search was enabled but no results were obtained. Check your Tavily API key and internet connection.")
+            
+            # Quality assessment section
+            quality_check = result.get("quality_check", {})
+            if quality_check and quality_check.get("enabled", False):
+                st.subheader("🔍 Quality Assessment")
+                
+                # Get values with backward compatibility
+                overall_score = quality_check.get("quality_score", quality_check.get("overall_score", 0))
+                max_score = quality_check.get("max_score", 400)
+                passes_quality = quality_check.get("is_accurate", quality_check.get("passes_quality", False))
+                needs_improvement = quality_check.get("improvement_needed", quality_check.get("needs_improvement", False))
+                improvement_suggestions = quality_check.get("improvement_suggestions", "")
+                
+                # New JSON structure fields
+                issues_found = quality_check.get("issues_found", [])
+                missing_elements = quality_check.get("missing_elements", [])
+                citation_issues = quality_check.get("citation_issues", [])
+                
+                # Display quality metrics
+                col_q1, col_q2, col_q3 = st.columns(3)
+                with col_q1:
+                    st.metric("Quality Score", f"{overall_score}/{max_score}")
+                with col_q2:
+                    status_color = "🟢" if passes_quality else "🔴"
+                    st.metric("Assessment", f"{status_color} {'PASS' if passes_quality else 'FAIL'}")
+                with col_q3:
+                    if needs_improvement:
+                        improvement_status = "🔄 Needs Improvement"
+                    else:
+                        improvement_status = "✅ Quality Passed"
+                    st.metric("Status", improvement_status)
+                
+                # Display detailed quality analysis if available
+                if issues_found or missing_elements or citation_issues:
+                    st.markdown("#### 📊 Detailed Quality Analysis")
+                    
+                    col_detail1, col_detail2, col_detail3 = st.columns(3)
+                    
+                    with col_detail1:
+                        if issues_found:
+                            st.markdown("**🚨 Issues Found:**")
+                            # Handle both string and list formats
+                            if isinstance(issues_found, str):
+                                st.markdown(f"• {issues_found}")
+                            elif isinstance(issues_found, list):
+                                for issue in issues_found:
+                                    st.markdown(f"• {issue}")
+                            else:
+                                st.markdown(f"• {str(issues_found)}")
+                        else:
+                            st.markdown("**✅ No Issues Found**")
+                    
+                    with col_detail2:
+                        if missing_elements:
+                            st.markdown("**❓ Missing Elements:**")
+                            # Handle both string and list formats
+                            if isinstance(missing_elements, str):
+                                st.markdown(f"• {missing_elements}")
+                            elif isinstance(missing_elements, list):
+                                for element in missing_elements:
+                                    st.markdown(f"• {element}")
+                            else:
+                                st.markdown(f"• {str(missing_elements)}")
+                        else:
+                            st.markdown("**✅ All Elements Present**")
+                    
+                    with col_detail3:
+                        if citation_issues:
+                            st.markdown("**📚 Citation Issues:**")
+                            # Handle both string and list formats
+                            if isinstance(citation_issues, str):
+                                st.markdown(f"• {citation_issues}")
+                            elif isinstance(citation_issues, list):
+                                for citation in citation_issues:
+                                    st.markdown(f"• {citation}")
+                            else:
+                                st.markdown(f"• {str(citation_issues)}")
+                        else:
+                            st.markdown("**✅ Citations OK**")
+                
+                # Show improvement suggestions if they were generated
+                if improvement_suggestions:
+                    with st.expander("📝 Improvement Suggestions", expanded=False):
+                        st.markdown(improvement_suggestions)
+                
+                # Show full assessment if available
+                full_assessment = quality_check.get("full_assessment", "")
+                if full_assessment:
+                    with st.expander("🔍 Full Quality Assessment", expanded=False):
+                        st.text(full_assessment)
+            
+            # Final report section
+            final_answer = result.get("final_answer", "")
+            with st.expander("📋 Final Report", expanded=False):
+                if final_answer and final_answer.strip():
+                    # Show improvement notice if quality checker triggered reflection loop
+                    if quality_check and quality_check.get("needs_improvement", False):
+                        st.info("ℹ️ This report has been regenerated based on quality assessment feedback through reflection loop.")
+                    
+                    # Extract <think> blocks from the final answer
+                    import re
+                    
+                    # Find all <think> blocks (handle both proper and malformed tags)
+                    think_pattern = r'<think>(.*?)(?:</think>|<think>)'
+                    think_matches = re.findall(think_pattern, final_answer, re.DOTALL | re.IGNORECASE)
+                    
+                    # Remove <think> blocks from the main answer
+                    clean_answer = re.sub(r'<think>.*?(?:</think>|<think>)', '', final_answer, flags=re.DOTALL | re.IGNORECASE)
+                    clean_answer = clean_answer.strip()
+                    
+                    # Display the clean answer
+                    if clean_answer:
+                        st.markdown(clean_answer)
+                    else:
+                        st.warning("The answer appears to contain only thinking process. Please check the LLM response.")
+                    
+                    # Show thinking process in a collapsed expander if found
+                    if think_matches:
+                        with st.expander("🧠 LLM Thinking Process", expanded=False):
+                            for i, think_content in enumerate(think_matches, 1):
+                                if len(think_matches) > 1:
+                                    st.markdown(f"**Thinking Block {i}:**")
+                                st.text(think_content.strip())
+                                if i < len(think_matches):
+                                    st.divider()
+                    
+                    # Copy to clipboard and download buttons
+                    col_btn1, col_btn2 = st.columns(2)
+                    with col_btn1:
+                        if st.button("📋 Copy Report to Clipboard"):
+                            if copy_to_clipboard(final_answer):
+                                st.success("Report copied to clipboard!")
+                            else:
+                                st.error("Could not copy to clipboard.")
+                    
+                    with col_btn2:
+                        from datetime import datetime
+                        st.download_button(
+                            label="📥 Download Report",
+                            data=final_answer,
+                            file_name=f"research_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                            mime="text/markdown"
+                        )
+                else:
+                    st.warning("No report generated. This could be due to:")
+                    st.markdown("- No reranked summaries found")
+                    st.markdown("- All summaries scored below relevance threshold")
+                    st.markdown("- Report generation failed")
+        
+        else:
+            st.info("📚 Complete the Retrieval & Summarization phase first to proceed with reporting.")
+    
+    # ========================================
+    # FINAL ANSWER DISPLAY (MAIN WINDOW)
+    # ========================================
+    
+    # Check if we have a completed reporting phase with final answer
+    if ((st.session_state.workflow_phase in ["reporting", "completed"]) and 
+        hasattr(st.session_state, 'reporting_result') and 
+        st.session_state.reporting_result) or (
+        hasattr(st.session_state, 'reporting_result') and 
+        st.session_state.reporting_result and 
+        st.session_state.reporting_result.get("final_answer")):
+        
+        result = st.session_state.reporting_result
+        final_answer = result.get("final_answer", "")
+        
+        if final_answer and final_answer.strip():
+            # Add some spacing
+            st.markdown("---")
+            
+            # Main final answer section - prominently displayed
+            st.markdown("# 🎯 Final Research Report")
+            
+            # Show improvement notice if quality checker triggered reflection loop
+            quality_check = result.get("quality_check", {})
+            if quality_check and quality_check.get("needs_improvement", False):
+                st.info("ℹ️ This report has been regenerated based on quality assessment feedback through reflection loop.")
+            
+            # Extract <think> blocks from the final answer
+            import re
+            
+            # Find all <think> blocks (handle both proper and malformed tags)
+            think_pattern = r'<think>(.*?)(?:</think>|<think>)'
+            think_matches = re.findall(think_pattern, final_answer, re.DOTALL | re.IGNORECASE)
+            
+            # Remove <think> blocks from the main answer
+            clean_answer = re.sub(r'<think>.*?(?:</think>|<think>)', '', final_answer, flags=re.DOTALL | re.IGNORECASE)
+            clean_answer = clean_answer.strip()
+            
+            # Display the clean answer prominently
+            if clean_answer:
+                st.markdown(clean_answer)
+            else:
+                st.warning("The answer appears to contain only thinking process. Please check the LLM response.")
+            
+            # Action buttons in columns
+            col_btn1, col_btn2, col_btn3 = st.columns(3)
+            
+            with col_btn1:
+                if st.button("📋 Copy Report to Clipboard", key="main_copy_btn"):
+                    if copy_to_clipboard(final_answer):
+                        st.success("Report copied to clipboard!")
+                    else:
+                        st.error("Could not copy to clipboard.")
+            
+            with col_btn2:
+                from datetime import datetime
+                st.download_button(
+                    label="📥 Download Report",
+                    data=final_answer,
+                    file_name=f"research_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                    mime="text/markdown",
+                    key="main_download_btn"
+                )
+            
+            with col_btn3:
+                if st.button("🔄 Start New Research", key="main_new_research_btn"):
                     clear_chat()
                     st.rerun()
-        else:
-            # Main phase not active - show message
-            st.info("🕰️ Waiting for HITL phase to complete before starting main research...")
-    
-    # Display chat history (outside of tabs)
-    if st.session_state.messages:
-        st.subheader("📝 Research History")
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
+            
+            # Show thinking process in a collapsed expander if found
+            if think_matches:
+                with st.expander("🧠 LLM Thinking Process", expanded=False):
+                    for i, think_content in enumerate(think_matches, 1):
+                        if len(think_matches) > 1:
+                            st.markdown(f"**Thinking Block {i}:**")
+                        st.text(think_content.strip())
+                        if i < len(think_matches):
+                            st.divider()
+            
+            # Show quality assessment if available
+            if quality_check:
+                with st.expander("📊 Quality Assessment Details", expanded=False):
+                    if "overall_score" in quality_check:
+                        score = quality_check["overall_score"]
+                        max_score = 400  # Based on the 4-dimensional scoring system
+                        score_percentage = (score / max_score) * 100
+                        
+                        # Score display with color coding
+                        if score >= 300:
+                            st.success(f"✅ Quality Score: {score}/{max_score} ({score_percentage:.1f}%) - PASSED")
+                        else:
+                            st.warning(f"⚠️ Quality Score: {score}/{max_score} ({score_percentage:.1f}%) - NEEDS IMPROVEMENT")
+                    
+                    # Show full assessment if available
+                    full_assessment = quality_check.get("full_assessment", "")
+                    if full_assessment:
+                        st.text(full_assessment)
 
 if __name__ == "__main__":
     main()
