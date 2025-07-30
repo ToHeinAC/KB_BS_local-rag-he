@@ -3,10 +3,15 @@ import sys
 import os
 import json
 import re
+import requests
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 from typing_extensions import TypedDict
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Add project root to Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -31,6 +36,29 @@ st.set_page_config(
     page_icon="📊",
     layout="wide"
 )
+
+def clean_llm_response(response: str) -> str:
+    """
+    Clean LLM response by removing <think>...</think> blocks and extra whitespace.
+    
+    Args:
+        response: Raw LLM response that may contain thinking blocks
+        
+    Returns:
+        str: Cleaned response with thinking blocks removed
+    """
+    if not response or not isinstance(response, str):
+        return ""
+    
+    # Remove <think> blocks (handle both proper and malformed tags)
+    import re
+    think_pattern = r'<think>(.*?)(?:</think>|<think>)'
+    clean_response = re.sub(think_pattern, '', response, flags=re.DOTALL | re.IGNORECASE)
+    
+    # Clean up extra whitespace and newlines
+    clean_response = clean_response.strip()
+    
+    return clean_response
 
 def score_summary(initial_query: str, query: str, content: str, context: str, 
                   llm_model: str, language: str = "English") -> float:
@@ -192,7 +220,8 @@ def reranker_node(state: ResearcherStateV2, config: RunnableConfig) -> Researche
 
 
 def generate_final_answer_prompt(initial_query: str, reranked_summaries: List[Dict], 
-                                additional_context: str = "", language: str = "English") -> str:
+                                additional_context: str = "", language: str = "English", 
+                                internet_result: str = "") -> str:
     """
     Create a prompt for generating the final answer using reranked summaries.
     """
@@ -221,19 +250,28 @@ SUPPORTING SOURCES:"""
 Source {i} (Score: {item['score']:.1f}):
 {item['summary']}"""
 
+    # Add internet results section if available
+    if internet_result and internet_result.strip():
+        prompt += f"""
+
+INTERNET SOURCES:
+{internet_result}
+"""
+
     prompt += f"""
 
 INSTRUCTIONS:
 • Base your answer PRIMARILY on the highest-ranked summary as it is most relevant to the query
 • Use supporting sources to add context, details, or complementary information
-• If supporting sources contradict the primary source, prioritize the primary source unless there's clear evidence of error
-• Maintain accuracy and cite relevant legal references (§ sections) when mentioned
+• If internet sources are available, incorporate recent/current information to complement the supporting sources. Then, clearly indicate when information comes from recent web searches. Do this by adding a short separate section called "Internet Sources" and cite the sources URLs.
+• If supporting sources or internet sources contradict the primary source, prioritize the primary source unless there's clear evidence of error
+• Maintain accuracy and cite relevant sources such as legal references (§ sections) when mentioned
 • Structure your response clearly with bullet points as preferred
 • If information is incomplete, acknowledge limitations
 • Focus on directly answering the original query
 • Respond in {language} language
 
-Generate a comprehensive answer that prioritizes the most relevant information while incorporating supporting details where appropriate."""
+Generate a comprehensive answer that prioritizes the most relevant information while incorporating supporting details and recent internet information where appropriate."""
 
     return prompt
 
@@ -257,11 +295,15 @@ def report_writer_node(state: ResearcherStateV2, config: RunnableConfig) -> Rese
     additional_context = state.get("additional_context", "")
     report_llm = state.get("report_llm", "qwen3:latest")
     detected_language = state.get("detected_language", "English")
+    internet_result = state.get("internet_result", "")
     
     print(f"  [DEBUG] User query: {user_query}")
     print(f"  [DEBUG] Reranked summaries count: {len(all_reranked_summaries)}")
     print(f"  [DEBUG] Report LLM: {report_llm}")
     print(f"  [DEBUG] Language: {detected_language}")
+    print(f"  [DEBUG] Internet result available: {bool(internet_result and internet_result.strip())}")
+    if internet_result and internet_result.strip():
+        print(f"  [DEBUG] Internet result length: {len(internet_result)} characters")
     
     if not all_reranked_summaries:
         print("  [WARNING] No reranked summaries found - cannot generate report")
@@ -281,7 +323,8 @@ def report_writer_node(state: ResearcherStateV2, config: RunnableConfig) -> Rese
         initial_query=user_query,
         reranked_summaries=all_reranked_summaries,
         additional_context=additional_context,
-        language=detected_language
+        language=detected_language,
+        internet_result=internet_result
     )
     
     print(f"  [DEBUG] Prompt length: {len(prompt)} characters")
@@ -295,11 +338,13 @@ def report_writer_node(state: ResearcherStateV2, config: RunnableConfig) -> Rese
             model=report_llm
         )
         
-        print(f"  [DEBUG] LLM response length: {len(response)} characters")
-        print(f"  [DEBUG] Response preview: {response[:200]}...")
+        print(f"  [DEBUG] Raw LLM response length: {len(response)} characters")
+        print(f"  [DEBUG] Raw response preview: {response[:200]}...")
         
+        # Clean the response to remove <think> blocks but keep it for final answer
+        # Note: We keep the raw response for final answer as the GUI handles <think> block extraction
         state["final_answer"] = response
-        print("  [INFO] Final report generated successfully")
+        print("  [INFO] Final report generated successfully (raw response preserved for GUI processing)")
         
     except Exception as e:
         print(f"  [ERROR] Exception in final report generation: {str(e)}")
@@ -587,6 +632,203 @@ def quality_router(state: ResearcherStateV2) -> str:
         return END
 
 
+def tavily_search(query: str) -> str:
+    """
+    Search for information using Tavily API.
+    
+    Args:
+        query: The search query to find information about
+        
+    Returns:
+        str: Formatted search results or error message
+    """
+    try:
+        print(f"  [TAVILY] Searching for: {query}")
+        api_key = os.getenv("TAVILY_API_KEY")
+        if not api_key:
+            return "Error: Tavily API key not found in environment variables"
+        
+        url = "https://api.tavily.com/search"
+        payload = {
+            "api_key": api_key,
+            "query": query,
+            "search_depth": "basic",
+            "include_answer": True,
+            "include_raw_content": False,
+            "max_results": 5
+        }
+        
+        response = requests.post(url, json=payload)
+        if response.status_code == 200:
+            data = response.json()
+            results = []
+            
+            # Add the direct answer if available
+            if data.get("answer"):
+                results.append(f"Direct Answer: {data['answer']}")
+                results.append("---")
+            
+            # Add search results
+            for i, result in enumerate(data.get("results", [])[:5], 1):
+                results.append(f"Result {i}:")
+                results.append(f"Title: {result.get('title', 'N/A')}")
+                results.append(f"Content: {result.get('content', 'N/A')}")
+                results.append(f"URL: {result.get('url', 'N/A')}")
+                results.append("---")
+            
+            return "\n".join(results) if results else "No search results found"
+        else:
+            return f"Search failed with status code: {response.status_code}"
+    except Exception as e:
+        return f"Search error: {str(e)}"
+
+
+def web_tavily_searcher_node(state: ResearcherStateV2, config: RunnableConfig) -> ResearcherStateV2:
+    """
+    LangGraph node that performs internet search using Tavily API.
+    
+    This node:
+    1. Uses LLM to generate optimal search term based on user query and context
+    2. Performs Tavily search with the generated term
+    3. Uses LLM to summarize and wrap up the search results
+    4. Updates the internet_result field in state
+    
+    Args:
+        state: ResearcherStateV2 containing user query and context
+        config: RunnableConfig for the graph
+    
+    Returns:
+        Updated ResearcherStateV2 with internet_result field populated
+    """
+    print("\n=== WEB TAVILY SEARCHER NODE ===")
+    
+    user_query = state.get("user_query", "")
+    additional_context = state.get("additional_context", "")
+    report_llm = state.get("report_llm", "qwen3:latest")
+    language = state.get("detected_language", "English")
+    
+    print(f"  User Query: {user_query}")
+    print(f"  Additional Context: {additional_context[:100]}..." if additional_context else "  No additional context")
+    print(f"  Using LLM: {report_llm}")
+    
+    try:
+        # Step 1: Generate optimal search term using LLM
+        search_term_prompt = f"""
+You are an expert at formulating internet search queries. Based on the user's query and additional context, create ONE perfect search term that will yield the most relevant and recent information.
+
+User Query: {user_query}
+Additional Context: {additional_context}
+
+Instructions:
+- Create a concise, specific search term consisting of the most important keywords from the initial User Query and the Additional Context (typically 4-8 words)
+- Focus on the most important keywords from the initial User Query
+- Add relevant points from the Additional Context
+- Consider recent developments or current information needs
+- Avoid overly broad or generic terms
+
+MOST IMPORTANT: 
+- You MUST reply with a single search term in string format and no prefix or suffix.
+- You MUST use {language} language to respond.
+
+Search Term:"""
+        
+        print("  [STEP 1] Generating optimal search term...")
+        search_term_response = invoke_ollama(
+            model=report_llm,
+            system_prompt="You are an expert search query optimizer. Generate concise, effective search terms.",
+            user_prompt=search_term_prompt
+        )
+        
+        # Clean the response to remove <think> blocks and extra formatting
+        clean_response = clean_llm_response(search_term_response)
+        search_term = clean_response.replace("Search Term:", "").strip()
+        print(f"  Raw LLM response length: {len(search_term_response)} characters")
+        print(f"  Cleaned search term: {search_term}")
+        
+        # Step 2: Perform Tavily search
+        print("  [STEP 2] Performing Tavily search...")
+        search_results = tavily_search(search_term)
+        
+        if search_results.startswith("Error:") or search_results.startswith("Search error:"):
+            print(f"  Search failed: {search_results}")
+            return {
+                **state,
+                "internet_result": f"Internet search failed: {search_results}"
+            }
+        
+        print(f"  Search completed. Results length: {len(search_results)} characters")
+        
+        # Step 3: Summarize and wrap up results using LLM
+        wrap_up_prompt = f"""
+You are an expert research analyst. Based on the user's query and the internet search results, create a comprehensive summary of the main findings.
+MOST IMPORTANT: You MUST ONLY use the internet search results to create the summary. Do not use any internal LLM knowledge.
+
+User Query: {user_query}
+Additional Context: {additional_context}
+
+Internet Search Results:
+{search_results}
+
+Instructions:
+- Summarize the most relevant and important information
+- Focus mainly on answering the User Query
+- Include key facts, recent developments, and important details
+- Organize the information clearly and logically
+- Cite sources (mention URLs and titles)
+- Keep the summary comprehensive but concise (max 500 words)
+- Do not include any additional information that is not directly related to the User Query.
+
+MOST IMPORTANT: You MUST use {language} language to respond.
+
+Summary:"""
+        
+        print("  [STEP 3] Wrapping up search results...")
+        wrap_up_response = invoke_ollama(
+            model=report_llm,
+            system_prompt="You are an expert research analyst. Create comprehensive, well-organized summaries of internet search results.",
+            user_prompt=wrap_up_prompt
+        )
+        
+        # Clean the response to remove <think> blocks
+        internet_result = clean_llm_response(wrap_up_response)
+        print(f"  Raw wrap-up response length: {len(wrap_up_response)} characters")
+        print(f"  Cleaned internet result length: {len(internet_result)} characters")
+        
+        return {
+            **state,
+            "internet_result": internet_result
+        }
+        
+    except Exception as e:
+        error_msg = f"Error in web_tavily_searcher_node: {str(e)}"
+        print(f"  ERROR: {error_msg}")
+        return {
+            **state,
+            "internet_result": error_msg
+        }
+
+
+def web_search_router(state: ResearcherStateV2) -> str:
+    """
+    Router function that determines whether to use web search or go directly to report writer.
+    
+    Args:
+        state: ResearcherStateV2 containing web search configuration
+    
+    Returns:
+        str: Next node name ("web_tavily_searcher" or "report_writer")
+    """
+    # Check if web search is enabled in the state or use a default
+    web_search_enabled = state.get("web_search_enabled", False)
+    
+    if web_search_enabled:
+        print("  [ROUTER] Web search enabled -> web_tavily_searcher")
+        return "web_tavily_searcher"
+    else:
+        print("  [ROUTER] Web search disabled -> report_writer")
+        return "report_writer"
+
+
 def create_rerank_reporter_graph():
     """
     Create the LangGraph workflow for reranking and report generation with quality reflection loop.
@@ -601,11 +843,22 @@ def create_rerank_reporter_graph():
     
     # Add nodes
     workflow.add_node("reranker", reranker_node)
+    workflow.add_node("web_tavily_searcher", web_tavily_searcher_node)
     workflow.add_node("report_writer", report_writer_node)
     workflow.add_node("quality_checker", quality_checker_node)
     
-    # Add edges
-    workflow.add_edge("reranker", "report_writer")
+    # Add conditional edge from reranker based on web search setting
+    workflow.add_conditional_edges(
+        "reranker",
+        web_search_router,
+        {
+            "web_tavily_searcher": "web_tavily_searcher",
+            "report_writer": "report_writer"
+        }
+    )
+    
+    # Add edge from web_tavily_searcher to report_writer
+    workflow.add_edge("web_tavily_searcher", "report_writer")
     workflow.add_edge("report_writer", "quality_checker")
     
     # Add conditional edge from quality_checker using the router
@@ -660,13 +913,13 @@ def generate_graph_visualization():
     try:
         graph = create_rerank_reporter_graph()
         
-        # Try to get Mermaid PNG
+        # Try to get Mermaid PNG with xray=True
         try:
-            img = graph.get_graph().draw_mermaid_png()
+            img = graph.get_graph(xray=True).draw_mermaid_png()
             return img, "png"
         except Exception as e:
             # Fallback to Mermaid text
-            mermaid_code = graph.get_graph().draw_mermaid()
+            mermaid_code = graph.get_graph(xray=True).draw_mermaid()
             return mermaid_code, "mermaid"
             
     except Exception as e:
@@ -711,6 +964,13 @@ def main():
             "Enable Quality Checker",
             value=True,
             help="Enable LLM-based quality assessment and improvement of the final report"
+        )
+        
+        # Web search toggle
+        enable_web_search = st.checkbox(
+            "Enable Web Search",
+            value=False,
+            help="Enable internet search using Tavily API to supplement document summaries with recent information"
         )
         
         # Additional context input
@@ -842,7 +1102,9 @@ def main():
                         "all_reranked_summaries": [],
                         "enable_quality_checker": enable_quality_checker,
                         "quality_check": None,
-                        "reflection_count": 0
+                        "reflection_count": 0,
+                        "web_search_enabled": enable_web_search,
+                        "internet_result": None
                     }
                     
                     # Execute the graph
@@ -914,6 +1176,25 @@ def main():
                                         st.divider()
                         else:
                             st.warning("No reranked summaries found. Check input data.")
+                    
+                    # Display internet search results if available
+                    internet_result = final_state.get("internet_result")
+                    if internet_result and internet_result.strip():
+                        st.subheader("🌐 Internet Search Results")
+                        
+                        # Check if web search was enabled
+                        web_search_enabled = final_state.get("web_search_enabled", False)
+                        if web_search_enabled:
+                            st.success("✅ Web search was enabled and executed successfully")
+                        else:
+                            st.info("ℹ️ Web search was not enabled for this query")
+                        
+                        # Display the internet search results
+                        with st.expander("📄 Internet Search Summary", expanded=True):
+                            st.markdown(internet_result)
+                    elif final_state.get("web_search_enabled", False):
+                        st.subheader("🌐 Internet Search Results")
+                        st.warning("⚠️ Web search was enabled but no results were obtained. Check your Tavily API key and internet connection.")
                     
                     # Display quality checker results if enabled
                     quality_check = final_state.get("quality_check", {})
