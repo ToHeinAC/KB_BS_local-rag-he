@@ -123,7 +123,7 @@ def detect_language(state: InitState):
         state (InitState): The updated state with the detected language.
     """
     query = state["user_query"]
-    model = state.get("report_llm", "deepseek-r1:latest")
+    model = state.get("summarization_llm", "deepseek-r1:latest")
     # Format the system prompt for language detection
     system_prompt = """# ROLE
 You are an expert language detection specialist.

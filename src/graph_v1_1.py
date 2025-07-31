@@ -39,8 +39,8 @@ researcher_graph = StateGraph(ResearcherState)
 def detect_language(state: ResearcherState, config: RunnableConfig):
     print("--- Detecting language of user query ---")
     query = state["user_query"]  # Get the query from user_query
-    # Use the report writer LLM for language detection
-    llm_model = config["configurable"].get("report_llm", "qwq")
+    # Use the summarization LLM for language detection
+    llm_model = config["configurable"].get("summarization_llm", "qwq")
     
     # First check if a language is already set in the config (from GUI)
     user_selected_language = config["configurable"].get("selected_language", None)
@@ -62,12 +62,12 @@ def detect_language(state: ResearcherState, config: RunnableConfig):
     
     # Check if report_llm is in state and use it directly if available
     # This ensures we use the model selected in the UI
-    if "report_llm" in state:
-        model_to_use = state["report_llm"]
-        print(f"  [DEBUG] Using model from state: {model_to_use}")
+    if "summarization_llm" in state:
+        model_to_use = state["summarization_llm"]
+        print(f"  [DEBUG] Using summarization model from state: {model_to_use}")
     else:
         model_to_use = llm_model
-        print(f"  [DEBUG] Using model from config: {model_to_use}")
+        print(f"  [DEBUG] Using summarization model from config: {model_to_use}")
         
     # Using local model with Ollama
     result = invoke_ollama(
