@@ -34,33 +34,8 @@ SUMMARIZER_SYSTEM_PROMPT = summ_prompts.SUMMARIZER_SYSTEM_PROMPT
 SUMMARIZER_HUMAN_PROMPT = summ_prompts.SUMMARIZER_HUMAN_PROMPT
 
 
-def extract_embedding_model(db_dir_name: str) -> str:
-    """
-    Extract the embedding model name from the database directory name.
-    Handles various database naming conventions.
-    """
-    # Handle the specific case of database names with '--' separators
-    if '--' in db_dir_name:
-        parts = db_dir_name.split('--')
-        
-        if len(parts) >= 2:
-            # For format like "Qwen--Qwen3-Embedding-0.6B--3000--600"
-            if '/' not in parts[0]:
-                return f"{parts[0]}/{parts[1]}"
-            
-            # For format like "Qwen/Qwen--Qwen3-Embedding-0.6B--3000--600"
-            else:
-                org = parts[0].split('/')[0]  # Extract "Qwen" from "Qwen/Qwen"
-                return f"{org}/{parts[1]}"
-    
-    # Handle the case where the name already has a proper format like "Qwen/Qwen3-Embedding-0.6B"
-    if '/' in db_dir_name and '--' not in db_dir_name:
-        return db_dir_name
-    
-    # Fallback: replace double hyphens with slashes
-    model_name = db_dir_name.replace("--", "/")
-    
-    return model_name.split('/')[0] + '/' + model_name.split('/')[1]
+# Import the corrected extract_embedding_model function from rag_helpers_v1_1
+from src.rag_helpers_v1_1 import extract_embedding_model
 
 
 def retrieve_documents_node(state: ResearcherStateV2, config: RunnableConfig) -> ResearcherStateV2:

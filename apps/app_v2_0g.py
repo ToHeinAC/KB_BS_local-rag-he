@@ -53,7 +53,8 @@ from src.rag_helpers_v1_1 import (
     get_report_llm_models, 
     get_summarization_llm_models, 
     get_all_available_models,
-    get_license_content
+    get_license_content,
+    extract_embedding_model
 )
 
 # Set page configuration
@@ -69,47 +70,6 @@ def clean_model_name(model_name):
     """Clean model name by removing common prefixes and suffixes for better display"""
     return model_name.replace(":latest", "").replace("_", " ").title()
 
-# Function to extract embedding model name from database directory
-def extract_embedding_model(db_dir_name):
-    """
-    Extract the embedding model name from the database directory name.
-    
-    This function properly handles various database naming conventions, including:
-    - Standard format: "organization/model_name"
-    - Directory format with separators: "Qwen/Qwen--Qwen3-Embedding-0.6B--3000--600"
-    - Legacy format: "model_name/chunk_size/overlap"
-    
-    Args:
-        db_dir_name (str): The database directory name (e.g., "Qwen/Qwen--Qwen3-Embedding-0.6B--3000--600")
-        
-    Returns:
-        str: The extracted embedding model name (e.g., "Qwen/Qwen3-Embedding-0.6B")
-    """
-    # Handle the specific case of database names with '--' separators
-    # Example: "Qwen--Qwen3-Embedding-0.6B--3000--600" -> "Qwen/Qwen3-Embedding-0.6B"
-    if '--' in db_dir_name:
-        parts = db_dir_name.split('--')
-        
-        if len(parts) >= 2:
-            # The first part should contain the model organization and name
-            first_part = parts[0]  # "Qwen"
-            second_part = parts[1]  # "Qwen3-Embedding-0.6B"
-            
-            if '/' in first_part:
-                # Extract organization from first part
-                org = first_part.split('/')[0]  # "Qwen"
-                result = f"{org}/{second_part}"  # "Qwen/Qwen3-Embedding-0.6B"
-                return result
-            else:
-                # Fallback: use first part as org
-                result = f"{first_part}/{second_part}"
-                return result
-    
-    # Fallback to original logic if the new parsing fails
-    model_name = db_dir_name.replace("vectordb_", "")
-    model_name = model_name.replace("--", "/")
-
-    return model_name
 
 # Function to get embedding model
 def get_embedding_model(model_name):
