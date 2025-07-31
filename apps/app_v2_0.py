@@ -599,8 +599,10 @@ def execute_retrieval_summarization_phase(use_ext_database=False, selected_datab
         
         # Display summaries
         if "search_summaries" in retrieval_final_state and retrieval_final_state["search_summaries"]:
-            with st.expander("📝 Generated Summaries", expanded=True):
-                search_summaries = retrieval_final_state["search_summaries"]
+            search_summaries = retrieval_final_state["search_summaries"]
+            for query, summaries in search_summaries.items():
+                st.markdown(f"**Number of summaries for query {query}:** {len(summaries)}")
+            with st.expander("📝 Generated Summaries", expanded=False):    
                 for query, summaries in search_summaries.items():
                     st.markdown(f"**Query:** {query}")
                     for i, summary in enumerate(summaries, 1):
@@ -611,7 +613,7 @@ def execute_retrieval_summarization_phase(use_ext_database=False, selected_datab
                             st.markdown(f"**Summary {i}:**")
                             st.markdown(summary)
                     st.divider()
-        
+            
         # Store results in session state for next phase
         st.session_state.retrieval_summarization_result = retrieval_final_state
         
@@ -895,6 +897,13 @@ def main():
     if "hitl_context" not in st.session_state:
         st.session_state.hitl_context = ""
     
+    # Input field state control - use processing flags instead of visibility flags
+    if "processing_initial_query" not in st.session_state:
+        st.session_state.processing_initial_query = False
+    
+    if "processing_feedback" not in st.session_state:
+        st.session_state.processing_feedback = False
+    
     # Session state for storing HITL results (similar to test_st-multigraph.py)
     if "hitl_result" not in st.session_state:
         st.session_state.hitl_result = None
@@ -943,135 +952,125 @@ def main():
     
     # Sidebar configuration
     with st.sidebar:
-        st.header("⚙️ Configuration")
-        
-        # External Database Configuration (moved to top)
-        st.subheader("🗄️ External Database")
-        
+        st.header("⚙️ Configuration")       
         # Define DATABASE_PATH like in app_v1_1.py
         DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "kb", "database")
-        
-        # Initialize session state for external database
-        if "use_ext_database" not in st.session_state:
-            st.session_state.use_ext_database = False
-        if "selected_database" not in st.session_state:
-            st.session_state.selected_database = ""
-        if "k_results" not in st.session_state:
-            st.session_state.k_results = 3
-        
-        # Enable external database checkbox
-        st.session_state.use_ext_database = st.sidebar.checkbox(
-            "Use ext. Database", 
-            value=st.session_state.use_ext_database,
-            help="Use an existing database for document retrieval"
-        )
-        
-        # Database selection
-        if st.session_state.use_ext_database:
-            # Get available databases
-            database_dir = Path(DATABASE_PATH)
-            database_options = [d.name for d in database_dir.iterdir() if d.is_dir()] if database_dir.exists() else []
+    
+        with st.expander("🗄️ External Database", expanded=False): # External Database Configuration (moved to top)    
+            # Initialize session state for external database
+            if "use_ext_database" not in st.session_state:
+                st.session_state.use_ext_database = True
+            if "selected_database" not in st.session_state:
+                st.session_state.selected_database = ""
+            if "k_results" not in st.session_state:
+                st.session_state.k_results = 3
+
+            # Enable external database checkbox
+            st.session_state.use_ext_database = st.checkbox(
+                "Use ext. Database", 
+                value=st.session_state.use_ext_database,
+                help="Use an existing database for document retrieval"
+            )
             
-            if database_options:
-                # Select database
-                selected_db = st.sidebar.selectbox(
-                    "Select Database",
-                    options=database_options,
-                    index=database_options.index(st.session_state.selected_database) if st.session_state.selected_database in database_options else 0,
-                    help="Choose a database to use for retrieval"
-                )
-                st.session_state.selected_database = selected_db
-                
-                # Extract and update embedding model from database name
-                embedding_model_name = extract_embedding_model(selected_db)
-                if embedding_model_name:
-                    # Update the global configuration to use this embedding model
-                    from src.configuration_v1_1 import update_embedding_model
-                    update_embedding_model(embedding_model_name)
-                    st.sidebar.info(f"Selected Database: {selected_db}")
-                    st.sidebar.success(f"Updated embedding model to: {embedding_model_name}")
-                
-                # Number of results to retrieve
-                st.session_state.k_results = st.sidebar.slider(
-                    "Number of results to retrieve", 
-                    min_value=1, 
-                    max_value=10, 
-                    value=st.session_state.k_results
-                )
-                
-                selected_database = st.session_state.selected_database
-                k_results = st.session_state.k_results
+            # Database selection
+            if st.session_state.use_ext_database:
+                # Get available databases
+                database_dir = Path(DATABASE_PATH)
+                database_options = [d.name for d in database_dir.iterdir() if d.is_dir()] if database_dir.exists() else []
+            
+                if database_options:
+                    # Select database
+                    selected_db = st.selectbox(
+                        "Select Database",
+                        options=database_options,
+                        index=database_options.index(st.session_state.selected_database) if st.session_state.selected_database in database_options else 0,
+                        help="Choose a database to use for retrieval"
+                    )
+                    st.session_state.selected_database = selected_db
+                    
+                    # Extract and update embedding model from database name
+                    embedding_model_name = extract_embedding_model(selected_db)
+                    if embedding_model_name:
+                        # Update the global configuration to use this embedding model
+                        from src.configuration_v1_1 import update_embedding_model
+                        update_embedding_model(embedding_model_name)
+                        st.info(f"Selected Database: {selected_db}")
+                        st.success(f"Updated embedding model to: {embedding_model_name}")
+                    
+                    # Number of results to retrieve
+                    st.session_state.k_results = st.slider(
+                        "Number of results to retrieve", 
+                        min_value=1, 
+                        max_value=10, 
+                        value=st.session_state.k_results
+                    )
+                    
+                    selected_database = st.session_state.selected_database
+                    k_results = st.session_state.k_results
+                else:
+                    st.warning("No databases found. Please upload documents first.")
+                    st.session_state.use_ext_database = False
+                    selected_database = None
+                    k_results = 3
             else:
-                st.sidebar.warning("No databases found. Please upload documents first.")
-                st.session_state.use_ext_database = False
                 selected_database = None
                 k_results = 3
-        else:
-            selected_database = None
-            k_results = 3
         
-        st.divider()
-        
-        # Research Configuration
-        st.subheader("🔬 Research Settings")
-        
-        # Report structure
-        report_structures = get_report_structures()
-        report_structure = st.selectbox(
-            "Report Structure",
-            options=list(report_structures.keys()),
-            index=0,
-            help="Choose the structure for the final report"
-        )
-        
-        # Max search queries
-        max_search_queries = st.slider(
-            "Number of Additional Research Queries",
-            min_value=1,
-            max_value=10,
-            value=3,
-            help="Number of additional research queries to generate"
-        )
-        
-        # Enable web search
-        enable_web_search = st.checkbox(
-            "Enable Web Search",
-            value=False,
-            help="Enable web search in addition to local document retrieval"
-        )
-        
-        # Quality checker settings
-        enable_quality_checker = st.checkbox(
-            "Enable Quality Checker",
-            value=True,
-            help="Enable LLM-based quality assessment of the final report"
-        )
-        
-        st.divider()
         
         # Model Selection (moved to bottom)
-        st.subheader("🤖 Model Selection")
-        
-        # Report writing LLM
-        st.session_state.report_llm = st.sidebar.selectbox(
-            "Report Writing LLM",
-            options=report_llm_models,
-            index=report_llm_models.index(st.session_state.report_llm) if st.session_state.report_llm in report_llm_models else 0,
-            help="Choose the LLM model to use for final report generation; loaded from global report_llms.md configuration"
-        )
-        
-        # Summarization LLM
-        st.session_state.summarization_llm = st.sidebar.selectbox(
-            "Summarization LLM",
-            options=summarization_llm_models,
-            index=summarization_llm_models.index(st.session_state.summarization_llm) if st.session_state.summarization_llm in summarization_llm_models else (summarization_llm_models.index("qwen3:latest") if "qwen3:latest" in summarization_llm_models else 0),
-            help="Choose the LLM model to use for document summarization; loaded from global summarization_llms.md configuration"
-        )
+        with st.expander("🤖 LLM Model Selection", expanded=False):
+            # Report writing LLM
+            st.session_state.report_llm = st.selectbox(
+                "Report Writing LLM",
+                options=report_llm_models,
+                index=report_llm_models.index(st.session_state.report_llm) if st.session_state.report_llm in report_llm_models else 0,
+                help="Choose the LLM model to use for final report generation; loaded from global report_llms.md configuration"
+            )
+            
+            # Summarization LLM
+            st.session_state.summarization_llm = st.selectbox(
+                "Summarization LLM",
+                options=summarization_llm_models,
+                index=summarization_llm_models.index(st.session_state.summarization_llm) if st.session_state.summarization_llm in summarization_llm_models else (summarization_llm_models.index("qwen3:latest") if "qwen3:latest" in summarization_llm_models else 0),
+                help="Choose the LLM model to use for document summarization; loaded from global summarization_llms.md configuration"
+            )
         
         use_ext_database = st.session_state.use_ext_database
-        
-        st.divider()
-        
+   
+        # Research Configuration
+        with st.expander("🔬 Advanced Research Settings", expanded=False):
+            # Report structure
+            report_structures = get_report_structures()
+            report_structure = st.selectbox(
+                "Report Structure",
+                options=list(report_structures.keys()),
+                index=0,
+                help="Choose the structure for the final report"
+            )
+            
+            # Max search queries
+            max_search_queries = st.slider(
+                "Number of Research Queries",
+                min_value=1,
+                max_value=10,
+                value=3,
+                help="Number of research queries to generate"
+            )
+            
+            # Enable web search
+            enable_web_search = st.checkbox(
+                "Enable Web Search",
+                value=False,
+                help="Enable web search in addition to local document retrieval"
+            )
+            
+            # Quality checker settings
+            enable_quality_checker = st.checkbox(
+                "Enable Quality Checker",
+                value=True,
+                help="Enable LLM-based quality assessment of the final report"
+            )
+
         # Clear chat button
         if st.button("🗑️ Clear Chat", help="Clear all chat history and reset the session"):
             clear_chat()
@@ -1162,24 +1161,19 @@ def main():
             if "conversation_ended" not in st.session_state:
                 st.session_state.conversation_ended = False
             
-            # Initial query input (following basic_HITL_app.py pattern)
-            if not st.session_state.hitl_state:
-                st.markdown("""
-                
-                This system will first ask you **clarifying questions** to better understand your research needs,
-                then proceed with enhanced document retrieval and report generation.
-                
-                Type `/end` at any point to finish the conversation and proceed to main research.
-                """)
-                
-                user_query = st.text_area(
-                    "Enter your initial research query:", 
-                    height=100,
-                    placeholder="e.g., 'What are the latest developments in quantum computing and their potential applications in cryptography?'"
+            # Initial query input - only show if no conversation has started and not processing
+            if (len(st.session_state.hitl_conversation_history) == 0 and 
+                not st.session_state.processing_initial_query):  
+                #add a few blank lines          
+                st.markdown("\n\n\n\n\n")          
+                user_query = st.chat_input(
+                    "Enter your initial research query"
                 )
-                submit_button = st.button("🚀 Submit Query", type="primary")
                 
-                if submit_button and user_query:
+                if user_query:
+                    # Set processing flag to hide input on next render
+                    st.session_state.processing_initial_query = True
+                    
                     # Initialize the HITL state
                     st.session_state.hitl_state = initialize_hitl_state(
                         user_query, 
@@ -1216,27 +1210,34 @@ def main():
                     with st.chat_message(message["role"]):
                         st.markdown(message["content"])
             
+            #keep this for debugging if needed later
             # Display debug information about the current state
-            if st.session_state.hitl_state:
-                with st.expander("Debug: Current HITL State", expanded=False):
-                    # Create a deep copy of the state to display
-                    display_state = {}
-                    for key, value in st.session_state.hitl_state.items():
-                        display_state[key] = value
-                    st.json(display_state)
+            def debug_hitl_state():
+                if st.session_state.hitl_state:
+                    with st.expander("Debug: Current HITL State", expanded=False):
+                        # Create a deep copy of the state to display
+                        display_state = {}
+                        for key, value in st.session_state.hitl_state.items():
+                            display_state[key] = value
+                        return st.json(display_state)
             
-            # Handle human feedback (following basic_HITL_app.py pattern)
-            if st.session_state.waiting_for_human_input and not st.session_state.conversation_ended:
-                # Use a dynamic key that changes after each submission to force widget reset
-                human_feedback = st.text_area(
-                    "Your response (type `/end` to finish and proceed to main research):", 
-                    value="", 
-                    height=100, 
-                    key=f"human_feedback_area_{st.session_state.input_counter}"
-                )
-                submit_feedback_button = st.button("Submit Response")
+            # Handle human feedback - only show when waiting for input and not processing
+            if (st.session_state.waiting_for_human_input and 
+                not st.session_state.conversation_ended and
+                not st.session_state.processing_feedback and
+                len(st.session_state.hitl_conversation_history) > 0 and 
+                st.session_state.hitl_conversation_history[-1]["role"] == "assistant"):
                 
-                if submit_feedback_button and human_feedback:
+                # Use a dynamic key that changes after each submission to force widget reset
+                human_feedback = st.chat_input(
+                    "Your response (type '/end' to finish and proceed to main research)",
+                    key=f"human_feedback_input_{st.session_state.input_counter}"
+                )
+                
+                if human_feedback:
+                    # Set processing flag to hide input on next render
+                    st.session_state.processing_feedback = True
+                    
                     # Check if the user wants to end the conversation
                     if human_feedback.strip().lower() == "/end":
                         st.session_state.conversation_ended = True
@@ -1246,6 +1247,9 @@ def main():
                             "role": "user",
                             "content": "/end - Conversation ended"
                         })
+                        
+                        # Set flags
+                        st.session_state.waiting_for_human_input = False
                         
                         # Finalize HITL conversation
                         final_response = finalize_hitl_conversation(st.session_state.hitl_state)
@@ -1292,16 +1296,26 @@ def main():
                             "content": combined_response
                         })
                         
+                        # Reset processing flag and continue waiting for input
+                        st.session_state.processing_feedback = False
+                        st.session_state.waiting_for_human_input = True
+                        
                         # Increment input counter to reset widgets
                         st.session_state.input_counter += 1
                         st.rerun()
         else:
             # HITL phase completed - show summary
             st.success("✅ HITL Phase completed successfully!")
+            # Display the main results
+            research_queries = st.session_state.hitl_result.get("research_queries", [])
+            lenqueries = len(research_queries)
+            st.markdown(f"**Original Query:** {st.session_state.hitl_result.get("user_query", "N/A")}")
+            st.markdown(f"**Generated {lenqueries} Additional Research Queries**")
+            st.markdown(f"**Additional Context generated by HITL** ")
+        
             if st.session_state.hitl_result:
                 with st.expander("📋 HITL Phase Results (Completed)", expanded=False):
                     st.markdown("**Research Queries Generated:**")
-                    research_queries = st.session_state.hitl_result.get("research_queries", [])
                     for i, query in enumerate(research_queries, 1):
                         st.markdown(f"**{i}.** {query}")
                     
@@ -1344,22 +1358,22 @@ def main():
         elif st.session_state.workflow_phase == "reporting" and st.session_state.retrieval_summarization_result:
             # Show completed retrieval-summarization results
             st.success("✅ Retrieval & Summarization Phase completed successfully!")
+
+            # Display the main results
+            # Show retrieved documents summary
+            result = st.session_state.retrieval_summarization_result
+            retrieved_docs = result.get("retrieved_documents", {})
+            total_docs = sum(len(docs) for docs in retrieved_docs.values())
+            st.markdown(f"**Total Documents Retrieved:** {total_docs}")
             
-            with st.expander("📚 Retrieval & Summarization Results (Completed)", expanded=True):
-                result = st.session_state.retrieval_summarization_result
-                
-                # Show retrieved documents summary
-                retrieved_docs = result.get("retrieved_documents", {})
-                total_docs = sum(len(docs) for docs in retrieved_docs.values())
-                st.markdown(f"**Total Documents Retrieved:** {total_docs}")
-                
-                # Show summaries summary
-                search_summaries = result.get("search_summaries", {})
-                total_summaries = sum(len(summaries) for summaries in search_summaries.values())
-                st.markdown(f"**Total Summaries Generated:** {total_summaries}")
-                
-                st.divider()
-                
+            # Show summaries summary
+            search_summaries = result.get("search_summaries", {})
+            total_summaries = sum(len(summaries) for summaries in search_summaries.values())
+            st.markdown(f"**Total Summaries Generated:** {total_summaries}")
+            
+            st.divider()
+
+            with st.expander("📚 Retrieval & Summarization Results (Completed)", expanded=False):              
                 # Show detailed results for each research query
                 for i, (query, docs) in enumerate(retrieved_docs.items(), 1):
                     st.markdown(f"### 🔍 Query {i}: {query[:100]}{'...' if len(query) > 100 else ''}")
@@ -1719,11 +1733,12 @@ def main():
             clean_answer = re.sub(r'<think>.*?(?:</think>|<think>)', '', final_answer, flags=re.DOTALL | re.IGNORECASE)
             clean_answer = clean_answer.strip()
             
-            # Display the clean answer prominently
-            if clean_answer:
-                st.markdown(clean_answer)
-            else:
-                st.warning("The answer appears to contain only thinking process. Please check the LLM response.")
+            # Display the clean answer prominently using chat message
+            with st.chat_message("assistant"):
+                if clean_answer:
+                    st.markdown(clean_answer)
+                else:
+                    st.warning("The answer appears to contain only thinking process. Please check the LLM response.")
             
             # Action buttons in columns
             col_btn1, col_btn2, col_btn3 = st.columns(3)
