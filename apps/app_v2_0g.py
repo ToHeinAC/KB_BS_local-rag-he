@@ -894,17 +894,18 @@ def main():
             st.session_state.summarization_llm = summarization_llm_models[0] if summarization_llm_models else "deepseek-r1:latest"
     
     # Create header with two columns (matching app_v1_1.py)
-    header_col1, header_col2 = st.columns([0.6, 0.4])
+    header_col1, header_col2 = st.columns([0.5, 0.5])
     with header_col1:
         st.markdown(
-    '<h1>🔍 Br<span style="color:darkorange;"><b>AI</b></span>n: Human-In-The-Loop (HITL) RAG Researcher V2.0</h1>',
-    unsafe_allow_html=True
-)
-        # Add license information under the title (exact implementation from basic_HITL_app.py)
-        st.markdown('<p style="font-size:12px; font-weight:bold; color:darkorange; margin-top:0px;">LICENCE</p>', 
-                    unsafe_allow_html=True, help=get_license_content())
+            '<h1>🔍 Br<span style="color:darkorange;"><b>AI</b></span>n</h1>',
+            unsafe_allow_html=True, help="Human-In-The-Loop (HITL) RAG Researcher V2.0"
+        )
+        st.markdown("## Wissensdatenbank-Konnektor")
+        st.markdown('<p style="text-align: right; font-size:12px; font-weight:bold; color:darkorange; margin-top:0px;">LIZENZ</p>', 
+                    unsafe_allow_html=True, help=get_license_content())    
     with header_col2:
         st.image("Header für Chatbot.png", use_container_width=True)
+
     
     # Load model options from global configuration
     report_llm_models = get_report_llm_models()
