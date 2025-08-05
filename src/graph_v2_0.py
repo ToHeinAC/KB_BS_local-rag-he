@@ -20,8 +20,14 @@ from src.prompts_v1_1 import (
     KNOWLEDGE_BASE_SEARCH_SYSTEM_PROMPT, KNOWLEDGE_BASE_SEARCH_HUMAN_PROMPT,
 )
 from src.utils_v1_1 import format_documents_with_metadata, invoke_ollama, parse_output, tavily_search, DetectedLanguage, Queries
+from pydantic import BaseModel
 from src.rag_helpers_v1_1 import source_summarizer_ollama, format_documents_as_plain_text, parse_document_to_formatted_content
 import time
+
+# Pydantic model for structured final report output
+class FinalReportOutput(BaseModel):
+    """Structured output model for final report generation."""
+    content: str  # The final report content in markdown format
 
 # Get the directory path of the current file
 this_path = os.path.dirname(os.path.abspath(__file__))
@@ -995,12 +1001,60 @@ def generate_final_answer(state: ResearcherStateV2, config: RunnableConfig):
         
         print(f"  [INFO] Generating final answer using {report_llm} with {len(all_reranked_summaries)} prioritized summaries")
         
-        # Generate final answer using the enhanced prompt
-        final_answer = invoke_ollama(
-            system_prompt=f"You are an expert assistant providing comprehensive answers. Respond in {detected_language}.",
-            user_prompt=final_answer_prompt,
-            model=report_llm
-        )
+        # Try structured output first, fallback to manual JSON parsing
+        try:
+            print(f"  [INFO] Attempting structured output with {report_llm}")
+            
+            # Try using structured output with Pydantic model
+            structured_result = invoke_ollama(
+                system_prompt=f"You are an expert assistant providing comprehensive answers. Respond in {detected_language}. Your response must be a JSON object with a single 'content' key containing the markdown-formatted report.",
+                user_prompt=final_answer_prompt,
+                model=report_llm,
+                output_format=FinalReportOutput
+            )
+            
+            # Extract content from structured output
+            final_answer = structured_result.content
+            print(f"  [INFO] Structured output successful (length: {len(final_answer)})")
+            
+        except Exception as e:
+            print(f"  [WARNING] Structured output failed: {str(e)}. Falling back to manual JSON parsing.")
+            
+            # Fallback: Use strict JSON instructions in system prompt
+            json_system_prompt = f"""You are an expert assistant providing comprehensive answers. Respond in {detected_language}.
+            
+IMPORTANT: Your response MUST be a valid JSON object with exactly this structure:
+            {{
+                "content": "your markdown-formatted report here"
+            }}
+            
+Do not include any text outside the JSON object. The 'content' field should contain the complete report in markdown format."""
+            
+            raw_response = invoke_ollama(
+                system_prompt=json_system_prompt,
+                user_prompt=final_answer_prompt,
+                model=report_llm
+            )
+            
+            # Parse JSON manually
+            try:
+                import json
+                # Clean the response - remove any markdown code blocks if present
+                cleaned_response = raw_response.strip()
+                if cleaned_response.startswith('```json'):
+                    cleaned_response = cleaned_response[7:]
+                if cleaned_response.endswith('```'):
+                    cleaned_response = cleaned_response[:-3]
+                cleaned_response = cleaned_response.strip()
+                
+                parsed_json = json.loads(cleaned_response)
+                final_answer = parsed_json.get('content', raw_response)
+                print(f"  [INFO] Manual JSON parsing successful (length: {len(final_answer)})")
+                
+            except json.JSONDecodeError as json_error:
+                print(f"  [WARNING] JSON parsing failed: {str(json_error)}. Using raw response.")
+                # Last resort: use raw response
+                final_answer = raw_response
         
         print(f"  [INFO] Final answer generated successfully (length: {len(final_answer)})")
         

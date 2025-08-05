@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 from typing_extensions import TypedDict
+from pydantic import BaseModel
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -29,6 +30,11 @@ from src.prompts_v1_1 import (
     SUMMARY_IMPROVEMENT_SYSTEM_PROMPT,
     SUMMARY_IMPROVEMENT_HUMAN_PROMPT
 )
+
+# Pydantic model for structured final report output
+class FinalReportOutput(BaseModel):
+    """Structured output model for final report generation."""
+    content: str  # The final report content in markdown format
 
 # Page configuration
 st.set_page_config(
@@ -330,27 +336,66 @@ def report_writer_node(state: ResearcherStateV2, config: RunnableConfig) -> Rese
     print(f"  [DEBUG] Prompt length: {len(prompt)} characters")
     print(f"  [DEBUG] Prompt preview: {prompt[:200]}...")
     
+    # Try structured output first, fallback to manual JSON parsing
     try:
-        print(f"  [DEBUG] Calling invoke_ollama with model: {report_llm}")
-        response = invoke_ollama(
-            system_prompt="You are an expert research analyst. Provide comprehensive, well-structured reports based on the provided information.",
+        print(f"  [INFO] Attempting structured output with {report_llm}")
+        
+        # Try using structured output with Pydantic model
+        structured_result = invoke_ollama(
+            system_prompt=f"You are an expert research analyst. Provide comprehensive, well-structured reports based on the provided information. Respond in {detected_language}. Your response must be a JSON object with a single 'content' key containing the markdown-formatted report.",
+            user_prompt=prompt,
+            model=report_llm,
+            output_format=FinalReportOutput
+        )
+        
+        # Extract content from structured output
+        final_answer = structured_result.content
+        print(f"  [INFO] Structured output successful (length: {len(final_answer)})")
+        
+    except Exception as e:
+        print(f"  [WARNING] Structured output failed: {str(e)}. Falling back to manual JSON parsing.")
+        
+        # Fallback: Use strict JSON instructions in system prompt
+        json_system_prompt = f"""You are an expert research analyst. Provide comprehensive, well-structured reports based on the provided information. Respond in {detected_language}.
+        
+IMPORTANT: Your response MUST be a valid JSON object with exactly this structure:
+        {{
+            "content": "your markdown-formatted report here"
+        }}
+        
+Do not include any text outside the JSON object. The 'content' field should contain the complete report in markdown format."""
+        
+        raw_response = invoke_ollama(
+            system_prompt=json_system_prompt,
             user_prompt=prompt,
             model=report_llm
         )
         
-        print(f"  [DEBUG] Raw LLM response length: {len(response)} characters")
-        print(f"  [DEBUG] Raw response preview: {response[:200]}...")
-        
-        # Clean the response to remove <think> blocks but keep it for final answer
-        # Note: We keep the raw response for final answer as the GUI handles <think> block extraction
-        state["final_answer"] = response
-        print("  [INFO] Final report generated successfully (raw response preserved for GUI processing)")
-        
-    except Exception as e:
-        print(f"  [ERROR] Exception in final report generation: {str(e)}")
-        state["final_answer"] = f"Error occurred during final report generation: {str(e)}. Check logs for details."
-        state["current_position"] = "report_writer_error"
-        return state
+        # Parse JSON manually
+        try:
+            # Clean the response - remove any markdown code blocks if present
+            cleaned_response = raw_response.strip()
+            if cleaned_response.startswith('```json'):
+                cleaned_response = cleaned_response[7:]
+            if cleaned_response.endswith('```'):
+                cleaned_response = cleaned_response[:-3]
+            cleaned_response = cleaned_response.strip()
+            
+            parsed_json = json.loads(cleaned_response)
+            final_answer = parsed_json.get('content', raw_response)
+            print(f"  [INFO] Manual JSON parsing successful (length: {len(final_answer)})")
+            
+        except json.JSONDecodeError as json_error:
+            print(f"  [WARNING] JSON parsing failed: {str(json_error)}. Using raw response.")
+            # Last resort: use raw response
+            final_answer = raw_response
+    
+    print(f"  [DEBUG] Final answer length: {len(final_answer)} characters")
+    print(f"  [DEBUG] Final answer preview: {final_answer[:200]}...")
+    
+    # Store the final answer (now guaranteed to be a string)
+    state["final_answer"] = final_answer
+    print("  [INFO] Final report generated successfully with structured output approach")
     
     state["current_position"] = "report_writer"
     return state
