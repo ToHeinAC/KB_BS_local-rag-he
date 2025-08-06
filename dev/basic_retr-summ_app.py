@@ -44,33 +44,73 @@ clear_cuda_memory()
 def extract_embedding_model(db_dir_name):
     """
     Extract the embedding model name from the database directory name.
-    Handles various database naming conventions including:
+    
+    This function properly handles various database naming conventions, including:
     - Standard format: "organization/model_name"
-    - Directory format with separators: "Qwen--Qwen3-Embedding-0.6B--3000--600"
-    - Directory format with path: "Qwen/Qwen--Qwen3-Embedding-0.6B--3000--600"
+    - Directory format with separators: "Qwen/StrlSch__Qwen--Qwen3-Embedding-0.6B--3000--600"
+    - Legacy format: "model_name/chunk_size/overlap"
+    
+    Args:
+        db_dir_name (str): The database directory name (e.g., "Qwen/StrlSch__Qwen--Qwen3-Embedding-0.6B--3000--600")
+        
+    Returns:
+        str: The extracted embedding model name (e.g., "Qwen/Qwen3-Embedding-0.6B")
     """
-    # Handle the specific case of database names with '--' separators
-    if '--' in db_dir_name:
+    # Handle the specific case of database names with '__' and '--' separators
+    # Example: "Qwen/StrlSch__Qwen--Qwen3-Embedding-0.6B--3000--600" -> "Qwen/Qwen3-Embedding-0.6B"
+    
+    # First handle __ separator if present
+    if '__' in db_dir_name:
+        # Split by __ to separate the path prefix from the model info
+        # "StrlSch__Qwen--Qwen3-Embedding-0.6B--3000--600" -> ["StrlSch", "Qwen--Qwen3-Embedding-0.6B--3000--600"]
+        parts = db_dir_name.split('__')
+        if len(parts) >= 2:
+            # The model info is in the second part after __
+            model_info = parts[1]   # "Qwen--Qwen3-Embedding-0.6B--3000--600"
+            
+            # Now handle the model_info part with '--' separators
+            if '--' in model_info:
+                model_parts = model_info.split('--')
+                if len(model_parts) >= 2:
+                    # model_parts[0] is org ("Qwen"), model_parts[1] is model name ("Qwen3-Embedding-0.6B")
+                    org = model_parts[0]  # "Qwen"
+                    model_name = model_parts[1]  # "Qwen3-Embedding-0.6B"
+                    result = f"{org}/{model_name}"  # "Qwen/Qwen3-Embedding-0.6B"
+                    return result
+            
+            # Fallback: if no '--' in model_info, treat the whole model_info as model name
+            # and try to extract org from the path prefix
+            path_prefix = parts[0]  # "StrlSch"
+            if '/' in path_prefix:
+                org = path_prefix.split('/')[0]
+            else:
+                org = "unknown"
+            return f"{org}/{model_info}"
+    
+    # Handle the case with only '--' separators (no '__')
+    elif '--' in db_dir_name:
         parts = db_dir_name.split('--')
         
         if len(parts) >= 2:
-            # For format like "Qwen--Qwen3-Embedding-0.6B--3000--600"
-            if '/' not in parts[0]:
-                return f"{parts[0]}/{parts[1]}"
+            # The first part should contain the model organization and name
+            first_part = parts[0]  # "Qwen"
+            second_part = parts[1]  # "Qwen3-Embedding-0.6B"
             
-            # For format like "Qwen/Qwen--Qwen3-Embedding-0.6B--3000--600"
+            if '/' in first_part:
+                # Extract organization from first part
+                org = first_part.split('/')[0]  # "Qwen"
+                result = f"{org}/{second_part}"  # "Qwen/Qwen3-Embedding-0.6B"
+                return result
             else:
-                org = parts[0].split('/')[0]  # Extract "Qwen" from "Qwen/Qwen"
-                return f"{org}/{parts[1]}"
+                # Fallback: use first part as org
+                result = f"{first_part}/{second_part}"
+                return result
     
-    # Handle the case where the name already has a proper format like "Qwen/Qwen3-Embedding-0.6B"
-    if '/' in db_dir_name and '--' not in db_dir_name:
-        return db_dir_name
-    
-    # Fallback: replace double hyphens with slashes
-    model_name = db_dir_name.replace("--", "/")
-    
-    return model_name.split('/')[0] + '/' + model_name.split('/')[1]
+    # Fallback to original logic if the new parsing fails
+    model_name = db_dir_name.replace("vectordb_", "")
+    model_name = model_name.replace("--", "/")
+
+    return model_name
 
 def retrieve_documents_for_query(query, selected_database, k_results=3):
     """

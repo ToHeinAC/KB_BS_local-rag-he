@@ -64,7 +64,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
+clear_cuda_memory()
 # Function to clean model names for display
 def clean_model_name(model_name):
     """Clean model name by removing common prefixes and suffixes for better display"""
@@ -1331,6 +1331,14 @@ def main():
             search_summaries = result.get("search_summaries", {})
             total_summaries = sum(len(summaries) for summaries in search_summaries.values())
             st.markdown(f"**Gesamtzahl der generierten Summaries:** {total_summaries}")
+            
+            # Add expander to show full search_summaries dict
+            with st.expander("🔍 Vollständiges Search Summaries Dictionary (Raw State)", expanded=False):
+                if search_summaries:
+                    st.markdown("**Vollständiges search_summaries dict aus dem State:**")
+                    st.json(search_summaries)
+                else:
+                    st.warning("Keine Search Summaries im State verfügbar.")
             
             st.divider()
 

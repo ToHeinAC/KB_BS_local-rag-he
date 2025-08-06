@@ -1,5 +1,6 @@
 qwen3:30b-a3b
 qwen3:14b
+gpt-oss:20b
 mistral-small3.2:latest
 deepseek-r1:latest
 deepseek-r1:70b
