@@ -883,7 +883,7 @@ def main():
     if "report_llm" not in st.session_state:
         report_llm_models = get_report_llm_models()
         # Set default to the first model in the list (from report_llms.md)
-        st.session_state.report_llm = report_llm_models[0] if report_llm_models else "deepseek-r1:latest"
+        st.session_state.report_llm = report_llm_models[0] if report_llm_models else "gpt-oss:20b"
     
     if "summarization_llm" not in st.session_state:
         summarization_llm_models = get_summarization_llm_models()
@@ -1316,7 +1316,7 @@ def main():
                         st.session_state.workflow_phase = "reporting"
                         st.rerun()
         
-        elif st.session_state.workflow_phase == "reporting" and st.session_state.retrieval_summarization_result:
+        elif st.session_state.workflow_phase in ["reporting", "completed"] and st.session_state.retrieval_summarization_result:
             # Show completed retrieval-summarization results
             st.success("✅ Retrieval & Summarization Phase abgeschlossen!")
 
@@ -1332,15 +1332,7 @@ def main():
             total_summaries = sum(len(summaries) for summaries in search_summaries.values())
             st.markdown(f"**Gesamtzahl der generierten Summaries:** {total_summaries}")
             
-            # Add expander to show full search_summaries dict
-            with st.expander("🔍 Vollständiges Search Summaries Dictionary (Raw State)", expanded=False):
-                if search_summaries:
-                    st.markdown("**Vollständiges search_summaries dict aus dem State:**")
-                    st.json(search_summaries)
-                else:
-                    st.warning("Keine Search Summaries im State verfügbar.")
-            
-            st.divider()
+
 
             with st.expander("📚 Retrieval & Summarization Ergebnisse (abgeschlossen)", expanded=False):              
                 # Show detailed results for each research query

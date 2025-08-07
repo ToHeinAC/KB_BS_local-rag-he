@@ -1080,10 +1080,13 @@ def _generate_final_answer_prompt(initial_query: str, reranked_summaries: list[d
         Formatted prompt string for the LLM
     """
     
-    prompt = f"""You are an expert assistant providing comprehensive answers based on ranked document summaries.
+    prompt = f"""# ROLE
+You are an expert assistant providing deep and extensive answer based on ranked document summaries.
 
-TASK: Generate a complete and accurate answer to the user's query using the provided summaries. Prioritize information from higher-ranked summaries.
+# GOAL
+Generate a detailled, complete, deep and extensive answer to the user's query using the provided summaries. Prioritize information from higher-ranked summaries.
 
+# CONTEXT from research:
 ORIGINAL QUERY:
 {initial_query}
 
@@ -1093,7 +1096,7 @@ CONTEXT:
 RANKED SUMMARIES (ordered by relevance):
 
 PRIMARY SOURCE (Highest Relevance - Score: {reranked_summaries[0]['score']:.1f}):
-{reranked_summaries[0]['summary']['Content']}
+{reranked_summaries[0]['summary']}
 
 SUPPORTING SOURCES:"""
 
@@ -1102,21 +1105,29 @@ SUPPORTING SOURCES:"""
         prompt += f"""
 
 Source {i} (Score: {item['score']:.1f}):
-{item['summary']['Content']}"""
+{item['summary']}"""
+
+    # Add internet results section if available
+    if internet_result and internet_result.strip():
+        prompt += f"""
+
+INTERNET SOURCES:
+{internet_result}
+"""
 
     prompt += f"""
 
-INSTRUCTIONS:
+# CONSTRAINTS:
 • Base your answer PRIMARILY on the highest-ranked summary as it is most relevant to the query
+• Focus on directly answering the original query 
+• Include exact levels, figures, numbers, statistics, and quantitative data ONLY from the source material
+• Maintain precision by using direct quotes for key definitions and important statements
+• For citations, ALWAYS use the EXACT format ['Source'] after each fact.
 • Use supporting sources to add context, details, or complementary information
-• If supporting sources contradict the primary source, prioritize the primary source unless there's clear evidence of error
-• Maintain accuracy and cite relevant legal references (§ sections) when mentioned
-• Structure your response clearly with bullet points as preferred
+• If internet sources are available, incorporate recent/current information to complement the supporting sources. Then, clearly indicate when information comes from recent web searches. Do this by adding a short separate section called "Internet Sources" and cite the sources URLs.
+• If supporting sources or internet sources contradict the primary source, prioritize the primary source unless there's clear evidence of error
 • If information is incomplete, acknowledge limitations
-• Focus on directly answering the original query
-• Respond in {language} language
-
-Generate a comprehensive answer that prioritizes the most relevant information while incorporating supporting details where appropriate."""
+• Respond in {language} language"""
 
     return prompt
 

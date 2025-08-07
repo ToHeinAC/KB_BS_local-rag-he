@@ -159,7 +159,7 @@ def reranker_node(state: ResearcherStateV2, config: RunnableConfig) -> Researche
     user_query = state.get("user_query", "")
     search_summaries = state.get("search_summaries", {})
     additional_context = state.get("additional_context", "")
-    report_llm = state.get("report_llm", "qwen3:latest")
+    report_llm = state.get("report_llm", "gpt-oss:20b")
     detected_language = state.get("detected_language", "English")
     
     print(f"  [DEBUG] User query: {user_query}")
@@ -232,14 +232,15 @@ def generate_final_answer_prompt(initial_query: str, reranked_summaries: List[Di
     Create a prompt for generating the final answer using reranked summaries.
     """
     
-    prompt = f"""You are an expert assistant providing comprehensive answers based on ranked document summaries.
+    prompt = f"""
+# GOAL
+Generate a complete, deep and extensive answer to the user's query using the provided summaries. Prioritize information from higher-ranked summaries.
 
-TASK: Generate a complete and accurate answer to the user's query using the provided summaries. Prioritize information from higher-ranked summaries.
-
+# CONTEXT from research:
 ORIGINAL QUERY:
 {initial_query}
 
-CONTEXT:
+ADDITIONAL CONTEXT:
 {additional_context}
 
 RANKED SUMMARIES (ordered by relevance):
@@ -262,24 +263,83 @@ Source {i} (Score: {item['score']:.1f}):
 
 INTERNET SOURCES:
 {internet_result}
+
+# END OF CONTEXT from research
+
+YOU MUST ONLY respond in {language} language.
 """
 
-    prompt += f"""
-
-INSTRUCTIONS:
-• Base your answer PRIMARILY on the highest-ranked summary as it is most relevant to the query
-• Use supporting sources to add context, details, or complementary information
-• If internet sources are available, incorporate recent/current information to complement the supporting sources. Then, clearly indicate when information comes from recent web searches. Do this by adding a short separate section called "Internet Sources" and cite the sources URLs.
-• If supporting sources or internet sources contradict the primary source, prioritize the primary source unless there's clear evidence of error
-• Maintain accuracy and cite relevant sources such as legal references (§ sections) when mentioned
-• Structure your response clearly with bullet points as preferred
-• If information is incomplete, acknowledge limitations
-• Focus on directly answering the original query
-• Respond in {language} language
-
-Generate a comprehensive answer that prioritizes the most relevant information while incorporating supporting details and recent internet information where appropriate."""
-
     return prompt
+
+REPORT_WRITER_SYSTEM_PROMPT = """
+# ROLE
+You are an expert analytical assistant. Your task is to deliver comprehensive, precise, and well-cited answers based on provided ranked document summaries and, when available, recent internet search results.
+
+# OBJECTIVE
+Generate a complete, deep, and well-supported answer to the user's query using the provided ranked summaries and any supplementary web-based information. Your answer should synthesize key information, with clear prioritization given to higher-ranked summaries.
+
+# GUIDELINES
+
+• Always focus on directly addressing the user's original query.
+• Prioritize and rely primarily on information from the highest-ranked summary.
+• Supplement details and context using lower-ranked summaries.
+• If web search results are provided, extract current, relevant facts and clearly label these as "Internet Sources."
+
+## Citation Requirements
+- For each factual claim, statistic, figure, definition, or quoted statement, you **MUST** cite the exact source **immediately** following the information, using:
+  - `[docNAME]` for vector database files (e.g., `[doc1.pdf]`)
+  - `[URL]` for internet results (e.g., `[https://www.example.com/result1](https://www.example.com/result1)`)
+- Where applicable, include section, subsection, or paragraph numbers (e.g., "as stated in Section 4.2 [doc2.pdf]").
+- For direct quotes, always use quotation marks and cite the source.
+
+## Information Inclusion and Retention
+- **DO NOT OMIT** critical facts, definitions, data, or technical specifications from any summary.
+- Preserve exact figures, levels, statistics, and terminology from the source material.
+- Maintain 100% fidelity to the original content’s meaning—paraphrase only for clarity, not for substance.
+- If information needed to fully answer the query is **missing or incomplete**, state this explicitly.
+- If internet or supplementary sources contradict the primary (highest-ranked) summary, prioritize the primary source unless there is clear evidence of error.
+
+## Final Report Structure
+- Present the main answer clearly and systematically, citing sources as above.
+- At the end, include a short section labeled **Internet Sources** where you list and succinctly summarize any current information used from recent web searches, again with exact URL citation.
+- End your report with:  
+  `Information Fidelity Score: (X/10)`  
+  where X is your self-assessment of how completely you preserved and cited all key information (10 = perfect retention, 1 = significant information loss).
+
+# LANGUAGE CONSTRAINT
+Respond **ONLY** in the specified target language: {language}
+"""
+
+REPORT_WRITER_SYSTEM_PROMPT_backup = """
+# ROLE
+You are an expert assistant with deep analytical skills providing comprehensive answers based on ranked document summaries and other available information given to you.
+
+# GOAL
+Generate a complete, deep and extensive answer to the user's query using the provided summaries. Prioritize information from higher-ranked summaries.
+
+# CONSTRAINTS:
+• Focus on directly answering the original query
+• Focus your answer mainly on the highest-ranked summary as it is most relevant to the query
+• Preserve original wording and literal information from the research whenever possible
+• For citations, ALWAYS use the EXACT format [Source] where Source is a filename in case of a file OR a URL in case of a web page URL after each fact. 
+• If the information is insufficient to answer parts of the query, state this explicitly
+• Include exact levels, figures, numbers, statistics, and quantitative data ONLY from the source material
+• When referencing specific information, include section or paragraph mentions (e.g., "As stated in Section 3.2...")
+• Maintain precision by using direct quotes for key definitions and important statements
+• Use lower ranked summaries to add context, details, or complementary information
+• If internet sources are available, incorp orate recent/current information to complement. Then, clearly indicate that the information comes from recent web searches by adding a short separate section called "Internet Sources" and cite the sources URLs in the form [URL].
+• If supporting sources or internet sources contradict the primary source, prioritize the primary source unless there's clear evidence of error
+• If information is incomplete, acknowledge limitations
+• Respond in {language} language ONLY
+
+INFORMATION RETENTION MANDATE:
+• You MUST preserve ALL key information from document summaries in your final report
+• You MUST maintain 100% fidelity to the original document content
+• You MUST NOT omit any critical details, figures, statistics, or technical specifications
+• You MUST include a self-assessment fidelity score (1-10) at the end of your report
+
+At the end of your report, include: "Information Fidelity Score: (X/10)" where X is your self-assessment of how completely you preserved all key information (10 = perfect retention, 1 = significant information loss)
+"""
 
 
 def report_writer_node(state: ResearcherStateV2, config: RunnableConfig) -> ResearcherStateV2:
@@ -299,7 +359,7 @@ def report_writer_node(state: ResearcherStateV2, config: RunnableConfig) -> Rese
     user_query = state.get("user_query", "")
     all_reranked_summaries = state.get("all_reranked_summaries", [])
     additional_context = state.get("additional_context", "")
-    report_llm = state.get("report_llm", "qwen3:latest")
+    report_llm = state.get("report_llm", "gpt-oss:20b")
     detected_language = state.get("detected_language", "English")
     internet_result = state.get("internet_result", "")
     
@@ -325,7 +385,8 @@ def report_writer_node(state: ResearcherStateV2, config: RunnableConfig) -> Rese
     
     # Generate final report
     print("  [DEBUG] Generating final answer prompt...")
-    prompt = generate_final_answer_prompt(
+    system_prompt = REPORT_WRITER_SYSTEM_PROMPT.format(language=detected_language)
+    human_prompt = generate_final_answer_prompt(
         initial_query=user_query,
         reranked_summaries=all_reranked_summaries,
         additional_context=additional_context,
@@ -333,8 +394,8 @@ def report_writer_node(state: ResearcherStateV2, config: RunnableConfig) -> Rese
         internet_result=internet_result
     )
     
-    print(f"  [DEBUG] Prompt length: {len(prompt)} characters")
-    print(f"  [DEBUG] Prompt preview: {prompt[:200]}...")
+    print(f"  [DEBUG] Prompt length: {len(human_prompt)} characters")
+    print(f"  [DEBUG] Prompt preview: {human_prompt[:200]}...")
     
     # Try structured output first, fallback to manual JSON parsing
     try:
@@ -342,8 +403,8 @@ def report_writer_node(state: ResearcherStateV2, config: RunnableConfig) -> Rese
         
         # Try using structured output with Pydantic model
         structured_result = invoke_ollama(
-            system_prompt=f"You are an expert research analyst. Provide comprehensive, well-structured reports based on the provided information. Respond in {detected_language}. Your response must be a JSON object with a single 'content' key containing the markdown-formatted report.",
-            user_prompt=prompt,
+            system_prompt=system_prompt,
+            user_prompt=human_prompt,
             model=report_llm,
             output_format=FinalReportOutput
         )
@@ -356,8 +417,7 @@ def report_writer_node(state: ResearcherStateV2, config: RunnableConfig) -> Rese
         print(f"  [WARNING] Structured output failed: {str(e)}. Falling back to manual JSON parsing.")
         
         # Fallback: Use strict JSON instructions in system prompt
-        json_system_prompt = f"""You are an expert research analyst. Provide comprehensive, well-structured reports based on the provided information. Respond in {detected_language}.
-        
+        json_system_prompt = system_prompt + f""" \n\n
 IMPORTANT: Your response MUST be a valid JSON object with exactly this structure:
         {{
             "content": "your markdown-formatted report here"
@@ -367,28 +427,33 @@ Do not include any text outside the JSON object. The 'content' field should cont
         
         raw_response = invoke_ollama(
             system_prompt=json_system_prompt,
-            user_prompt=prompt,
+            user_prompt=human_prompt,
             model=report_llm
         )
         
         # Parse JSON manually
         try:
-            # Clean the response - remove any markdown code blocks if present
-            cleaned_response = raw_response.strip()
-            if cleaned_response.startswith('```json'):
-                cleaned_response = cleaned_response[7:]
-            if cleaned_response.endswith('```'):
-                cleaned_response = cleaned_response[:-3]
-            cleaned_response = cleaned_response.strip()
-            
-            parsed_json = json.loads(cleaned_response)
-            final_answer = parsed_json.get('content', raw_response)
-            print(f"  [INFO] Manual JSON parsing successful (length: {len(final_answer)})")
+            # Check if response is empty
+            if not raw_response or not raw_response.strip():
+                print(f"  [ERROR] Empty response from LLM model {report_llm}")
+                final_answer = f"Error: The LLM model {report_llm} returned an empty response. This may indicate the model is not working properly or the prompt is too complex. Please try a different model or simplify the query."
+            else:
+                # Clean the response - remove any markdown code blocks if present
+                cleaned_response = raw_response.strip()
+                if cleaned_response.startswith('```json'):
+                    cleaned_response = cleaned_response[7:]
+                if cleaned_response.endswith('```'):
+                    cleaned_response = cleaned_response[:-3]
+                cleaned_response = cleaned_response.strip()
+                
+                parsed_json = json.loads(cleaned_response)
+                final_answer = parsed_json.get('content', raw_response)
+                print(f"  [INFO] Manual JSON parsing successful (length: {len(final_answer)})")
             
         except json.JSONDecodeError as json_error:
             print(f"  [WARNING] JSON parsing failed: {str(json_error)}. Using raw response.")
             # Last resort: use raw response
-            final_answer = raw_response
+            final_answer = raw_response if raw_response else f"Error: Failed to generate report with model {report_llm}"
     
     print(f"  [DEBUG] Final answer length: {len(final_answer)} characters")
     print(f"  [DEBUG] Final answer preview: {final_answer[:200]}...")
@@ -426,7 +491,7 @@ def quality_checker_node(state: ResearcherStateV2, config: RunnableConfig) -> Re
     final_answer = state.get("final_answer", "")
     all_reranked_summaries = state.get("all_reranked_summaries", [])
     user_query = state.get("user_query", "")
-    report_llm = state.get("report_llm", "qwen3:latest")
+    report_llm = state.get("report_llm", "gpt-oss:20b")
     detected_language = state.get("detected_language", "English")
     
     print(f"  [DEBUG] Quality checker enabled")
@@ -749,7 +814,7 @@ def web_tavily_searcher_node(state: ResearcherStateV2, config: RunnableConfig) -
     
     user_query = state.get("user_query", "")
     additional_context = state.get("additional_context", "")
-    report_llm = state.get("report_llm", "qwen3:latest")
+    report_llm = state.get("report_llm", "gpt-oss:20b")
     language = state.get("detected_language", "English")
     
     print(f"  User Query: {user_query}")
@@ -993,7 +1058,7 @@ def main():
             report_llm_models = get_report_llm_models()
         except Exception as e:
             st.error(f"Error loading models: {e}")
-            report_llm_models = ["qwen3:latest", "deepseek-r1:latest"]
+            report_llm_models = ["gpt-oss:20b", "qwen3:latest", "deepseek-r1:latest"]
         
         # Model selection
         selected_model = st.selectbox(
