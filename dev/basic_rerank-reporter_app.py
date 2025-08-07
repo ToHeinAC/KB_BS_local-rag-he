@@ -953,6 +953,7 @@ def create_rerank_reporter_graph():
     """
     print("Creating rerank-reporter graph with quality reflection loop...")
     
+    clear_cuda_memory()
     # Create the workflow
     workflow = StateGraph(ResearcherStateV2)
     
