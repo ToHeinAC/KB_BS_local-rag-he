@@ -618,7 +618,7 @@ def execute_reporting_phase(enable_web_search=False):
         
         # Create rerank-reporter graph
         reporting_graph = create_rerank_reporter_graph()
-        
+        clear_cuda_memory()
         # Execute reporting graph
         reporting_status_text.text("🚀 Starte Reranking und Berichtserstellung...")
         
