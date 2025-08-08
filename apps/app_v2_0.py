@@ -834,6 +834,8 @@ def copy_to_clipboard(text):
         st.warning("pyperclip not available. Please install it for clipboard functionality.")
         return False
 
+
+
 def main():
     # Initialize session state
     if "messages" not in st.session_state:
@@ -1603,32 +1605,19 @@ def main():
                     if quality_check and quality_check.get("needs_improvement", False):
                         st.info("ℹ️ This report has been regenerated based on quality assessment feedback through reflection loop.")
                     
-                    # Extract <think> blocks from the final answer
-                    import re
+                    # Get thinking process from structured output
+                    thinking_process = result.get("thinking_process", "")
                     
-                    # Find all <think> blocks (handle both proper and malformed tags)
-                    think_pattern = r'<think>(.*?)(?:</think>|<think>)'
-                    think_matches = re.findall(think_pattern, final_answer, re.DOTALL | re.IGNORECASE)
-                    
-                    # Remove <think> blocks from the main answer
-                    clean_answer = re.sub(r'<think>.*?(?:</think>|<think>)', '', final_answer, flags=re.DOTALL | re.IGNORECASE)
-                    clean_answer = clean_answer.strip()
-                    
-                    # Display the clean answer
-                    if clean_answer:
-                        st.markdown(clean_answer)
-                    else:
-                        st.warning("The answer appears to contain only thinking process. Please check the LLM response.")
-                    
-                    # Show thinking process in a collapsed expander if found
-                    if think_matches:
+                    # Show thinking process in a collapsed expander if available
+                    if thinking_process and thinking_process.strip():
                         with st.expander("🧠 LLM Thinking Process", expanded=False):
-                            for i, think_content in enumerate(think_matches, 1):
-                                if len(think_matches) > 1:
-                                    st.markdown(f"**Thinking Block {i}:**")
-                                st.text(think_content.strip())
-                                if i < len(think_matches):
-                                    st.divider()
+                            st.text(thinking_process.strip())
+                    
+                    # Display the final answer (already clean from structured output)
+                    if final_answer:
+                        st.markdown(final_answer)
+                    else:
+                        st.warning("The answer appears to be empty. Please check the LLM response.")
                     
                     # Copy to clipboard and download buttons
                     col_btn1, col_btn2 = st.columns(2)
@@ -1683,23 +1672,20 @@ def main():
             if quality_check and quality_check.get("needs_improvement", False):
                 st.info("ℹ️ This report has been regenerated based on quality assessment feedback through reflection loop.")
             
-            # Extract <think> blocks from the final answer
-            import re
+            # Get thinking process from structured output
+            thinking_process = result.get("thinking_process", "")
             
-            # Find all <think> blocks (handle both proper and malformed tags)
-            think_pattern = r'<think>(.*?)(?:</think>|<think>)'
-            think_matches = re.findall(think_pattern, final_answer, re.DOTALL | re.IGNORECASE)
+            # Show thinking process in a collapsed expander if available
+            if thinking_process and thinking_process.strip():
+                with st.expander("🧠 LLM Thinking Process", expanded=False):
+                    st.text(thinking_process.strip())
             
-            # Remove <think> blocks from the main answer
-            clean_answer = re.sub(r'<think>.*?(?:</think>|<think>)', '', final_answer, flags=re.DOTALL | re.IGNORECASE)
-            clean_answer = clean_answer.strip()
-            
-            # Display the clean answer prominently using chat message
+            # Display the final answer prominently using chat message
             with st.chat_message("assistant"):
-                if clean_answer:
-                    st.markdown(clean_answer)
+                if final_answer:
+                    st.markdown(final_answer)
                 else:
-                    st.warning("The answer appears to contain only thinking process. Please check the LLM response.")
+                    st.warning("The answer appears to be empty. Please check the LLM response.")
             
             # Action buttons in columns
             col_btn1, col_btn2, col_btn3 = st.columns(3)

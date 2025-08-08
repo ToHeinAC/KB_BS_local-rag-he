@@ -34,7 +34,8 @@ from src.prompts_v1_1 import (
 # Pydantic model for structured final report output
 class FinalReportOutput(BaseModel):
     """Structured output model for final report generation."""
-    content: str  # The final report content in markdown format
+    thinking: str  # The LLM's thinking process
+    final: str     # The final report content in markdown format
 
 # Page configuration
 st.set_page_config(
@@ -43,28 +44,91 @@ st.set_page_config(
     layout="wide"
 )
 
+def extract_thinking_and_final_answer(text: str) -> tuple[str, str]:
+    """
+    Extract thinking blocks and final answer from LLM response.
+    
+    Handles various thinking tag formats:
+    - <think>...</think>
+    - </think>...</think> (malformed opening)
+    - <think>...<think> (malformed closing)
+    
+    Args:
+        text: Raw LLM response string
+        
+    Returns:
+        tuple: (thinking_content: str, final_answer: str)
+    """
+    if not text or not text.strip():
+        return "", ""
+    
+    # Find all thinking blocks with various tag formats
+    thinking_blocks = []
+    
+    # Pattern 1: Proper <think>...</think> tags
+    proper_pattern = r'<think>(.*?)</think>'
+    proper_matches = re.findall(proper_pattern, text, re.DOTALL | re.IGNORECASE)
+    thinking_blocks.extend(proper_matches)
+    
+    # Pattern 2: Malformed opening </think>...</think>
+    malformed_open_pattern = r'</think>(.*?)</think>'
+    malformed_open_matches = re.findall(malformed_open_pattern, text, re.DOTALL | re.IGNORECASE)
+    thinking_blocks.extend(malformed_open_matches)
+    
+    # Pattern 3: Malformed closing <think>...<think>
+    malformed_close_pattern = r'<think>(.*?)<think>'
+    malformed_close_matches = re.findall(malformed_close_pattern, text, re.DOTALL | re.IGNORECASE)
+    thinking_blocks.extend(malformed_close_matches)
+    
+    # Find the position of the last thinking tag (any variation)
+    last_think_pos = -1
+    
+    # Find all thinking tag positions
+    all_patterns = [
+        r'<think>.*?</think>',  # Proper tags
+        r'</think>.*?</think>',  # Malformed opening
+        r'<think>.*?<think>',   # Malformed closing
+    ]
+    
+    for pattern in all_patterns:
+        matches = list(re.finditer(pattern, text, re.DOTALL | re.IGNORECASE))
+        for match in matches:
+            last_think_pos = max(last_think_pos, match.end())
+    
+    # Extract final answer (content after the last thinking tag)
+    if last_think_pos > -1:
+        final_answer = text[last_think_pos:].strip()
+    else:
+        # No thinking tags found, entire text is the final answer
+        final_answer = text.strip()
+    
+    # Combine all thinking blocks into a single string
+    thinking_content = "\n\n".join([block.strip() for block in thinking_blocks if block.strip()])
+    
+    return thinking_content, final_answer
+
 def clean_llm_response(response: str) -> str:
     """
     Clean LLM response by removing <think>...</think> blocks and extra whitespace.
     
     Args:
-        response: Raw LLM response that may contain thinking blocks
+        response: Raw LLM response string
         
     Returns:
         str: Cleaned response with thinking blocks removed
     """
-    if not response or not isinstance(response, str):
+    if not response:
         return ""
     
-    # Remove <think> blocks (handle both proper and malformed tags)
-    import re
-    think_pattern = r'<think>(.*?)(?:</think>|<think>)'
-    clean_response = re.sub(think_pattern, '', response, flags=re.DOTALL | re.IGNORECASE)
+    # Remove <think>...</think> blocks (handle both proper and malformed tags)
+    # Pattern handles: <think>...</think>, </think>...</think>, <think>...<think>
+    cleaned = re.sub(r'<think>.*?(?:</think>|<think>)', '', response, flags=re.DOTALL | re.IGNORECASE)
     
-    # Clean up extra whitespace and newlines
-    clean_response = clean_response.strip()
+    # Remove extra whitespace and newlines
+    cleaned = re.sub(r'\n\s*\n', '\n\n', cleaned)  # Replace multiple newlines with double newlines
+    cleaned = cleaned.strip()
     
-    return clean_response
+    return cleaned
 
 def score_summary(initial_query: str, query: str, content: str, context: str, 
                   llm_model: str, language: str = "English") -> float:
@@ -267,6 +331,8 @@ INTERNET SOURCES:
 # END OF CONTEXT from research
 
 YOU MUST ONLY respond in {language} language.
+
+Generate a complete, deep, and well-supported answer to the user's query using the provided summaries. Prioritize information from higher-ranked summaries. When available, support your answer with recent internet search results.
 """
 
     return prompt
@@ -319,10 +385,17 @@ You are an expert assistant with deep analytical skills providing comprehensive,
 # GOAL
 Generate a complete, deep and extensive answer to the user's query using the provided summaries. Prioritize information from higher-ranked summaries.
 
+# OUTPUT FORMAT
+You MUST provide your response in the following structured format:
+
+1. **thinking**: Your internal reasoning process, analysis, and approach to answering the query
+2. **final**: The complete, polished final answer in markdown format
+
 # CONSTRAINTS:
 • Focus on directly answering the original query
 • Focus your answer mainly on the highest-ranked summary as it is most relevant to the query
 • Never use your own intrinsic knowledge to answer the query
+• Never make up sources for citations, instead you must cite only sources that are directly referenced in the text
 • Preserve original wording and literal information from the research whenever possible
 • For each factual claim, statistic, figure, definition, or quoted statement, you **MUST** cite the exact source **immediately** following the information, using:
   - `[docNAME]` for mentioned documents (e.g., `[doc1.pdf]`)
@@ -332,7 +405,7 @@ Generate a complete, deep and extensive answer to the user's query using the pro
 • Include exact levels, figures, numbers, statistics, and quantitative data ONLY from the source material
 • Maintain precision by using direct quotes for key definitions and important statements
 • Use lower ranked summaries to add context, details, or complementary information
-• If internet sources are available, incorp orate recent/current information to complement. Then, clearly indicate that the information comes from recent web searches by adding a short separate section called "Internet Sources" and cite the sources URLs in the form [URL].
+• If internet sources are available, incorporate recent/current information to complement. Then, clearly indicate that the information comes from recent web searches by adding a short separate section called "Internet Sources" and cite the sources URLs in the form [URL].
 • If supporting sources or internet sources contradict the primary source, prioritize the primary source unless there's clear evidence of error
 • If information is incomplete, acknowledge limitations
 • Respond in {language} language ONLY
@@ -402,7 +475,10 @@ def report_writer_node(state: ResearcherStateV2, config: RunnableConfig) -> Rese
     print(f"  [DEBUG] Prompt length: {len(human_prompt)} characters")
     print(f"  [DEBUG] Prompt preview: {human_prompt[:200]}...")
     
-    # Try structured output first, fallback to manual JSON parsing
+    # Try structured output first, fallback to manual JSON parsing and thinking extraction
+    thinking_content = ""
+    final_answer = ""
+    
     try:
         print(f"  [INFO] Attempting structured output with {report_llm}")
         
@@ -414,9 +490,10 @@ def report_writer_node(state: ResearcherStateV2, config: RunnableConfig) -> Rese
             output_format=FinalReportOutput
         )
         
-        # Extract content from structured output
-        final_answer = structured_result.content
-        print(f"  [INFO] Structured output successful (length: {len(final_answer)})")
+        # Extract thinking and final content from structured output
+        thinking_content = structured_result.thinking or ""
+        final_answer = structured_result.final or ""
+        print(f"  [INFO] Structured output successful - thinking: {len(thinking_content)} chars, final: {len(final_answer)} chars")
         
     except Exception as e:
         print(f"  [WARNING] Structured output failed: {str(e)}. Falling back to manual JSON parsing.")
@@ -425,10 +502,11 @@ def report_writer_node(state: ResearcherStateV2, config: RunnableConfig) -> Rese
         json_system_prompt = system_prompt + f""" \n\n
 IMPORTANT: Your response MUST be a valid JSON object with exactly this structure:
         {{
-            "content": "your markdown-formatted report here"
+            "thinking": "your internal reasoning and analysis process here",
+            "final": "your complete markdown-formatted report here"
         }}
         
-Do not include any text outside the JSON object. The 'content' field should contain the complete report in markdown format."""
+Do not include any text outside the JSON object. The 'thinking' field should contain your reasoning process, and the 'final' field should contain the complete report in markdown format."""
         
         raw_response = invoke_ollama(
             system_prompt=json_system_prompt,
@@ -441,6 +519,7 @@ Do not include any text outside the JSON object. The 'content' field should cont
             # Check if response is empty
             if not raw_response or not raw_response.strip():
                 print(f"  [ERROR] Empty response from LLM model {report_llm}")
+                thinking_content = ""
                 final_answer = f"Error: The LLM model {report_llm} returned an empty response. This may indicate the model is not working properly or the prompt is too complex. Please try a different model or simplify the query."
             else:
                 # Clean the response - remove any markdown code blocks if present
@@ -452,19 +531,28 @@ Do not include any text outside the JSON object. The 'content' field should cont
                 cleaned_response = cleaned_response.strip()
                 
                 parsed_json = json.loads(cleaned_response)
-                final_answer = parsed_json.get('content', raw_response)
-                print(f"  [INFO] Manual JSON parsing successful (length: {len(final_answer)})")
+                thinking_content = parsed_json.get('thinking', '')
+                final_answer = parsed_json.get('final', raw_response)
+                print(f"  [INFO] Manual JSON parsing successful - thinking: {len(thinking_content)} chars, final: {len(final_answer)} chars")
             
         except json.JSONDecodeError as json_error:
-            print(f"  [WARNING] JSON parsing failed: {str(json_error)}. Using raw response.")
-            # Last resort: use raw response
-            final_answer = raw_response if raw_response else f"Error: Failed to generate report with model {report_llm}"
+            print(f"  [WARNING] JSON parsing failed: {str(json_error)}. Attempting thinking extraction from raw response.")
+            
+            # Last resort: extract thinking from raw response using regex
+            if raw_response:
+                thinking_content, final_answer = extract_thinking_and_final_answer(raw_response)
+                print(f"  [INFO] Thinking extraction from raw response - thinking: {len(thinking_content)} chars, final: {len(final_answer)} chars")
+            else:
+                thinking_content = ""
+                final_answer = f"Error: Failed to generate report with model {report_llm}"
     
+    print(f"  [DEBUG] Final thinking length: {len(thinking_content)} characters")
     print(f"  [DEBUG] Final answer length: {len(final_answer)} characters")
     print(f"  [DEBUG] Final answer preview: {final_answer[:200]}...")
     
-    # Store the final answer (now guaranteed to be a string)
+    # Store both thinking and final answer in state
     state["final_answer"] = final_answer
+    state["thinking_process"] = thinking_content
     print("  [INFO] Final report generated successfully with structured output approach")
     
     state["current_position"] = "report_writer"

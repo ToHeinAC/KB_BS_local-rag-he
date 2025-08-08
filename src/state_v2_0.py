@@ -27,6 +27,7 @@ class ResearcherStateV2(TypedDict):
     internet_result: Optional[str] = None  # Internet search results from Tavily
     internet_search_term: Optional[str] = None  # Generated search term used for Tavily search
     web_search_enabled: bool = False  # Flag to enable/disable web search
+    thinking_process: Optional[str] = None  # LLM's thinking process extracted from final answer
     
     # New HITL fields (extending from InitState in basic_HITL_app.py)
     human_feedback: Optional[str]  # Latest human feedback message
