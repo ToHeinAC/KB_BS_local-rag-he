@@ -1,4 +1,5 @@
 gpt-oss:20b
+qwen3:30b
 qwen3:30b-a3b
 qwen3:14b
 mistral-small3.2:latest

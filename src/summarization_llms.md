@@ -1,6 +1,7 @@
 qwen3:latest
 gpt-oss:20b
 qwen3:14b
+qwen3:30b
 atombuild/deepseek-r1-claude3.7:14b
 deepseek-r1:latest
 hir0rameel/qwen-claude:latest

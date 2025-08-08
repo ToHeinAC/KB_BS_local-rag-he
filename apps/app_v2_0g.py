@@ -882,8 +882,11 @@ def main():
     # Model selection session state
     if "report_llm" not in st.session_state:
         report_llm_models = get_report_llm_models()
-        # Set default to the first model in the list (from report_llms.md)
-        st.session_state.report_llm = report_llm_models[0] if report_llm_models else "gpt-oss:20b"
+        # Set default to gpt-oss:20b if available, otherwise first model in the list
+        if "gpt-oss:20b" in report_llm_models:
+            st.session_state.report_llm = "gpt-oss:20b"
+        else:
+            st.session_state.report_llm = report_llm_models[0] if report_llm_models else "gpt-oss:20b"
     
     if "summarization_llm" not in st.session_state:
         summarization_llm_models = get_summarization_llm_models()
