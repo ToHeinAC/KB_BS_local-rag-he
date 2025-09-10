@@ -8,3 +8,4 @@ hir0rameel/qwen-claude:latest
 qwen3:1.7b
 qwen3:0.6b
 qwq:latest
+granite3.3:latest
