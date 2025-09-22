@@ -1359,10 +1359,11 @@ researcher_graph.add_conditional_edges(
 # Compile the researcher graph
 researcher = researcher_graph.compile()
 
-#plot the researcher graph
-current_dir = os.path.dirname(os.path.abspath(__file__))
-graph_img_path = os.path.join(current_dir, "mermaid_researcher_graph.png")
-researcher.get_graph().draw_mermaid_png(output_file_path=graph_img_path)
+# Note: Graph visualization is available via researcher.get_graph().draw_mermaid_png()
+# but not generated automatically during import to avoid startup failures
+# current_dir = os.path.dirname(os.path.abspath(__file__))
+# graph_img_path = os.path.join(current_dir, "mermaid_researcher_graph.png")
+# researcher.get_graph().draw_mermaid_png(output_file_path=graph_img_path)
 
 # Make sure researcher_graph is exported
 __all__ = ["researcher", "researcher_graph"]

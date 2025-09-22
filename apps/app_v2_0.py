@@ -1349,7 +1349,11 @@ def main():
                 hitl_png = hitl_graph.get_graph(xray=True).draw_mermaid_png()
                 st.image(hitl_png, caption="HITL Workflow Graph", use_container_width=True)
             except Exception as e:
-                st.error(f"Could not generate HITL graph: {str(e)}")
+                if "502" in str(e) or "mermaid.ink" in str(e):
+                    st.warning("⚠️ **HITL Workflow Visualization Temporarily Unavailable**")
+                    st.info("The Mermaid diagram service (mermaid.ink) is currently unreachable. The application works normally without diagrams.")
+                else:
+                    st.error(f"Could not generate HITL graph: {str(e)}")
         
         with col2:
             st.markdown("#### 📚 Phase 2: Retrieve & Summry")
@@ -1359,7 +1363,11 @@ def main():
                 retrieval_png = retrieval_graph.get_graph(xray=True).draw_mermaid_png()
                 st.image(retrieval_png, caption="Retrieval & Summarize Graph", use_container_width=True)
             except Exception as e:
-                st.error(f"Could not generate retrieval-summarization graph: {str(e)}")
+                if "502" in str(e) or "mermaid.ink" in str(e):
+                    st.warning("⚠️ **Retrieval-Summarization Visualization Temporarily Unavailable**")
+                    st.info("The Mermaid diagram service (mermaid.ink) is currently unreachable. The application works normally without diagrams.")
+                else:
+                    st.error(f"Could not generate retrieval-summarization graph: {str(e)}")
         
         with col3:
             st.markdown("#### 📄 Phase 3: QA & Reporting")
@@ -1369,7 +1377,11 @@ def main():
                 reporting_png = reporting_graph.get_graph(xray=True).draw_mermaid_png()
                 st.image(reporting_png, caption="QA & Reporting Graph", use_container_width=True)
             except Exception as e:
-                st.error(f"Could not generate reporting graph: {str(e)}")
+                if "502" in str(e) or "mermaid.ink" in str(e):
+                    st.warning("⚠️ **QA & Reporting Visualization Temporarily Unavailable**")
+                    st.info("The Mermaid diagram service (mermaid.ink) is currently unreachable. The application works normally without diagrams.")
+                else:
+                    st.error(f"Could not generate reporting graph: {str(e)}")
     
     # Three-Phase Tabs
     tab1, tab2, tab3 = st.tabs(["🤝 Phase 1: HITL", "📚 Phase 2: Retrieval-Summarization", "📄 Phase 3: Reporting"])
