@@ -9,149 +9,25 @@ Usage:
     streamlit run dev/basic_report-source-tester_app.py
 """
 
-import base64
-import re
 import urllib.parse
 from pathlib import Path
 import streamlit as st
+
+# Import source handling functions from rag_helpers_v1_1
+import sys
+sys.path.append(str(Path(__file__).parent.parent))
+from src.rag_helpers_v1_1 import (
+    get_available_databases,
+    extract_database_prefix,
+    resolve_source_directory,
+    resolve_pdf_path,
+    linkify_sources
+)
 
 # Configuration
 DATABASE_PATH = Path("./kb/database")  # Directory containing vector databases
 KB_PATH = Path("./kb")  # Root KB directory
 SUPPORTED_EXTENSIONS = [".pdf"]
-
-def get_available_databases():
-    """
-    Get list of available databases from the database directory.
-    
-    Returns:
-        List of database directory names
-    """
-    if not DATABASE_PATH.exists():
-        return []
-    
-    return [d.name for d in DATABASE_PATH.iterdir() if d.is_dir()]
-
-def extract_database_prefix(database_name: str) -> str:
-    """
-    Extract the prefix from a database name to find corresponding source directory.
-    
-    Args:
-        database_name: Database name like "StrlSch__Qwen--Qwen3-Embedding-0.6B--3000--600"
-        
-    Returns:
-        Prefix like "StrlSch"
-        
-    Examples:
-        "StrlSch__Qwen--Qwen3-Embedding-0.6B--3000--600" -> "StrlSch"
-        "NORM__Qwen--Qwen3-Embedding-0.6B--3000--600" -> "NORM"
-    """
-    # Split by double underscore and take the first part
-    parts = database_name.split("__")
-    return parts[0] if parts else database_name
-
-def resolve_source_directory(database_name: str) -> Path:
-    """
-    Resolve database name to corresponding source directory.
-    
-    Args:
-        database_name: Database name like "StrlSch__Qwen--Qwen3-Embedding-0.6B--3000--600"
-        
-    Returns:
-        Path to source directory like "./kb/StrlSch__db_inserted"
-    """
-    prefix = extract_database_prefix(database_name)
-    
-    # Try different possible patterns for source directories
-    possible_patterns = [
-        f"{prefix}__db_inserted",  # Standard pattern: StrlSch__db_inserted
-        f"{prefix}_db_inserted",   # Alternative: StrlSch_db_inserted  
-        f"{prefix}__inserted",     # Alternative: StrlSch__inserted
-        f"{prefix}_inserted",      # Alternative: StrlSch_inserted
-        prefix                     # Just the prefix: StrlSch
-    ]
-    
-    for pattern in possible_patterns:
-        source_path = KB_PATH / pattern
-        if source_path.exists() and source_path.is_dir():
-            return source_path
-    
-    # If no match found, return the most likely path (even if it doesn't exist)
-    return KB_PATH / f"{prefix}__db_inserted"
-
-def resolve_pdf_path(source_name: str, selected_database: str = None) -> Path:
-    """
-    Resolve a source name to an actual PDF file path based on selected database.
-    
-    Args:
-        source_name: Source reference like "StrlSchG--250508.pdf"
-        selected_database: Database name like "StrlSch__Qwen--Qwen3-Embedding-0.6B--3000--600"
-        
-    Returns:
-        Path to the actual PDF file
-        
-    Example:
-        "StrlSchG--250508.pdf", "StrlSch__Qwen--Qwen3-Embedding-0.6B--3000--600" 
-        -> "./kb/StrlSch__db_inserted/StrlSchG.pdf"
-    """
-    # Extract the base filename (remove timestamp/suffix if present)
-    # Pattern: "StrlSchG--250508.pdf" -> "StrlSchG.pdf"
-    base_name = re.sub(r'--\d+', '', source_name)
-    
-    # Determine the source directory based on selected database
-    if selected_database:
-        pdf_root = resolve_source_directory(selected_database)
-    else:
-        # Fallback to default directory if no database selected
-        pdf_root = KB_PATH / "StrlSch__db_inserted"
-    
-    # Try to find the file in the PDF directory
-    pdf_path = (pdf_root / base_name).resolve()
-    
-    # If exact match doesn't exist, try to find similar files
-    if not pdf_path.exists() and pdf_root.exists():
-        # Look for files that start with the same base name (without extension)
-        base_without_ext = Path(base_name).stem
-        for pdf_file in pdf_root.glob("*.pdf"):
-            if pdf_file.stem.lower() == base_without_ext.lower():
-                return pdf_file.resolve()
-    
-    return pdf_path
-
-def linkify_sources(markdown_text: str, selected_database: str = None) -> str:
-    """
-    Convert source references in markdown to clickable links that open PDFs in new windows.
-    
-    Args:
-        markdown_text: Text containing source references like [StrlSchG--250508.pdf]
-        selected_database: Database name to determine source directory
-        
-    Returns:
-        HTML text with clickable links that open in new windows
-    """
-    # Pattern to match source references: [filename.pdf] or [filename--timestamp.pdf]
-    source_pattern = re.compile(r'\[([^[\]]+?\.pdf)\]')
-    
-    def replace_with_link(match):
-        source_name = match.group(1)
-        # Resolve to actual PDF path using selected database
-        pdf_path = resolve_pdf_path(source_name, selected_database)
-        
-        if pdf_path.exists():
-            # Create a data URL for the PDF
-            try:
-                pdf_bytes = pdf_path.read_bytes()
-                b64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
-                data_url = f"data:application/pdf;base64,{b64_pdf}"
-                
-                # Return HTML link that opens in new window
-                return f'<a href="{data_url}" target="_blank" style="color: #1f77b4; text-decoration: none;">📄 {source_name}</a>'
-            except Exception as e:
-                return f'<span style="color: red;">📄 {source_name} (Error: {str(e)})</span>'
-        else:
-            return f'<span style="color: orange;">📄 {source_name} (Not found in {resolve_source_directory(selected_database) if selected_database else "default directory"})</span>'
-    
-    return source_pattern.sub(replace_with_link, markdown_text)
 
 
 def main():
