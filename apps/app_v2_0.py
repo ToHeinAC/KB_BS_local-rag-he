@@ -587,16 +587,16 @@ Be very precise in your extraction. Look for keys like 'thinking', 'reasoning', 
         print(f"[DEBUG] LLM analysis failed: {e}")
         return None, content_str
 
-def format_final_answer_dict(final_answer, report_llm="qwen3:latest"):
+def parse_structured_llm_output(final_answer):
     """
-    Format final answer using improved parsing to detect thinking and answer parts.
+    Parse structured LLM output that contains thinking and final answer parts.
+    Handles various formats including JSON strings, Python dict strings, and direct dicts.
     
     Args:
-        final_answer: String, dict, or other format containing the final answer
-        report_llm: LLM model to use for analysis
+        final_answer: String, dict, or other format containing the structured output
         
     Returns:
-        tuple: (formatted_content, thinking_content) where thinking_content can be None
+        tuple: (final_content, thinking_content) where thinking_content can be None
     """
     if not final_answer:
         return "No final answer available.", None
@@ -605,12 +605,12 @@ def format_final_answer_dict(final_answer, report_llm="qwen3:latest"):
     print(f"[DEBUG] Final answer content preview: {str(final_answer)[:200]}...")
     
     thinking_content = None
-    formatted_content = final_answer
+    final_content = final_answer
     
-    # Handle string input that looks like a dictionary
+    # Handle string input that might be JSON or Python dict
     if isinstance(final_answer, str):
-        # Check if it looks like a dictionary string
-        if final_answer.strip().startswith('{') and 'thinking' in final_answer and 'final' in final_answer:
+        # Check if it looks like a structured format
+        if final_answer.strip().startswith('{') and ('}' in final_answer):
             try:
                 import json
                 # Try JSON parsing first
@@ -628,74 +628,60 @@ def format_final_answer_dict(final_answer, report_llm="qwen3:latest"):
                         print(f"[DEBUG] Successfully parsed Python dict string")
                 except (ValueError, SyntaxError) as e:
                     print(f"[DEBUG] Failed to parse dict string: {e}")
-                    # Use LLM analysis as fallback
-                    thinking_part, answer_part = analyze_structured_output_with_llm(final_answer, report_llm)
-                    return answer_part, thinking_part
+                    # Return original string if parsing fails
+                    return final_answer, None
         else:
-            # Regular string, return as is
-            return final_answer, None
+            # Regular string, apply cleanup and return
+            final_content = final_answer
     
     # Handle dictionary input
     if isinstance(final_answer, dict):
         print(f"[DEBUG] Processing dictionary with keys: {list(final_answer.keys())}")
         
-        # Direct key matching for common patterns
-        if 'thinking' in final_answer and 'final' in final_answer:
-            thinking_content = final_answer['thinking']
-            formatted_content = final_answer['final']
-            print(f"[DEBUG] Found thinking/final pattern")
-        elif 'thought' in final_answer and 'answer' in final_answer:
-            thinking_content = final_answer['thought']
-            formatted_content = final_answer['answer']
-            print(f"[DEBUG] Found thought/answer pattern")
-        elif 'reasoning' in final_answer and 'response' in final_answer:
-            thinking_content = final_answer['reasoning']
-            formatted_content = final_answer['response']
-            print(f"[DEBUG] Found reasoning/response pattern")
-        else:
-            # Try broader key matching
-            content_keys = ['final', 'answer', 'content', 'response', 'result']
-            thinking_keys = ['thinking', 'thought', 'reasoning', 'analysis', 'process']
-            
-            # Extract thinking/reasoning content
-            for key in thinking_keys:
-                if key in final_answer and final_answer[key]:
-                    thinking_content = final_answer[key]
-                    print(f"[DEBUG] Found thinking content with key: {key}")
-                    break
-            
-            # Extract main content
-            for key in content_keys:
-                if key in final_answer and final_answer[key]:
-                    formatted_content = final_answer[key]
-                    print(f"[DEBUG] Found main content with key: {key}")
-                    break
-            
-            # If still no clear separation, use LLM analysis
-            if formatted_content == final_answer:
-                print(f"[DEBUG] No clear key pattern found, using LLM analysis")
-                thinking_part, answer_part = analyze_structured_output_with_llm(final_answer, report_llm)
-                if thinking_part:
-                    thinking_content = thinking_part
-                if answer_part and answer_part != str(final_answer):
-                    formatted_content = answer_part
+        # Define possible key patterns for thinking and final content
+        thinking_keys = ['thinking', 'think', 'thought', 'reasoning', 'analysis', 'process']
+        final_keys = ['final', 'answer', 'content', 'response', 'result', 'report']
+        
+        # Extract thinking content
+        for key in thinking_keys:
+            if key in final_answer and final_answer[key]:
+                thinking_content = final_answer[key]
+                print(f"[DEBUG] Found thinking content with key: {key}")
+                break
+        
+        # Extract final content
+        for key in final_keys:
+            if key in final_answer and final_answer[key]:
+                final_content = final_answer[key]
+                print(f"[DEBUG] Found final content with key: {key}")
+                break
+        
+        # If no specific keys found, use the whole dict as final content
+        if final_content == final_answer:
+            final_content = str(final_answer)
     
     # Clean up content (remove any remaining <think> blocks)
-    if isinstance(formatted_content, str):
+    if isinstance(final_content, str):
         import re
-        formatted_content = re.sub(r'<think>.*?(?:</think>|<think>)', '', formatted_content, flags=re.DOTALL | re.IGNORECASE)
-        formatted_content = formatted_content.strip()
+        final_content = re.sub(r'<think>.*?</think>', '', final_content, flags=re.DOTALL | re.IGNORECASE)
+        final_content = final_content.strip()
     
     if isinstance(thinking_content, str):
         import re
         thinking_content = re.sub(r'<think>.*?(?:</think>|<think>)', '', thinking_content, flags=re.DOTALL | re.IGNORECASE)
         thinking_content = thinking_content.strip()
-        # Don't show thinking if it's too short or just "None"
-        if len(thinking_content) < 10 or thinking_content.lower() in ["none", "null", "n/a"]:
+        # Don't show thinking if it's too short or just placeholder text
+        if len(thinking_content) < 10 or thinking_content.lower() in ["none", "null", "n/a", ""]:
             thinking_content = None
     
-    print(f"[DEBUG] Final result - thinking: {thinking_content is not None}, content length: {len(str(formatted_content))}")
-    return formatted_content, thinking_content
+    print(f"[DEBUG] Final result - thinking: {thinking_content is not None}, content length: {len(str(final_content))}")
+    return final_content, thinking_content
+
+def format_final_answer_dict(final_answer, report_llm="qwen3:latest"):
+    """
+    Legacy wrapper for backward compatibility.
+    """
+    return parse_structured_llm_output(final_answer)
 
 def finalize_hitl_conversation(state):
     """
@@ -1974,16 +1960,16 @@ def main():
             # Display the final answer prominently using chat message
             with st.chat_message("assistant"):
                 if final_answer:
-                    report_llm = result.get("report_llm", "qwen3:latest")
-                    formatted_content, thinking_content = format_final_answer_dict(final_answer, report_llm)
+                    # Parse structured output to separate thinking and final content
+                    final_content, thinking_content = parse_structured_llm_output(final_answer)
                     
                     # Show thinking process in expander if available
                     if thinking_content:
                         with st.expander("🧠 LLM Thinking Process", expanded=False):
                             st.markdown(thinking_content)
                     
-                    # Display the main content
-                    st.markdown(formatted_content)
+                    # Display the main content as markdown
+                    st.markdown(final_content)
                 else:
                     st.warning("The answer appears to be empty. Please check the LLM response.")
             
