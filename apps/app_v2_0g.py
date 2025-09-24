@@ -852,33 +852,41 @@ def execute_reporting_phase(enable_web_search=False):
             reporting_progress_bar = st.progress(0)
             reporting_status_text = st.empty()
         
-        # Create rerank-reporter graph
-        reporting_graph = create_rerank_reporter_graph()
-        clear_cuda_memory()
-        # Execute reporting graph
-        reporting_status_text.text("🚀 Starte Reranking und Berichtserstellung...")
+        # Use main workflow graph (includes source_linker)
+        from src.graph_v2_0 import main_graph
         
+        # Execute main workflow graph
+        reporting_status_text.text("🚀 Starte Haupt-Workflow mit Quellenverknüpfung...")
         reporting_final_state = reporting_state
         step_count = 0
+        # Main graph steps: retrieve_rag_documents, update_position, summarize_query_research, rerank_summaries, generate_final_answer, [quality_checker], source_linker
+        total_steps = 7  # Account for all possible steps including quality checker
         
-        for step_output in reporting_graph.stream(reporting_state):
+        for step_output in main_graph.stream(reporting_state):
             step_count += 1
-            progress = min(step_count / 5, 1.0)  # Approximate steps: reranker, report_writer, quality_checker, source_linker
+            progress = min(step_count / total_steps, 1.0)
             reporting_progress_bar.progress(progress)
             
             # Update status based on current step
             for node_name, node_state in step_output.items():
-                if node_name == "reranker":
-                    reporting_status_text.text("🔄 Reranking der Zusammenfassungen nach Relevanz...")
-                elif node_name == "web_tavily_searcher":
-                    reporting_status_text.text("🌐 Internet-Suche nach zusätzlichen Informationen...")
-                elif node_name == "report_writer":
-                    reporting_status_text.text("✍️ Generiere Endbericht...")
+                if node_name == "retrieve_rag_documents":
+                    reporting_status_text.text("🔍 Relevante Dokumente abrufen...")
+                elif node_name == "update_position":
+                    reporting_status_text.text("📍 Workflow-Position aktualisieren...")
+                elif node_name == "summarize_query_research":
+                    reporting_status_text.text("📋 Forschungsergebnisse zusammenfassen...")
+                elif node_name == "rerank_summaries":
+                    reporting_status_text.text("📊 Zusammenfassungen nach Relevanz ordnen...")
+                elif node_name == "generate_final_answer":
+                    reporting_status_text.text("✍️ Umfassenden Bericht generieren...")
                 elif node_name == "quality_checker":
-                    reporting_status_text.text("✅ Berichtqualität prüfen...")
+                    reporting_status_text.text("🔍 Qualitätsbewertung durchführen...")
                 elif node_name == "source_linker":
-                    reporting_status_text.text("🔗 Erstelle anklickbare Quellenlinks...")
+                    reporting_status_text.text("🔗 Quellen in anklickbare Links umwandeln...")
+                else:
+                    reporting_status_text.text(f"⚙️ Verarbeite {node_name}...")
                 
+                # Get the latest state from the step output
                 if node_state is not None:
                     reporting_final_state = node_state
         

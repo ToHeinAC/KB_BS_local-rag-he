@@ -853,33 +853,41 @@ def execute_reporting_phase(enable_web_search=False):
             reporting_progress_bar = st.progress(0)
             reporting_status_text = st.empty()
         
-        # Create rerank-reporter graph
-        reporting_graph = create_rerank_reporter_graph()
+        # Use main workflow graph (includes source_linker)
+        from src.graph_v2_0 import main_graph
         
-        # Execute reporting graph
-        reporting_status_text.text("🚀 Starting reranking and report generation...")
-        
+        # Execute main workflow graph
+        reporting_status_text.text("🚀 Starting main workflow with source linking...")
         reporting_final_state = reporting_state
         step_count = 0
+        # Main graph steps: retrieve_rag_documents, update_position, summarize_query_research, rerank_summaries, generate_final_answer, [quality_checker], source_linker
+        total_steps = 7  # Account for all possible steps including quality checker
         
-        for step_output in reporting_graph.stream(reporting_state):
+        for step_output in main_graph.stream(reporting_state):
             step_count += 1
-            progress = min(step_count / 5, 1.0)  # Approximate steps: reranker, report_writer, quality_checker, source_linker
+            progress = min(step_count / total_steps, 1.0)
             reporting_progress_bar.progress(progress)
             
             # Update status based on current step
             for node_name, node_state in step_output.items():
-                if node_name == "reranker":
-                    reporting_status_text.text("🔄 Reranking summaries by relevance...")
-                elif node_name == "web_tavily_searcher":
-                    reporting_status_text.text("🌐 Searching the internet for additional information...")
-                elif node_name == "report_writer":
-                    reporting_status_text.text("✍️ Generating final report...")
+                if node_name == "retrieve_rag_documents":
+                    reporting_status_text.text("🔍 Retrieving relevant documents...")
+                elif node_name == "update_position":
+                    reporting_status_text.text("📍 Updating workflow position...")
+                elif node_name == "summarize_query_research":
+                    reporting_status_text.text("📋 Summarizing research findings...")
+                elif node_name == "rerank_summaries":
+                    reporting_status_text.text("📊 Reranking summaries by relevance...")
+                elif node_name == "generate_final_answer":
+                    reporting_status_text.text("✍️ Generating comprehensive report...")
                 elif node_name == "quality_checker":
-                    reporting_status_text.text("✅ Checking report quality...")
+                    reporting_status_text.text("🔍 Performing quality assessment...")
                 elif node_name == "source_linker":
-                    reporting_status_text.text("🔗 Creating clickable source links...")
+                    reporting_status_text.text("🔗 Converting sources to clickable links...")
+                else:
+                    reporting_status_text.text(f"⚙️ Processing {node_name}...")
                 
+                # Get the latest state from the step output
                 if node_state is not None:
                     reporting_final_state = node_state
         
@@ -888,497 +896,27 @@ def execute_reporting_phase(enable_web_search=False):
         reporting_status_text.text("✅ Report generation completed")
         
         # Display results
-        st.subheader("📋 Phase 3 Results")
-        
-        # Display reranked summaries
-        if "all_reranked_summaries" in reporting_final_state and reporting_final_state["all_reranked_summaries"]:
-            with st.expander("🏆 Reranked Summaries", expanded=False):
-                reranked_summaries = reporting_final_state["all_reranked_summaries"]
-                for i, summary in enumerate(reranked_summaries, 1):
-                    score = summary.get('score', 0)
-                    query = summary.get('query', 'Unknown')
-                    content = summary.get('content', 'No content')
-                    
-                    st.markdown(f"**Rank #{i} - Score: {score:.1f}**")
-                    st.markdown(f"**Query:** {query}")
-                    with st.expander(f"Summary Content", expanded=False):
-                        st.markdown(content)
-                    st.divider()
-        
-        # Display internet search results if available
-        if enable_web_search and "internet_result" in reporting_final_state and reporting_final_state["internet_result"]:
-            with st.expander("🌐 Internet Search Results", expanded=False):
-                if "internet_search_term" in reporting_final_state and reporting_final_state["internet_search_term"]:
-                    st.markdown(f"🔍 **Generated Search Term:** `{reporting_final_state['internet_search_term']}`")
-                st.markdown(reporting_final_state["internet_result"])
-        
-        # Display final report with proper formatting
-        if "final_answer" in reporting_final_state and reporting_final_state["final_answer"]:
-            st.markdown("### 📄 Final Report")
+        if reporting_final_state:
+            # Store result in session state
+            st.session_state.reporting_result = reporting_final_state
+            st.session_state.workflow_phase = "complete"
             
-            # Use linked_final_answer if available, otherwise use final_answer
-            display_answer = reporting_final_state.get("linked_final_answer") or reporting_final_state.get("final_answer", "")
-            original_answer = reporting_final_state.get("final_answer", "")
-            
-            # Format the final answer (handle structured LLM responses)
-            report_llm = reporting_final_state.get("report_llm", "qwen3:latest")
-            formatted_content, thinking_content = format_final_answer_dict(original_answer, report_llm)
-            
-            # Show thinking process in expander if available
-            if thinking_content:
-                with st.expander("🧠 LLM Thinking Process", expanded=False):
-                    st.markdown(thinking_content)
-            
-            # Display the main content with HTML support for clickable links
-            if reporting_final_state.get("linked_final_answer"):
-                # Use the linked version with clickable source links
-                linked_formatted_content, _ = format_final_answer_dict(display_answer, report_llm)
-                st.markdown(linked_formatted_content, unsafe_allow_html=True)
+            # Display the final answer with clickable sources
+            final_answer = reporting_final_state.get("linked_final_answer") or reporting_final_state.get("final_answer", "")
+            if final_answer:
+                st.success("✅ **Report Generated Successfully!**")
+                st.markdown("### 📄 Final Report")
+                st.markdown(final_answer, unsafe_allow_html=True)
             else:
-                # Use the regular version without links
-                st.markdown(formatted_content)
-            
-            # Add copy to clipboard button
-            if st.button("📋 Copy Report to Clipboard"):
-                try:
-                    copy_to_clipboard(reporting_final_state["final_answer"])
-                    st.success("Report copied to clipboard!")
-                except Exception as e:
-                    st.error(f"Could not copy to clipboard: {str(e)}")
-        
-        # Display quality check results if available
-        if "quality_check" in reporting_final_state and reporting_final_state["quality_check"]:
-            quality_check = reporting_final_state["quality_check"]
-            
-            # Check if this is the new LLM-based assessment
-            if quality_check.get("assessment_type") == "llm_fidelity_assessment":
-                st.markdown("### 🔍 Quality Assessment")
-                
-                # Display score and pass/fail status
-                overall_score = quality_check.get("overall_score", 0)
-                max_score = quality_check.get("max_score", 400)
-                passes_quality = quality_check.get("passes_quality", False)
-                
-                # Create columns for score display
-                col1, col2, col3 = st.columns([1, 1, 1])
-                
-                with col1:
-                    st.metric(
-                        label="Overall Score",
-                        value=f"{overall_score}/{max_score}",
-                        delta=f"{overall_score - 300} from threshold" if overall_score != 0 else None
-                    )
-                
-                with col2:
-                    status_color = "🟢" if passes_quality else "🔴"
-                    status_text = "PASS" if passes_quality else "FAIL"
-                    st.metric(
-                        label="Assessment Result",
-                        value=f"{status_color} {status_text}"
-                    )
-                
-                with col3:
-                    threshold = quality_check.get("threshold", 300)
-                    st.metric(
-                        label="Pass Threshold",
-                        value=f"{threshold}/{max_score}"
-                    )
-                
-                # Display full assessment in expandable section
-                with st.expander("📊 Detailed Assessment", expanded=False):
-                    full_assessment = quality_check.get("full_assessment", "No detailed assessment available.")
-                    st.markdown(full_assessment)
-        
-        # Clean the final answer from <think> blocks if present
-        if "final_answer" in reporting_final_state and reporting_final_state["final_answer"]:
-            import re
-            raw_answer = reporting_final_state["final_answer"]
-            
-            # Remove <think> blocks from the final answer
-            clean_answer = re.sub(r'<think>.*?(?:</think>|<think>)', '', raw_answer, flags=re.DOTALL | re.IGNORECASE)
-            clean_answer = clean_answer.strip()
-            
-            # Store both raw and clean versions
-            reporting_final_state["final_answer_raw"] = raw_answer
-            reporting_final_state["final_answer"] = clean_answer
-        
-        # Store final results in session state
-        st.session_state.reporting_result = reporting_final_state
-        st.session_state.research_results = reporting_final_state  # Keep for backward compatibility
-        st.session_state.workflow_phase = "completed"  # Mark workflow as completed
+                st.error("❌ No final answer was generated")
+        else:
+            st.error("❌ Reporting phase failed - no final state returned")
         
         return reporting_final_state
         
     except Exception as e:
-        st.error(f"Error in reporting phase: {str(e)}")
-        print(f"[ERROR] Reporting phase error: {str(e)}")
+        st.error(f"❌ Error in reporting phase: {str(e)}")
         return None
-
-
-def generate_response(user_input, enable_web_search, report_structure, max_search_queries, 
-                     report_llm, enable_quality_checker, quality_check_loops=1, 
-                     use_ext_database=False, selected_database=None, k_results=3,
-                     human_feedback="", additional_context=""):
-    """
-    Simplified response generation that delegates to appropriate workflow based on phase.
-    This function is kept for backward compatibility but now uses the new three-phase approach.
-    """
-    
-    # Check current workflow phase
-    if st.session_state.workflow_phase == "hitl":
-        # HITL phase is handled in the main GUI
-        return None
-    elif st.session_state.workflow_phase == "retrieval_summarization":
-        # Execute retrieval-summarization phase
-        return execute_retrieval_summarization_phase(use_ext_database, selected_database, k_results)
-    elif st.session_state.workflow_phase == "reporting":
-        # Execute reporting phase
-        return execute_reporting_phase(enable_web_search)
-    else:
-        st.error(f"Unknown workflow phase: {st.session_state.workflow_phase}")
-        return None
-
-
-def clear_chat():
-    """Clear the chat history and reset session state"""
-    keys_to_clear = [
-        'messages', 'research_results', 'current_query', 'hitl_feedback',
-        'hitl_analysis', 'hitl_questions', 'hitl_context', 'hitl_result',
-        'hitl_conversation_history', 'hitl_state', 'waiting_for_human_input',
-        'conversation_ended', 'input_counter', 'retrieval_summarization_result'
-    ]
-    for key in keys_to_clear:
-        if key in st.session_state:
-            del st.session_state[key]
-    
-    # Reset workflow phase to HITL
-    st.session_state.workflow_phase = "hitl"
-    st.rerun()
-
-
-def copy_to_clipboard(text):
-    """Safely copy text to clipboard if pyperclip is available"""
-    try:
-        import pyperclip
-        pyperclip.copy(text)
-        return True
-    except ImportError:
-        st.warning("pyperclip not available. Please install it for clipboard functionality.")
-        return False
-
-
-def clear_chat():
-    """Clear the chat history and reset session state"""
-    keys_to_clear = [
-        'messages', 'research_results', 'current_query', 'hitl_feedback',
-        'hitl_analysis', 'hitl_questions', 'hitl_context', 'hitl_result',
-        'hitl_conversation_history', 'hitl_state', 'waiting_for_human_input',
-        'conversation_ended', 'input_counter'
-    ]
-    for key in keys_to_clear:
-        if key in st.session_state:
-            del st.session_state[key]
-    
-    # Reset workflow phase to HITL
-    st.session_state.workflow_phase = "hitl"
-    st.rerun()
-
-def copy_to_clipboard(text):
-    """Safely copy text to clipboard if pyperclip is available"""
-    try:
-        import pyperclip
-        pyperclip.copy(text)
-        return True
-    except ImportError:
-        st.warning("pyperclip not available. Please install it for clipboard functionality.")
-        return False
-
-
-
-def main():
-    # Initialize session state
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-    
-    if "research_results" not in st.session_state:
-        st.session_state.research_results = None
-    
-    if "current_query" not in st.session_state:
-        st.session_state.current_query = ""
-    
-    # HITL session state
-    if "hitl_feedback" not in st.session_state:
-        st.session_state.hitl_feedback = ""
-    
-    if "hitl_analysis" not in st.session_state:
-        st.session_state.hitl_analysis = ""
-    
-    if "hitl_questions" not in st.session_state:
-        st.session_state.hitl_questions = ""
-    
-    if "hitl_context" not in st.session_state:
-        st.session_state.hitl_context = ""
-    
-    # Input field state control - use processing flags instead of visibility flags
-    if "processing_initial_query" not in st.session_state:
-        st.session_state.processing_initial_query = False
-    
-    if "processing_feedback" not in st.session_state:
-        st.session_state.processing_feedback = False
-    
-    # Session state for storing HITL results (similar to test_st-multigraph.py)
-    if "hitl_result" not in st.session_state:
-        st.session_state.hitl_result = None
-    
-    # Session state for storing phase results
-    if "retrieval_summarization_result" not in st.session_state:
-        st.session_state.retrieval_summarization_result = None
-    
-    if "reporting_result" not in st.session_state:
-        st.session_state.reporting_result = None
-    
-    # Workflow phase tracking
-    if "workflow_phase" not in st.session_state:
-        st.session_state.workflow_phase = "hitl"  # "hitl", "retrieval_summarization", "reporting"
-    
-    # Model selection session state
-    if "report_llm" not in st.session_state:
-        report_llm_models = get_report_llm_models()
-        # Set default to gpt-oss:20b if available, otherwise first model in the list
-        if "gpt-oss:20b" in report_llm_models:
-            st.session_state.report_llm = "gpt-oss:20b"
-        else:
-            st.session_state.report_llm = report_llm_models[0] if report_llm_models else "gpt-oss:20b"
-    
-    if "summarization_llm" not in st.session_state:
-        summarization_llm_models = get_summarization_llm_models()
-        # Set default to qwen3:latest if available, otherwise first model
-        if "qwen3:latest" in summarization_llm_models:
-            st.session_state.summarization_llm = "qwen3:latest"
-        else:
-            st.session_state.summarization_llm = summarization_llm_models[0] if summarization_llm_models else "deepseek-r1:latest"
-    
-    # Create header with two columns (matching app_v1_1.py)
-    header_col1, header_col2 = st.columns([0.6, 0.4])
-    with header_col1:
-        st.markdown(
-    '<h1>🔍 Br<span style="color:darkorange;"><b>AI</b></span>n: Human-In-The-Loop (HITL) RAG Researcher V2.0</h1>',
-    unsafe_allow_html=True
-)
-        # Add license information under the title (exact implementation from basic_HITL_app.py)
-        st.markdown('<p style="font-size:12px; font-weight:bold; color:darkorange; margin-top:0px;">LICENCE</p>', 
-                    unsafe_allow_html=True, help=get_license_content())
-    with header_col2:
-        st.image("Header für Chatbot.png", use_container_width=True)
-    
-    # Load model options from global configuration
-    report_llm_models = get_report_llm_models()
-    summarization_llm_models = get_summarization_llm_models()
-    
-    # Sidebar configuration
-    with st.sidebar:
-        st.header("⚙️ Configuration")       
-        # Define DATABASE_PATH like in app_v1_1.py
-        DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "kb", "database")
-    
-        with st.expander("🗄️ External Database", expanded=False): # External Database Configuration (moved to top)    
-            # Initialize session state for external database
-            if "use_ext_database" not in st.session_state:
-                st.session_state.use_ext_database = True
-            if "selected_database" not in st.session_state:
-                st.session_state.selected_database = ""
-            if "k_results" not in st.session_state:
-                st.session_state.k_results = 3
-
-            # Enable external database checkbox
-            st.session_state.use_ext_database = st.checkbox(
-                "Use ext. Database", 
-                value=st.session_state.use_ext_database,
-                help="Use an existing database for document retrieval"
-            )
-            
-            # Database selection
-            if st.session_state.use_ext_database:
-                # Get available databases
-                database_dir = Path(DATABASE_PATH)
-                database_options = [d.name for d in database_dir.iterdir() if d.is_dir()] if database_dir.exists() else []
-            
-                if database_options:
-                    # Select database
-                    selected_db = st.selectbox(
-                        "Select Database",
-                        options=database_options,
-                        index=database_options.index(st.session_state.selected_database) if st.session_state.selected_database in database_options else 0,
-                        help="Choose a database to use for retrieval"
-                    )
-                    st.session_state.selected_database = selected_db
-                    
-                    # Extract and update embedding model from database name
-                    embedding_model_name = extract_embedding_model(selected_db)
-                    if embedding_model_name:
-                        # Update the global configuration to use this embedding model
-                        from src.configuration_v1_1 import update_embedding_model
-                        update_embedding_model(embedding_model_name)
-                        st.info(f"Selected Database: {selected_db}")
-                        st.success(f"Updated embedding model to: {embedding_model_name}")
-                    
-                    # Number of results to retrieve
-                    st.session_state.k_results = st.slider(
-                        "Number of results to retrieve", 
-                        min_value=1, 
-                        max_value=10, 
-                        value=st.session_state.k_results
-                    )
-                    
-                    selected_database = st.session_state.selected_database
-                    k_results = st.session_state.k_results
-                else:
-                    st.warning("No databases found. Please upload documents first.")
-                    st.session_state.use_ext_database = False
-                    selected_database = None
-                    k_results = 3
-            else:
-                selected_database = None
-                k_results = 3
-        
-        
-        # Model Selection (moved to bottom)
-        with st.expander("🤖 LLM Model Selection", expanded=False):
-            # Report writing LLM
-            st.session_state.report_llm = st.selectbox(
-                "Report Writing LLM",
-                options=report_llm_models,
-                index=report_llm_models.index(st.session_state.report_llm) if st.session_state.report_llm in report_llm_models else 0,
-                help="Choose the LLM model to use for final report generation; loaded from global report_llms.md configuration"
-            )
-            
-            # Summarization LLM
-            st.session_state.summarization_llm = st.selectbox(
-                "Summarization LLM",
-                options=summarization_llm_models,
-                index=summarization_llm_models.index(st.session_state.summarization_llm) if st.session_state.summarization_llm in summarization_llm_models else (summarization_llm_models.index("qwen3:latest") if "qwen3:latest" in summarization_llm_models else 0),
-                help="Choose the LLM model to use for document summarization; loaded from global summarization_llms.md configuration"
-            )
-        
-        use_ext_database = st.session_state.use_ext_database
-   
-        # Research Configuration
-        with st.expander("🔬 Advanced Research Settings", expanded=False):
-            # Report structure
-            report_structures = get_report_structures()
-            report_structure = st.selectbox(
-                "Report Structure",
-                options=list(report_structures.keys()),
-                index=0,
-                help="Choose the structure for the final report"
-            )
-            
-            # Max search queries
-            max_search_queries = st.slider(
-                "Number of Research Queries",
-                min_value=1,
-                max_value=10,
-                value=3,
-                help="Number of research queries to generate"
-            )
-            
-            # Enable web search
-            enable_web_search = st.checkbox(
-                "Enable Web Search",
-                value=False,
-                help="Enable web search in addition to local document retrieval"
-            )
-            
-            # Quality checker settings
-            enable_quality_checker = st.checkbox(
-                "Enable Quality Checker",
-                value=True,
-                help="Enable LLM-based quality assessment of the final report"
-            )
-
-        # Clear chat button
-        if st.button("🗑️ Clear Chat", help="Clear all chat history and reset the session"):
-            clear_chat()
-
-    
-    # Initialize HITL session state
-    if "hitl_state" not in st.session_state:
-        st.session_state.hitl_state = None
-    if "hitl_conversation_history" not in st.session_state:
-        st.session_state.hitl_conversation_history = []
-    if "waiting_for_human_input" not in st.session_state:
-        st.session_state.waiting_for_human_input = False
-    if "conversation_ended" not in st.session_state:
-        st.session_state.conversation_ended = False
-    if "input_counter" not in st.session_state:
-        st.session_state.input_counter = 0
-    
-       
-    # Three-Phase Workflow Visualization Expander (moved here to be visible from the beginning)
-    with st.expander("🔄 Show Three-Phase Workflow Graphs", expanded=False):
-        st.markdown("### RAG Deep Researcher v2.0 - Three-Phase Workflow")
-        
-        # Display embedding model information
-        try:
-            if st.session_state.get('use_ext_database', False) and st.session_state.get('selected_database', ''):
-                # Use the selected external database
-                embedding_model_name = extract_embedding_model(st.session_state.selected_database)
-                st.info(f"📊 **Current Embedding Model:** `{embedding_model_name}` (from selected database: `{st.session_state.selected_database}`)") 
-            else:
-                # No external database selected, show default
-                st.info(f"📊 **Current Embedding Model:** Default (no external database selected)")
-        except Exception as e:
-            st.warning(f"Could not determine embedding model: {str(e)}")
-        
-        # Create three columns for the three phase graphs (side-by-side)
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown("#### 🤝 Phase 1: HITL Workflow")
-            try:
-                # Generate HITL graph visualization
-                hitl_graph = create_hitl_graph()
-                hitl_png = hitl_graph.get_graph(xray=True).draw_mermaid_png()
-                st.image(hitl_png, caption="HITL Workflow Graph", use_container_width=True)
-            except Exception as e:
-                if "502" in str(e) or "mermaid.ink" in str(e):
-                    st.warning("⚠️ **HITL Workflow Visualization Temporarily Unavailable**")
-                    st.info("The Mermaid diagram service (mermaid.ink) is currently unreachable. The application works normally without diagrams.")
-                else:
-                    st.error(f"Could not generate HITL graph: {str(e)}")
-        
-        with col2:
-            st.markdown("#### 📚 Phase 2: Retrieve & Summry")
-            try:
-                # Generate retrieval-summarization graph visualization
-                retrieval_graph = create_retrieval_summarization_graph()
-                retrieval_png = retrieval_graph.get_graph(xray=True).draw_mermaid_png()
-                st.image(retrieval_png, caption="Retrieval & Summarize Graph", use_container_width=True)
-            except Exception as e:
-                if "502" in str(e) or "mermaid.ink" in str(e):
-                    st.warning("⚠️ **Retrieval-Summarization Visualization Temporarily Unavailable**")
-                    st.info("The Mermaid diagram service (mermaid.ink) is currently unreachable. The application works normally without diagrams.")
-                else:
-                    st.error(f"Could not generate retrieval-summarization graph: {str(e)}")
-        
-        with col3:
-            st.markdown("#### 📄 Phase 3: QA & Reporting")
-            try:
-                # Generate reporting graph visualization
-                reporting_graph = create_rerank_reporter_graph()
-                reporting_png = reporting_graph.get_graph(xray=True).draw_mermaid_png()
-                st.image(reporting_png, caption="QA & Reporting Graph", use_container_width=True)
-            except Exception as e:
-                if "502" in str(e) or "mermaid.ink" in str(e):
-                    st.warning("⚠️ **QA & Reporting Visualization Temporarily Unavailable**")
-                    st.info("The Mermaid diagram service (mermaid.ink) is currently unreachable. The application works normally without diagrams.")
-                else:
-                    st.error(f"Could not generate reporting graph: {str(e)}")
-    
-    # Three-Phase Tabs
-    tab1, tab2, tab3 = st.tabs(["🤝 Phase 1: HITL", "📚 Phase 2: Retrieval-Summarization", "📄 Phase 3: Reporting"])
-    
-    # Phase 1: HITL
     with tab1:
         # Dynamic phase info for HITL tab
         st.warning("🤝 **Current Phase: Human-in-the-Loop** - Interactive conversation to refine your research needs.")
