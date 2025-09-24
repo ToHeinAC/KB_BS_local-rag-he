@@ -659,17 +659,9 @@ def parse_structured_llm_output(final_answer):
         if final_content == final_answer:
             final_content = str(final_answer)
     
-    # Clean up content (remove any remaining <think> blocks)
-    if isinstance(final_content, str):
-        import re
-        final_content = re.sub(r'<think>.*?</think>', '', final_content, flags=re.DOTALL | re.IGNORECASE)
-        final_content = final_content.strip()
-    
+    # Clean up thinking content - don't show if it's too short or just placeholder text
     if isinstance(thinking_content, str):
-        import re
-        thinking_content = re.sub(r'<think>.*?(?:</think>|<think>)', '', thinking_content, flags=re.DOTALL | re.IGNORECASE)
         thinking_content = thinking_content.strip()
-        # Don't show thinking if it's too short or just placeholder text
         if len(thinking_content) < 10 or thinking_content.lower() in ["none", "null", "n/a", ""]:
             thinking_content = None
     
@@ -848,7 +840,9 @@ def execute_reporting_phase(enable_web_search=False):
             all_reranked_summaries=None,
             reflection_count=0,
             internet_result=None,
-            internet_search_term=None
+            internet_search_term=None,
+            selected_database=st.session_state.get("selected_database", None),  # Pass database for source linking
+            linked_final_answer=None
         )
         
         # Create progress tracking
@@ -869,7 +863,7 @@ def execute_reporting_phase(enable_web_search=False):
         
         for step_output in reporting_graph.stream(reporting_state):
             step_count += 1
-            progress = min(step_count / 4, 1.0)  # Approximate steps: reranker, report_writer, quality_checker
+            progress = min(step_count / 5, 1.0)  # Approximate steps: reranker, report_writer, quality_checker, source_linker
             reporting_progress_bar.progress(progress)
             
             # Update status based on current step
@@ -882,6 +876,8 @@ def execute_reporting_phase(enable_web_search=False):
                     reporting_status_text.text("✍️ Generiere Endbericht...")
                 elif node_name == "quality_checker":
                     reporting_status_text.text("✅ Berichtqualität prüfen...")
+                elif node_name == "source_linker":
+                    reporting_status_text.text("🔗 Erstelle anklickbare Quellenlinks...")
                 
                 if node_state is not None:
                     reporting_final_state = node_state
@@ -919,17 +915,27 @@ def execute_reporting_phase(enable_web_search=False):
         if "final_answer" in reporting_final_state and reporting_final_state["final_answer"]:
             st.markdown("### 📄 Endbericht")
             
+            # Use linked_final_answer if available, otherwise use final_answer
+            display_answer = reporting_final_state.get("linked_final_answer") or reporting_final_state.get("final_answer", "")
+            original_answer = reporting_final_state.get("final_answer", "")
+            
             # Format the final answer (handle structured LLM responses)
             report_llm = reporting_final_state.get("report_llm", "qwen3:latest")
-            formatted_content, thinking_content = format_final_answer_dict(reporting_final_state["final_answer"], report_llm)
+            formatted_content, thinking_content = format_final_answer_dict(original_answer, report_llm)
             
             # Show thinking process in expander if available
             if thinking_content:
                 with st.expander("🧠 Denkprozess des LLM", expanded=False):
                     st.markdown(thinking_content)
             
-            # Display the main content
-            st.markdown(formatted_content)
+            # Display the main content with HTML support for clickable links
+            if reporting_final_state.get("linked_final_answer"):
+                # Use the linked version with clickable source links
+                linked_formatted_content, _ = format_final_answer_dict(display_answer, report_llm)
+                st.markdown(linked_formatted_content, unsafe_allow_html=True)
+            else:
+                # Use the regular version without links
+                st.markdown(formatted_content)
             
             # Add copy to clipboard button
             if st.button("📋 Kopiere Endbericht in die Zwischenablage"):

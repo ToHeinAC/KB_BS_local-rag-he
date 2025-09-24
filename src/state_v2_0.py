@@ -15,6 +15,8 @@ class ResearcherStateV2(TypedDict):
     retrieved_documents: dict[str, list[Document]]  
     search_summaries: dict[str, list[Document]]
     final_answer: str
+    linked_final_answer: Optional[str] = None  # Final answer with clickable source links
+    selected_database: Optional[str] = None  # Selected database for source linking
     quality_check: Optional[dict[str, Any]]  # Added field to store quality check results
     # Persist user-selected LLM models throughout the graph workflow
     report_llm: str  # LLM model used for report writing

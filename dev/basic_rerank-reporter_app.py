@@ -1037,6 +1037,101 @@ def web_search_router(state: ResearcherStateV2) -> str:
         return "report_writer"
 
 
+def source_linker_node(state: ResearcherStateV2, config: RunnableConfig = None) -> ResearcherStateV2:
+    """
+    Convert source references in the final answer to clickable PDF links.
+    
+    Args:
+        state: ResearcherStateV2 containing final_answer and selected_database
+        config: LangGraph configuration (optional)
+    
+    Returns:
+        Updated state with linked_final_answer containing clickable source links
+    """
+    print("\n=== SOURCE LINKER NODE ===")
+    
+    # Import the linkify_sources function
+    from src.rag_helpers_v1_1 import linkify_sources
+    
+    try:
+        # Get final answer and database context from state
+        final_answer = state.get("final_answer", "")
+        selected_database = state.get("selected_database", None)
+        
+        print(f"  [DEBUG] Final answer length: {len(final_answer)} characters")
+        print(f"  [DEBUG] Selected database: {selected_database}")
+        
+        if not final_answer:
+            print("  [WARNING] No final answer found in state")
+            return {**state, "linked_final_answer": ""}
+        
+        # Convert source references to clickable links
+        linked_answer = linkify_sources(final_answer, selected_database)
+        
+        print(f"  [DEBUG] Linked answer length: {len(linked_answer)} characters")
+        print("  [SUCCESS] Source linking completed")
+        
+        # Return updated state with linked final answer
+        return {**state, "linked_final_answer": linked_answer}
+        
+    except Exception as e:
+        print(f"  [ERROR] Source linking failed: {str(e)}")
+        # Fallback: return original final answer as linked answer
+        return {**state, "linked_final_answer": state.get("final_answer", "")}
+
+
+def quality_router_with_source_linker(state: ResearcherStateV2) -> str:
+    """
+    Router function that determines whether to improve the report or proceed to source linking.
+    
+    Args:
+        state: ResearcherStateV2 containing quality check results
+    
+    Returns:
+        str: Next node name ("report_writer" for improvement or "source_linker" to finish)
+    """
+    print("--- Quality router with source linker decision ---")
+    
+    quality_check = state.get("quality_check", {})
+    
+    # Ensure quality_check is not None and has get method
+    if quality_check is None:
+        quality_check = {}
+    
+    # Get quality assessment results with multiple field checks for compatibility
+    quality_score = quality_check.get("quality_score", quality_check.get("score", 0))
+    passes_quality = quality_check.get("passes_quality", quality_check.get("is_accurate", False))
+    needs_improvement = quality_check.get("needs_improvement", quality_check.get("improvement_needed", True))
+    reflection_count = state.get("reflection_count", 0)
+    
+    # Check if quality checker is disabled
+    if not quality_check.get("enabled", True):
+        print("  [QUALITY ROUTER] Quality checker disabled -> source_linker")
+        return "source_linker"
+    
+    print(f"  [QUALITY ROUTER] Score: {quality_score}, Passes: {passes_quality}, Needs improvement: {needs_improvement}, Reflections: {reflection_count}")
+    
+    # CRITICAL: Limit reflection loops to prevent infinite recursion
+    MAX_REFLECTIONS = 1  # Only allow 1 improvement attempt
+    
+    # If quality passes OR we've reached max reflections, proceed to source linker
+    if passes_quality or reflection_count >= MAX_REFLECTIONS:
+        if passes_quality:
+            print("  [QUALITY ROUTER] Quality assessment PASSED -> source_linker")
+        else:
+            print(f"  [QUALITY ROUTER] Max reflections reached ({reflection_count}/{MAX_REFLECTIONS}) -> source_linker")
+        return "source_linker"
+    
+    # If quality needs improvement and we haven't exceeded reflection limit
+    if needs_improvement and reflection_count < MAX_REFLECTIONS:
+        print(f"  [QUALITY ROUTER] Quality needs improvement (reflection {reflection_count + 1}/{MAX_REFLECTIONS}) -> report_writer")
+        return "report_writer"
+    
+    # Fallback: proceed to source linker to prevent infinite loops
+    print("  [QUALITY ROUTER] Fallback decision -> source_linker")
+    return "source_linker"
+
+
 def create_rerank_reporter_graph():
     """
     Create the LangGraph workflow for reranking and report generation with quality reflection loop.
@@ -1055,6 +1150,7 @@ def create_rerank_reporter_graph():
     workflow.add_node("web_tavily_searcher", web_tavily_searcher_node)
     workflow.add_node("report_writer", report_writer_node)
     workflow.add_node("quality_checker", quality_checker_node)
+    workflow.add_node("source_linker", source_linker_node)
     
     # Add conditional edge from reranker based on web search setting
     workflow.add_conditional_edges(
@@ -1070,20 +1166,27 @@ def create_rerank_reporter_graph():
     workflow.add_edge("web_tavily_searcher", "report_writer")
     workflow.add_edge("report_writer", "quality_checker")
     
-    # Add conditional edge from quality_checker using the router
+    # Add conditional edge from quality_checker using the router with source linker
     workflow.add_conditional_edges(
         "quality_checker",
-        quality_router,
+        quality_router_with_source_linker,
         {
             "report_writer": "report_writer",  # Loop back for improvement
-            END: END  # Quality passed, finish
+            "source_linker": "source_linker"  # Quality passed, proceed to source linking
         }
     )
+    
+    # Add edge from source_linker to END
+    workflow.add_edge("source_linker", END)
     
     # Set entry point
     workflow.set_entry_point("reranker")
     
-    return workflow.compile()
+    # Compile with recursion limit to prevent infinite loops
+    return workflow.compile(
+        checkpointer=None,  # No checkpointing needed for this workflow
+        debug=False
+    )
 
 
 def create_sample_documents() -> Dict[str, List[Document]]:
@@ -1181,6 +1284,24 @@ def main():
             value=False,
             help="Enable internet search using Tavily API to supplement document summaries with recent information"
         )
+        
+        # Database selection for source linking
+        st.subheader("📚 Source Linking")
+        available_databases = [
+            "NORM__Qwen--Qwen3-Embedding-0.6B--3000--600",
+            "StrlSch__Qwen--Qwen3-Embedding-0.6B--3000--600",
+            "None (No source linking)"
+        ]
+        selected_database = st.selectbox(
+            "Select Database for Source Linking",
+            options=available_databases,
+            index=0,
+            help="Choose the database to use for converting source references to clickable PDF links"
+        )
+        
+        # Convert "None" selection to None
+        if selected_database == "None (No source linking)":
+            selected_database = None
         
         # Additional context input
         additional_context = st.text_area(
@@ -1314,11 +1435,17 @@ def main():
                         "reflection_count": 0,
                         "web_search_enabled": enable_web_search,
                         "internet_result": None,
-                        "internet_search_term": None
+                        "internet_search_term": None,
+                        "selected_database": selected_database  # Add database for source linking
                     }
                     
-                    # Execute the graph
-                    final_state = st.session_state.graph.invoke(initial_state)
+                    # Execute the graph with recursion limit to prevent infinite loops
+                    from langgraph.types import RunnableConfig
+                    config = RunnableConfig(
+                        recursion_limit=10,  # Limit to 10 steps maximum
+                        max_concurrency=1
+                    )
+                    final_state = st.session_state.graph.invoke(initial_state, config=config)
                     
                     # Display results
                     st.success("✅ LangGraph processing complete!")
@@ -1501,8 +1628,11 @@ def main():
                             with st.expander("🔍 Full Quality Assessment", expanded=False):
                                 st.text(full_assessment)
                     
-                    # Display final report
+                    # Display final report with proper structured output parsing
                     final_answer = final_state.get("final_answer", "")
+                    thinking_process = final_state.get("thinking_process", "")
+                    linked_final_answer = final_state.get("linked_final_answer", "")
+                    
                     if final_answer and final_answer.strip():
                         st.subheader("📋 Final Report")
                         
@@ -1510,37 +1640,78 @@ def main():
                         if quality_check and quality_check.get("needs_improvement", False):
                             st.info("ℹ️ This report has been regenerated based on quality assessment feedback through reflection loop.")
                         
-                        # Extract <think> blocks from the final answer
-                        import re
+                        # Try to parse structured output (JSON format with thinking/final)
+                        display_content = ""
+                        thinking_content = ""
                         
-                        # Find all <think> blocks (handle both proper and malformed tags)
-                        think_pattern = r'<think>(.*?)(?:</think>|<think>)'
-                        think_matches = re.findall(think_pattern, final_answer, re.DOTALL | re.IGNORECASE)
+                        # First, check if we have separate thinking_process from the report writer
+                        if thinking_process and thinking_process.strip():
+                            thinking_content = thinking_process
+                            print(f"  [DEBUG] Using separate thinking_process: {len(thinking_content)} chars")
                         
-                        # Remove <think> blocks from the main answer
-                        clean_answer = re.sub(r'<think>.*?(?:</think>|<think>)', '', final_answer, flags=re.DOTALL | re.IGNORECASE)
-                        clean_answer = clean_answer.strip()
+                        # Try to parse the final_answer as structured JSON
+                        try:
+                            import json
+                            # Check if final_answer is JSON with thinking/final structure
+                            if final_answer.strip().startswith('{') and final_answer.strip().endswith('}'):
+                                parsed_json = json.loads(final_answer)
+                                if 'thinking' in parsed_json and 'final' in parsed_json:
+                                    thinking_content = parsed_json.get('thinking', '')
+                                    display_content = parsed_json.get('final', '')
+                                    print(f"  [DEBUG] Parsed JSON structure - thinking: {len(thinking_content)} chars, final: {len(display_content)} chars")
+                                else:
+                                    display_content = final_answer
+                            else:
+                                display_content = final_answer
+                        except (json.JSONDecodeError, ValueError):
+                            # Not JSON, try to extract <think> blocks
+                            import re
+                            think_pattern = r'<think>(.*?)(?:</think>|<think>)'
+                            think_matches = re.findall(think_pattern, final_answer, re.DOTALL | re.IGNORECASE)
+                            
+                            if think_matches and not thinking_content:
+                                thinking_content = "\n\n".join([match.strip() for match in think_matches])
+                            
+                            # Remove <think> blocks from the main answer
+                            display_content = re.sub(r'<think>.*?(?:</think>|<think>)', '', final_answer, flags=re.DOTALL | re.IGNORECASE)
+                            display_content = display_content.strip()
+                            print(f"  [DEBUG] Extracted thinking blocks: {len(thinking_content)} chars, clean content: {len(display_content)} chars")
                         
-                        # Display the clean answer
-                        if clean_answer:
-                            st.markdown(clean_answer)
+                        # Use linked answer if available (with clickable source links)
+                        if linked_final_answer and linked_final_answer.strip():
+                            print(f"  [DEBUG] Using linked_final_answer with source links: {len(linked_final_answer)} chars")
+                            # Apply the same parsing to linked answer
+                            try:
+                                if linked_final_answer.strip().startswith('{') and linked_final_answer.strip().endswith('}'):
+                                    parsed_linked = json.loads(linked_final_answer)
+                                    if 'final' in parsed_linked:
+                                        display_content = parsed_linked.get('final', linked_final_answer)
+                                    else:
+                                        display_content = linked_final_answer
+                                else:
+                                    display_content = linked_final_answer
+                            except (json.JSONDecodeError, ValueError):
+                                display_content = linked_final_answer
+                            
+                            # Display with HTML support for clickable links
+                            st.markdown(display_content, unsafe_allow_html=True)
                         else:
-                            st.warning("The answer appears to contain only thinking process. Please check the LLM response.")
+                            # No linked answer, display regular content
+                            if display_content:
+                                st.markdown(display_content)
+                            else:
+                                st.warning("The answer appears to contain only thinking process. Please check the LLM response.")
                         
                         # Show thinking process in a collapsed expander if found
-                        if think_matches:
+                        if thinking_content and thinking_content.strip():
                             with st.expander("🧠 LLM Thinking Process", expanded=False):
-                                for i, think_content in enumerate(think_matches, 1):
-                                    if len(think_matches) > 1:
-                                        st.markdown(f"**Thinking Block {i}:**")
-                                    st.text(think_content.strip())
-                                    if i < len(think_matches):
-                                        st.divider()
+                                st.markdown(thinking_content)
                         
-                        # Download button for the report
+                        # Download button for the report (use original final_answer)
+                        download_content = display_content if display_content else final_answer
                         st.download_button(
                             label="📥 Download Report",
-                            data=final_answer,
+                            data=download_content,
                             file_name=f"research_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
                             mime="text/markdown"
                         )

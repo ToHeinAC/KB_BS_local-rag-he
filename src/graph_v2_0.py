@@ -1145,9 +1145,120 @@ def query_router(state: ResearcherStateV2):
     """Wrapper for query_router_v1 to work with extended state."""
     return query_router_v1(state)
 
+def source_linker(state: ResearcherStateV2, config: RunnableConfig = None) -> ResearcherStateV2:
+    """
+    Convert source references in the final answer to clickable PDF links.
+    
+    Args:
+        state: ResearcherStateV2 containing final_answer and selected_database
+        config: LangGraph configuration (optional)
+    
+    Returns:
+        Updated state with linked_final_answer containing clickable source links
+    """
+    print("\n=== SOURCE LINKER NODE ===")
+    
+    # Import the linkify_sources function
+    from src.rag_helpers_v1_1 import linkify_sources
+    
+    try:
+        # Get final answer and database context from state
+        final_answer = state.get("final_answer", "")
+        selected_database = state.get("selected_database", None)
+        
+        print(f"  [DEBUG] Final answer length: {len(final_answer)} characters")
+        print(f"  [DEBUG] Selected database: {selected_database}")
+        print(f"  [DEBUG] Final answer preview: {final_answer[:200]}...")
+        
+        if not final_answer:
+            print("  [WARNING] No final answer found in state")
+            return {**state, "linked_final_answer": ""}
+        
+        # Check for source references in the final answer
+        import re
+        source_pattern = re.compile(r'\[([^[\]]+?\.pdf)\]')
+        source_matches = source_pattern.findall(final_answer)
+        print(f"  [DEBUG] Found {len(source_matches)} source references: {source_matches}")
+        
+        if not source_matches:
+            print("  [INFO] No source references found in final answer, returning as-is")
+            return {**state, "linked_final_answer": final_answer}
+        
+        # Convert source references to clickable links
+        print(f"  [DEBUG] Converting {len(source_matches)} source references to clickable links...")
+        linked_answer = linkify_sources(final_answer, selected_database)
+        
+        print(f"  [DEBUG] Linked answer length: {len(linked_answer)} characters")
+        print(f"  [DEBUG] Linked answer preview: {linked_answer[:300]}...")
+        
+        # Check if linking actually happened
+        if linked_answer != final_answer:
+            print("  [SUCCESS] Source linking completed - content was modified")
+        else:
+            print("  [WARNING] Source linking completed but content was not modified")
+        
+        # Return updated state with linked final answer
+        return {**state, "linked_final_answer": linked_answer}
+        
+    except Exception as e:
+        print(f"  [ERROR] Source linking failed: {str(e)}")
+        # Fallback: return original final answer as linked answer
+        return {**state, "linked_final_answer": state.get("final_answer", "")}
+
 def update_position(state: ResearcherStateV2):
     """Wrapper for update_position_v1 to work with extended state."""
     return update_position_v1(state)
+
+def quality_router_with_source_linker(state: ResearcherStateV2) -> str:
+    """
+    Router function that determines whether to improve the report or proceed to source linking.
+    
+    Args:
+        state: ResearcherStateV2 containing quality check results
+    
+    Returns:
+        str: Next node name ("generate_final_answer" for improvement or "source_linker" to finish)
+    """
+    print("--- Quality router with source linker decision ---")
+    
+    quality_check = state.get("quality_check", {})
+    
+    # Ensure quality_check is not None and has get method
+    if quality_check is None:
+        quality_check = {}
+    
+    # Get quality assessment results with multiple field checks for compatibility
+    quality_score = quality_check.get("quality_score", quality_check.get("score", 0))
+    passes_quality = quality_check.get("passes_quality", quality_check.get("is_accurate", False))
+    needs_improvement = quality_check.get("needs_improvement", quality_check.get("improvement_needed", True))
+    reflection_count = state.get("reflection_count", 0)
+    
+    # Check if quality checker is disabled
+    if not quality_check.get("enabled", True):
+        print("  [QUALITY ROUTER] Quality checker disabled -> source_linker")
+        return "source_linker"
+    
+    print(f"  [QUALITY ROUTER] Score: {quality_score}, Passes: {passes_quality}, Needs improvement: {needs_improvement}, Reflections: {reflection_count}")
+    
+    # CRITICAL: Limit reflection loops to prevent infinite recursion
+    MAX_REFLECTIONS = 1  # Only allow 1 improvement attempt
+    
+    # If quality passes OR we've reached max reflections, proceed to source linker
+    if passes_quality or reflection_count >= MAX_REFLECTIONS:
+        if passes_quality:
+            print("  [QUALITY ROUTER] Quality assessment PASSED -> source_linker")
+        else:
+            print(f"  [QUALITY ROUTER] Max reflections reached ({reflection_count}/{MAX_REFLECTIONS}) -> source_linker")
+        return "source_linker"
+    
+    # If quality needs improvement and we haven't exceeded reflection limit
+    if needs_improvement and reflection_count < MAX_REFLECTIONS:
+        print(f"  [QUALITY ROUTER] Quality needs improvement (reflection {reflection_count + 1}/{MAX_REFLECTIONS}) -> generate_final_answer")
+        return "generate_final_answer"
+    
+    # Fallback: proceed to source linker to prevent infinite loops
+    print("  [QUALITY ROUTER] Fallback decision -> source_linker")
+    return "source_linker"
 
 def quality_router(state: ResearcherStateV2):
     """Wrapper for quality_router_v1 to work with extended state."""
@@ -1156,24 +1267,22 @@ def quality_router(state: ResearcherStateV2):
 def conditional_quality_router(state: ResearcherStateV2):
     """
     Router that checks if quality checking is enabled before routing to quality checker.
-    If quality checking is disabled, goes directly to END.
+    If quality checking is disabled, goes directly to source_linker.
     """
     # Check if quality checking is enabled in the state
     enable_quality_checker = state.get("enable_quality_checker", False)
     
     if enable_quality_checker:
-        print("  [INFO] Quality checker enabled, routing to quality_router")
-        # Use the existing quality router logic
-        return quality_router_v1(state)
+        print("  [INFO] Quality checker enabled, routing to quality_checker")
+        return "quality_checker"
     else:
-        print("  [INFO] Quality checker disabled, ending workflow")
-        return "end"
+        print("  [INFO] Quality checker disabled, routing to source_linker")
+        return "source_linker"
 
 # Create simplified main researcher graph
 def create_main_graph():
     """
     Create the simplified main researcher graph that starts with retrieve_rag_documents.
-    
     This graph is designed to work after the HITL workflow has completed and generated research_queries.
     The main workflow skips the detect_language and generate_research_queries nodes since those
     steps are already handled in the HITL workflow.
@@ -1197,6 +1306,7 @@ def create_main_graph():
     main_workflow.add_node("rerank_summaries", rerank_summaries)
     main_workflow.add_node("generate_final_answer", generate_final_answer)
     main_workflow.add_node("quality_checker", quality_checker)
+    main_workflow.add_node("source_linker", source_linker)
     main_workflow.add_node("update_position", update_position)
     
     # Main workflow edges starting with retrieve_rag_documents
@@ -1212,18 +1322,22 @@ def create_main_graph():
         conditional_quality_router,
         {
             "quality_checker": "quality_checker",
-            "end": END
+            "source_linker": "source_linker"  # Skip quality checker if disabled
         }
     )
     
+    # Quality checker routes to source linker or back to generate_final_answer
     main_workflow.add_conditional_edges(
         "quality_checker",
-        quality_router,
+        quality_router_with_source_linker,
         {
-            "generate_final_answer": "generate_final_answer",
-            "end": END
+            "generate_final_answer": "generate_final_answer",  # Loop back for improvement
+            "source_linker": "source_linker"  # Quality passed, proceed to source linking
         }
     )
+    
+    # Source linker is the final step before END
+    main_workflow.add_edge("source_linker", END)
     
     return main_workflow.compile()
 
