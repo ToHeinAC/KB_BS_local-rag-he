@@ -837,13 +837,15 @@ def execute_reporting_phase(enable_web_search=False):
             **st.session_state.retrieval_summarization_result,
             # Add reporting-specific fields
             web_search_enabled=enable_web_search,
-            all_reranked_summaries=None,
             reflection_count=0,
             internet_result=None,
             internet_search_term=None,
             selected_database=st.session_state.get("selected_database", None),  # Pass database for source linking
             linked_final_answer=None
         )
+        
+        # Update quality checker setting from sidebar if needed
+        reporting_state["enable_quality_checker"] = st.session_state.get("enable_quality_checker", True)
         
         # Create progress tracking
         progress_container = st.container()
@@ -852,37 +854,33 @@ def execute_reporting_phase(enable_web_search=False):
             reporting_progress_bar = st.progress(0)
             reporting_status_text = st.empty()
         
-        # Use main workflow graph (includes source_linker)
-        from src.graph_v2_0 import main_graph
+        # Use rerank-reporter graph (Phase 3 specific workflow)
+        reporting_graph = create_rerank_reporter_graph()
         
-        # Execute main workflow graph
-        reporting_status_text.text("🚀 Starte Haupt-Workflow mit Quellenverknüpfung...")
+        # Execute rerank-reporter workflow graph
+        reporting_status_text.text("🚀 Starte Reranking und Berichtserstellung...")
         reporting_final_state = reporting_state
         step_count = 0
-        # Main graph steps: retrieve_rag_documents, update_position, summarize_query_research, rerank_summaries, generate_final_answer, [quality_checker], source_linker
-        total_steps = 7  # Account for all possible steps including quality checker
+        # Rerank-reporter graph steps: reranker, [web_tavily_searcher], report_writer, [quality_checker], source_linker
+        total_steps = 5  # Account for all possible steps including web search and quality checker
         
-        for step_output in main_graph.stream(reporting_state):
+        for step_output in reporting_graph.stream(reporting_state):
             step_count += 1
             progress = min(step_count / total_steps, 1.0)
             reporting_progress_bar.progress(progress)
             
             # Update status based on current step
             for node_name, node_state in step_output.items():
-                if node_name == "retrieve_rag_documents":
-                    reporting_status_text.text("🔍 Relevante Dokumente abrufen...")
-                elif node_name == "update_position":
-                    reporting_status_text.text("📍 Workflow-Position aktualisieren...")
-                elif node_name == "summarize_query_research":
-                    reporting_status_text.text("📋 Forschungsergebnisse zusammenfassen...")
-                elif node_name == "rerank_summaries":
+                if node_name == "reranker":
                     reporting_status_text.text("📊 Zusammenfassungen nach Relevanz ordnen...")
-                elif node_name == "generate_final_answer":
-                    reporting_status_text.text("✍️ Umfassenden Bericht generieren...")
+                elif node_name == "web_tavily_searcher":
+                    reporting_status_text.text("🌐 Internet-Suche nach zusätzlichen Informationen...")
+                elif node_name == "report_writer":
+                    reporting_status_text.text("✍️ Endbericht generieren...")
                 elif node_name == "quality_checker":
-                    reporting_status_text.text("🔍 Qualitätsbewertung durchführen...")
+                    reporting_status_text.text("✅ Berichtqualität prüfen...")
                 elif node_name == "source_linker":
-                    reporting_status_text.text("🔗 Quellen in anklickbare Links umwandeln...")
+                    reporting_status_text.text("🔗 Quellen verknüpfen...")
                 else:
                     reporting_status_text.text(f"⚙️ Verarbeite {node_name}...")
                 
@@ -924,12 +922,12 @@ def execute_reporting_phase(enable_web_search=False):
             st.markdown("### 📄 Endbericht")
             
             # Use linked_final_answer if available, otherwise use final_answer
-            display_answer = reporting_final_state.get("linked_final_answer") or reporting_final_state.get("final_answer", "")
+            final_answer = reporting_final_state.get("linked_final_answer") or reporting_final_state.get("final_answer", "")
             original_answer = reporting_final_state.get("final_answer", "")
             
-            # Format the final answer (handle structured LLM responses)
-            report_llm = reporting_final_state.get("report_llm", "qwen3:latest")
-            formatted_content, thinking_content = format_final_answer_dict(original_answer, report_llm)
+            # Parse structured output to separate thinking and final content
+            # Use original_answer for thinking extraction (without HTML links)
+            final_content, thinking_content = parse_structured_llm_output(original_answer)
             
             # Show thinking process in expander if available
             if thinking_content:
@@ -939,11 +937,11 @@ def execute_reporting_phase(enable_web_search=False):
             # Display the main content with HTML support for clickable links
             if reporting_final_state.get("linked_final_answer"):
                 # Use the linked version with clickable source links
-                linked_formatted_content, _ = format_final_answer_dict(display_answer, report_llm)
-                st.markdown(linked_formatted_content, unsafe_allow_html=True)
+                linked_content, _ = parse_structured_llm_output(final_answer)
+                st.markdown(linked_content, unsafe_allow_html=True)
             else:
                 # Use the regular version without links
-                st.markdown(formatted_content)
+                st.markdown(final_content)
             
             # Add copy to clipboard button
             if st.button("📋 Kopiere Endbericht in die Zwischenablage"):
@@ -1289,16 +1287,22 @@ def main():
             )
             
             # Enable web search
-            enable_web_search = st.checkbox(
+            if "enable_web_search" not in st.session_state:
+                st.session_state.enable_web_search = False
+                
+            st.session_state.enable_web_search = st.checkbox(
                 "Web Search aktivieren",
-                value=False,
+                value=st.session_state.enable_web_search,
                 help="Web Search aktivieren"
             )
             
             # Quality checker settings
-            enable_quality_checker = st.checkbox(
+            if "enable_quality_checker" not in st.session_state:
+                st.session_state.enable_quality_checker = True
+                
+            st.session_state.enable_quality_checker = st.checkbox(
                 "Qualitätsprüfung aktivieren",
-                value=True,
+                value=st.session_state.enable_quality_checker,
                 help="Qualitätsprüfung aktivieren"
             )
 
@@ -1695,7 +1699,7 @@ def main():
                 
                 # Execute button
                 if st.button("📊 Start der Reporting Phase", type="primary"):
-                    result = execute_reporting_phase(enable_web_search=enable_web_search)
+                    result = execute_reporting_phase(enable_web_search=st.session_state.enable_web_search)
                     if result:
                         st.success("✅ Alle Phasen erfolgreich abgeschlossen!")
                         st.rerun()
@@ -1938,9 +1942,10 @@ def main():
         st.session_state.reporting_result.get("final_answer")):
         
         result = st.session_state.reporting_result
-        final_answer = result.get("final_answer", "")
+        original_answer = result.get("final_answer", "")
+        linked_answer = result.get("linked_final_answer", "")
         
-        if final_answer and final_answer.strip():
+        if original_answer and original_answer.strip():
             # Add some spacing
             st.markdown("---")
             
@@ -1962,17 +1967,33 @@ def main():
             
             # Display the final answer prominently using chat message
             with st.chat_message("assistant"):
-                if final_answer:
+                if original_answer:
                     # Parse structured output to separate thinking and final content
-                    final_content, thinking_content = parse_structured_llm_output(final_answer)
+                    # Always use original_answer for parsing (clean version without massive base64 data)
+                    final_content, thinking_content = parse_structured_llm_output(original_answer)
                     
                     # Show thinking process in expander if available
                     if thinking_content:
                         with st.expander("🧠 LLM Denkprozess", expanded=False):
                             st.markdown(thinking_content)
                     
-                    # Display the main content as markdown
-                    st.markdown(final_content)
+                    # Display the main content with HTML support for clickable links
+                    if linked_answer and linked_answer.strip():
+                        # Parse the linked version to get just the final content with clickable source links
+                        # But don't parse the massive base64 version - use the original parsing result
+                        # and assume linked_answer is already the processed HTML version
+                        try:
+                            linked_content, _ = parse_structured_llm_output(linked_answer)
+                            print(f"[DEBUG] Displaying linked content length: {len(linked_content)}")
+                            st.markdown(linked_content, unsafe_allow_html=True)
+                        except Exception as e:
+                            print(f"[DEBUG] Error parsing linked answer, using original: {e}")
+                            print(f"[DEBUG] Displaying final content length: {len(final_content)}")
+                            st.markdown(final_content)
+                    else:
+                        # Use the regular version without links
+                        print(f"[DEBUG] Displaying final content length: {len(final_content)}")
+                        st.markdown(final_content)
                 else:
                     st.warning("Die Antwort scheint leer zu sein. Bitte überprüfen Sie die LLM-Antwort.")
             
@@ -1981,7 +2002,7 @@ def main():
             
             with col_btn1:
                 if st.button("📋 Kopiere Bericht in die Zwischenablage", key="main_copy_btn"):
-                    if copy_to_clipboard(final_answer):
+                    if copy_to_clipboard(original_answer):
                         st.success("Bericht kopiert in die Zwischenablage!")
                     else:
                         st.error("Konnte Bericht nicht in die Zwischenablage kopieren.")
@@ -1990,7 +2011,7 @@ def main():
                 from datetime import datetime
                 st.download_button(
                     label="📥 Download Bericht",
-                    data=final_answer,
+                    data=original_answer,
                     file_name=f"research_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
                     mime="text/markdown",
                     key="main_download_btn"

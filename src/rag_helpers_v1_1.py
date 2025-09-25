@@ -850,7 +850,7 @@ def linkify_sources(markdown_text: str, selected_database: str = None, kb_path="
     Convert source references in markdown to clickable links that open PDFs in new windows.
     
     Args:
-        markdown_text: Text containing source references like [StrlSchG--250508.pdf]
+        markdown_text: Text containing source references like [StrlSchG--250508.pdf] or [EPA_Kd-a]
         selected_database: Database name to determine source directory
         kb_path: Root KB directory path
         
@@ -859,16 +859,35 @@ def linkify_sources(markdown_text: str, selected_database: str = None, kb_path="
     """
     import base64
     import re
+    from pathlib import Path
     
-    # Pattern to match source references: [filename.pdf] or [filename--timestamp.pdf]
-    source_pattern = re.compile(r'\[([^[\]]+?\.pdf)\]')
+    # Pattern to match source references: [filename.pdf], [filename--timestamp.pdf], or [shortname]
+    source_pattern = re.compile(r'\[([^[\]]+?)\]')
     
     def replace_with_link(match):
-        source_name = match.group(1)
-        # Resolve to actual PDF path using selected database
-        pdf_path = resolve_pdf_path(source_name, selected_database, kb_path)
+        source_ref = match.group(1)
         
-        if pdf_path.exists():
+        # Handle all possible reference formats:
+        # [StrlSchG], [StrlSchG.pdf], [StrlSchG--250508], [StrlSchG--250508.pdf]
+        
+        # First, try to resolve as a PDF reference (handles timestamps automatically)
+        pdf_path = None
+        
+        # Case 1: Contains .pdf (e.g., [StrlSchG.pdf] or [StrlSchG--250508.pdf])
+        if '.pdf' in source_ref:
+            pdf_path = resolve_pdf_path(source_ref, selected_database, kb_path)
+        
+        # Case 2: No .pdf but might be a base filename (e.g., [StrlSchG] or [StrlSchG--250508])
+        if not pdf_path or not pdf_path.exists():
+            # Try adding .pdf to the reference
+            pdf_ref_with_ext = source_ref + '.pdf' if not source_ref.endswith('.pdf') else source_ref
+            pdf_path = resolve_pdf_path(pdf_ref_with_ext, selected_database, kb_path)
+        
+        # Case 3: Still not found, try fuzzy matching
+        if not pdf_path or not pdf_path.exists():
+            pdf_path = find_matching_pdf(source_ref, selected_database, kb_path)
+        
+        if pdf_path and pdf_path.exists():
             # Create a data URL for the PDF
             try:
                 pdf_bytes = pdf_path.read_bytes()
@@ -876,11 +895,68 @@ def linkify_sources(markdown_text: str, selected_database: str = None, kb_path="
                 data_url = f"data:application/pdf;base64,{b64_pdf}"
                 
                 # Return HTML link that opens in new window
-                return f'<a href="{data_url}" target="_blank" style="color: #1f77b4; text-decoration: none;">📄 {source_name}</a>'
+                display_name = pdf_path.name if source_ref.endswith('.pdf') else f"{source_ref} ({pdf_path.name})"
+                return f'<a href="{data_url}" target="_blank" style="color: #1f77b4; text-decoration: none;">📄 {display_name}</a>'
             except Exception as e:
-                return f'<span style="color: red;">📄 {source_name} (Error: {str(e)})</span>'
+                return f'<span style="color: red;">📄 {source_ref} (Error: {str(e)})</span>'
         else:
             source_dir = resolve_source_directory(selected_database, kb_path) if selected_database else "default directory"
-            return f'<span style="color: orange;">📄 {source_name} (Not found in {source_dir})</span>'
+            return f'<span style="color: orange;">📄 {source_ref} (Not found in {source_dir})</span>'
     
     return source_pattern.sub(replace_with_link, markdown_text)
+
+
+def find_matching_pdf(short_ref: str, selected_database: str = None, kb_path="./kb") -> Path:
+    """
+    Find a PDF file that matches a reference like 'StrlSchG', 'EPA_Kd-a', etc.
+    
+    Args:
+        short_ref: Reference like 'StrlSchG', 'StrlSchG--250508', 'EPA_Kd-a'
+        selected_database: Database name to determine source directory
+        kb_path: Root KB directory path
+        
+    Returns:
+        Path to matching PDF file or None if not found
+    """
+    from pathlib import Path
+    import re
+    
+    # Get the source directory
+    source_dir = resolve_source_directory(selected_database, kb_path)
+    
+    if not source_dir.exists():
+        return None
+    
+    # Extract base name (remove timestamp if present)
+    # e.g., "StrlSchG--250508" -> "StrlSchG"
+    base_ref = re.sub(r'--\d+', '', short_ref)
+    
+    # Try different matching strategies in order of preference
+    patterns_to_try = [
+        f"{short_ref}.pdf",           # Exact match with .pdf (e.g., StrlSchG.pdf)
+        f"{base_ref}.pdf",            # Base name with .pdf (e.g., StrlSchG.pdf from StrlSchG--250508)
+        f"{short_ref}*.pdf",          # Starts with short_ref (e.g., StrlSchG*.pdf)
+        f"{base_ref}*.pdf",           # Starts with base_ref (e.g., StrlSchG*.pdf)
+        f"*{short_ref}*.pdf",         # Contains short_ref
+        f"*{base_ref}*.pdf",          # Contains base_ref
+        f"*{short_ref.replace('_', '-')}*.pdf",  # Replace underscores with hyphens
+        f"*{short_ref.replace('-', '_')}*.pdf",  # Replace hyphens with underscores
+        f"*{base_ref.replace('_', '-')}*.pdf",   # Base ref with underscore/hyphen replacement
+        f"*{base_ref.replace('-', '_')}*.pdf",   # Base ref with hyphen/underscore replacement
+    ]
+    
+    for pattern in patterns_to_try:
+        matches = list(source_dir.glob(pattern))
+        if matches:
+            # Return the first match (could be improved with better scoring)
+            return matches[0]
+    
+    # If no direct matches, try case-insensitive search
+    search_terms = [short_ref.lower(), base_ref.lower()]
+    for pdf_file in source_dir.glob("*.pdf"):
+        pdf_name_lower = pdf_file.name.lower()
+        for term in search_terms:
+            if term in pdf_name_lower:
+                return pdf_file
+    
+    return None

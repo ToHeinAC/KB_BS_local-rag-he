@@ -54,7 +54,8 @@ from src.rag_helpers_v1_1 import (
     get_summarization_llm_models, 
     get_all_available_models,
     get_license_content,
-    extract_embedding_model
+    extract_embedding_model,
+    linkify_sources
 )
 
 # Set page configuration
@@ -66,6 +67,133 @@ st.set_page_config(
 )
 
 clear_cuda_memory()
+
+# Load LLM models
+report_llm_models = get_report_llm_models()
+summarization_llm_models = get_summarization_llm_models()
+
+# Sidebar configuration
+with st.sidebar:
+    st.header("⚙️ Configuration")       
+    # Define DATABASE_PATH like in app_v1_1.py
+    DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "kb", "database")
+
+    with st.expander("🗄️ Knowledge Database", expanded=False): # External Database Configuration (moved to top)    
+        # Initialize session state for external database
+        if "use_ext_database" not in st.session_state:
+            st.session_state.use_ext_database = True
+        if "selected_database" not in st.session_state:
+            st.session_state.selected_database = ""
+        if "k_results" not in st.session_state:
+            st.session_state.k_results = 3
+
+        # Enable external database checkbox
+        st.session_state.use_ext_database = st.checkbox(
+            "Use external knowledge database", 
+            value=st.session_state.use_ext_database,
+            help="Use an existing knowledge database for document retrieval"
+        )
+        
+        # Database selection
+        if st.session_state.use_ext_database:
+            # Get available databases
+            database_dir = Path(DATABASE_PATH)
+            database_options = [d.name for d in database_dir.iterdir() if d.is_dir()] if database_dir.exists() else []
+        
+            if database_options:
+                # Select database
+                selected_db = st.selectbox(
+                    "Select Knowledge Database",
+                    options=database_options,
+                    index=database_options.index(st.session_state.selected_database) if st.session_state.selected_database in database_options else 0,
+                    help="Select knowledge database"
+                )
+                st.session_state.selected_database = selected_db
+                
+                # Extract and update embedding model from database name
+                embedding_model_name = extract_embedding_model(selected_db)
+                if embedding_model_name:
+                    # Update the global configuration to use this embedding model
+                    from src.configuration_v1_1 import update_embedding_model
+                    update_embedding_model(embedding_model_name)
+                    st.info(f"Knowledge database selected: {selected_db}")
+                    st.success(f"Embedding model updated: {embedding_model_name}")
+                
+                # Number of results to retrieve
+                st.session_state.k_results = st.slider(
+                    "Number of query results", 
+                    min_value=1, 
+                    max_value=10, 
+                    value=st.session_state.k_results,
+                    help="Number of query results"
+                )
+            else:
+                st.warning("⚠️ No knowledge databases found")
+                st.session_state.use_ext_database = False
+
+    with st.expander("🤖 Model Selection", expanded=False):
+        # Report LLM selection
+        if "report_llm" not in st.session_state:
+            st.session_state.report_llm = report_llm_models[0] if report_llm_models else "qwen3:latest"
+        
+        st.session_state.report_llm = st.selectbox(
+            "Report LLM Model",
+            options=report_llm_models,
+            index=report_llm_models.index(st.session_state.report_llm) if st.session_state.report_llm in report_llm_models else 0,
+            help="LLM model for report generation"
+        )
+        
+        # Summarization LLM selection
+        if "summarization_llm" not in st.session_state:
+            st.session_state.summarization_llm = summarization_llm_models[0] if summarization_llm_models else "qwen3:latest"
+        
+        st.session_state.summarization_llm = st.selectbox(
+            "Summarization LLM Model",
+            options=summarization_llm_models,
+            index=summarization_llm_models.index(st.session_state.summarization_llm) if st.session_state.summarization_llm in summarization_llm_models else 0,
+            help="LLM model for document summarization"
+        )
+
+    with st.expander("🔧 Advanced Research Settings", expanded=False):
+        # Maximum number of research queries
+        if "max_search_queries" not in st.session_state:
+            st.session_state.max_search_queries = 3
+        
+        st.session_state.max_search_queries = st.slider(
+            "Maximum number of research queries",
+            min_value=1,
+            max_value=10,
+            value=st.session_state.max_search_queries,
+            help="Maximum number of research queries"
+        )
+        
+        # Enable web search
+        if "enable_web_search" not in st.session_state:
+            st.session_state.enable_web_search = False
+            
+        st.session_state.enable_web_search = st.checkbox(
+            "Enable Web Search",
+            value=st.session_state.enable_web_search,
+            help="Enable web search"
+        )
+        
+        # Quality checker settings
+        if "enable_quality_checker" not in st.session_state:
+            st.session_state.enable_quality_checker = True
+            
+        st.session_state.enable_quality_checker = st.checkbox(
+            "Enable Quality Checker",
+            value=st.session_state.enable_quality_checker,
+            help="Enable quality checker"
+        )
+
+    # Clear chat button
+    if st.button("🗑️ Clear Chat", help="Clear chat"):
+        for key in list(st.session_state.keys()):
+            if key not in ["report_llm", "summarization_llm", "use_ext_database", "selected_database", "k_results", "max_search_queries", "enable_web_search", "enable_quality_checker"]:
+                del st.session_state[key]
+        st.rerun()
+
 # Function to clean model names for display
 def clean_model_name(model_name):
     """Clean model name by removing common prefixes and suffixes for better display"""
@@ -838,7 +966,7 @@ def execute_reporting_phase(enable_web_search=False):
             **st.session_state.retrieval_summarization_result,
             # Add reporting-specific fields
             web_search_enabled=enable_web_search,
-            all_reranked_summaries=None,
+            enable_quality_checker=st.session_state.get("enable_quality_checker", True),
             reflection_count=0,
             internet_result=None,
             internet_search_term=None,
@@ -853,32 +981,28 @@ def execute_reporting_phase(enable_web_search=False):
             reporting_progress_bar = st.progress(0)
             reporting_status_text = st.empty()
         
-        # Use main workflow graph (includes source_linker)
-        from src.graph_v2_0 import main_graph
+        # Use rerank-reporter graph (Phase 3 specific workflow)
+        reporting_graph = create_rerank_reporter_graph()
         
-        # Execute main workflow graph
-        reporting_status_text.text("🚀 Starting main workflow with source linking...")
+        # Execute rerank-reporter workflow graph
+        reporting_status_text.text("🚀 Starting reranking and report generation...")
         reporting_final_state = reporting_state
         step_count = 0
-        # Main graph steps: retrieve_rag_documents, update_position, summarize_query_research, rerank_summaries, generate_final_answer, [quality_checker], source_linker
-        total_steps = 7  # Account for all possible steps including quality checker
+        # Rerank-reporter graph steps: reranker, [web_tavily_searcher], report_writer, [quality_checker], source_linker
+        total_steps = 5  # Account for all possible steps including web search and quality checker
         
-        for step_output in main_graph.stream(reporting_state):
+        for step_output in reporting_graph.stream(reporting_state):
             step_count += 1
             progress = min(step_count / total_steps, 1.0)
             reporting_progress_bar.progress(progress)
             
             # Update status based on current step
             for node_name, node_state in step_output.items():
-                if node_name == "retrieve_rag_documents":
-                    reporting_status_text.text("🔍 Retrieving relevant documents...")
-                elif node_name == "update_position":
-                    reporting_status_text.text("📍 Updating workflow position...")
-                elif node_name == "summarize_query_research":
-                    reporting_status_text.text("📋 Summarizing research findings...")
-                elif node_name == "rerank_summaries":
+                if node_name == "reranker":
                     reporting_status_text.text("📊 Reranking summaries by relevance...")
-                elif node_name == "generate_final_answer":
+                elif node_name == "web_tavily_searcher":
+                    reporting_status_text.text("🌐 Searching internet for additional information...")
+                elif node_name == "report_writer":
                     reporting_status_text.text("✍️ Generating comprehensive report...")
                 elif node_name == "quality_checker":
                     reporting_status_text.text("🔍 Performing quality assessment...")
@@ -906,7 +1030,17 @@ def execute_reporting_phase(enable_web_search=False):
             if final_answer:
                 st.success("✅ **Report Generated Successfully!**")
                 st.markdown("### 📄 Final Report")
-                st.markdown(final_answer, unsafe_allow_html=True)
+                
+                # Parse structured output to separate thinking and final content
+                final_content, thinking_content = parse_structured_llm_output(final_answer)
+                
+                # Show thinking process in expander if available
+                if thinking_content:
+                    with st.expander("🧠 LLM Thinking Process", expanded=False):
+                        st.markdown(thinking_content)
+                
+                # Display the main content as markdown
+                st.markdown(final_content, unsafe_allow_html=True)
             else:
                 st.error("❌ No final answer was generated")
         else:
@@ -1122,9 +1256,9 @@ def execute_reporting_phase(enable_web_search=False):
                 # Execute button
                 if st.button("🔍 Start Retrieval & Summarization", type="primary"):
                     result = execute_retrieval_summarization_phase(
-                        use_ext_database=use_ext_database,
-                        selected_database=selected_database,
-                        k_results=k_results
+                        use_ext_database=st.session_state.get("use_ext_database", False),
+                        selected_database=st.session_state.get("selected_database", None),
+                        k_results=st.session_state.get("k_results", 3)
                     )
                     if result:
                         st.session_state.workflow_phase = "reporting"
@@ -1227,7 +1361,9 @@ def execute_reporting_phase(enable_web_search=False):
                 
                 # Execute button
                 if st.button("📊 Start Reporting Phase", type="primary"):
-                    result = execute_reporting_phase(enable_web_search=enable_web_search)
+                    result = execute_reporting_phase(
+                        enable_web_search=st.session_state.enable_web_search
+                    )
                     if result:
                         st.success("✅ All phases completed successfully!")
                         st.rerun()
@@ -1479,7 +1615,8 @@ def execute_reporting_phase(enable_web_search=False):
         st.session_state.reporting_result.get("final_answer")):
         
         result = st.session_state.reporting_result
-        final_answer = result.get("final_answer", "")
+        final_answer = result.get("linked_final_answer") or result.get("final_answer", "")
+        original_answer = result.get("final_answer", "")
         
         if final_answer and final_answer.strip():
             # Add some spacing
@@ -1505,15 +1642,22 @@ def execute_reporting_phase(enable_web_search=False):
             with st.chat_message("assistant"):
                 if final_answer:
                     # Parse structured output to separate thinking and final content
-                    final_content, thinking_content = parse_structured_llm_output(final_answer)
+                    # Use original_answer for thinking extraction (without HTML links)
+                    final_content, thinking_content = parse_structured_llm_output(original_answer)
                     
                     # Show thinking process in expander if available
                     if thinking_content:
                         with st.expander("🧠 LLM Thinking Process", expanded=False):
                             st.markdown(thinking_content)
                     
-                    # Display the main content as markdown
-                    st.markdown(final_content)
+                    # Display the main content with HTML support for clickable links
+                    if result.get("linked_final_answer"):
+                        # Use the linked version with clickable source links
+                        linked_content, _ = parse_structured_llm_output(final_answer)
+                        st.markdown(linked_content, unsafe_allow_html=True)
+                    else:
+                        # Use the regular version without links
+                        st.markdown(final_content)
                 else:
                     st.warning("The answer appears to be empty. Please check the LLM response.")
             
@@ -1570,6 +1714,21 @@ def execute_reporting_phase(enable_web_search=False):
                     full_assessment = quality_check.get("full_assessment", "")
                     if full_assessment:
                         st.text(full_assessment)
+
+def main():
+    """Main application function"""
+    # Initialize workflow phase if not set
+    if "workflow_phase" not in st.session_state:
+        st.session_state.workflow_phase = "hitl"
+    
+    # Initialize other session state variables
+    if "input_counter" not in st.session_state:
+        st.session_state.input_counter = 0
+    if "processing_initial_query" not in st.session_state:
+        st.session_state.processing_initial_query = False
+    
+    # Main app content will be handled by the existing code structure
+    pass
 
 if __name__ == "__main__":
     main()

@@ -991,12 +991,16 @@ def generate_final_answer(state: ResearcherStateV2, config: RunnableConfig):
         if not all_reranked_summaries:
             return {"final_answer": "Error: No valid summaries found for generating final answer."}
         
+        # Get internet result from state
+        internet_result = state.get("internet_result", "")
+        
         # Generate the enhanced prompt using reranked summaries
         final_answer_prompt = _generate_final_answer_prompt(
             initial_query=user_query,
             reranked_summaries=all_reranked_summaries,
             additional_context=additional_context,
-            language=detected_language
+            language=detected_language,
+            internet_result=internet_result
         )
         
         print(f"  [INFO] Generating final answer using {report_llm} with {len(all_reranked_summaries)} prioritized summaries")
@@ -1066,7 +1070,7 @@ Do not include any text outside the JSON object. The 'content' field should cont
 
 
 def _generate_final_answer_prompt(initial_query: str, reranked_summaries: list[dict], 
-                                 additional_context: str = "", language: str = "English") -> str:
+                                 additional_context: str = "", language: str = "English", internet_result: str = "") -> str:
     """
     Create a prompt for generating the final answer using reranked summaries.
     
@@ -1075,6 +1079,7 @@ def _generate_final_answer_prompt(initial_query: str, reranked_summaries: list[d
         reranked_summaries: List of summaries sorted by relevance score (highest first)
         additional_context: Conversation history or domain context
         language: Detected language for the response
+        internet_result: Internet search results to include in the prompt
     
     Returns:
         Formatted prompt string for the LLM
@@ -1267,7 +1272,7 @@ def quality_router(state: ResearcherStateV2):
 def conditional_quality_router(state: ResearcherStateV2):
     """
     Router that checks if quality checking is enabled before routing to quality checker.
-    If quality checking is disabled, goes directly to source_linker.
+    If quality checking is disabled, goes directly to end.
     """
     # Check if quality checking is enabled in the state
     enable_quality_checker = state.get("enable_quality_checker", False)
@@ -1276,8 +1281,8 @@ def conditional_quality_router(state: ResearcherStateV2):
         print("  [INFO] Quality checker enabled, routing to quality_checker")
         return "quality_checker"
     else:
-        print("  [INFO] Quality checker disabled, routing to source_linker")
-        return "source_linker"
+        print("  [INFO] Quality checker disabled, routing to end")
+        return "end"
 
 # Create simplified main researcher graph
 def create_main_graph():
@@ -1286,6 +1291,8 @@ def create_main_graph():
     This graph is designed to work after the HITL workflow has completed and generated research_queries.
     The main workflow skips the detect_language and generate_research_queries nodes since those
     steps are already handled in the HITL workflow.
+    
+    Note: Source linking functionality has been moved to the rerank-reporter graph used in Phase 3.
     
     The workflow follows these steps:
     1. retrieve_rag_documents: Retrieves documents based on research_queries from HITL
@@ -1306,7 +1313,6 @@ def create_main_graph():
     main_workflow.add_node("rerank_summaries", rerank_summaries)
     main_workflow.add_node("generate_final_answer", generate_final_answer)
     main_workflow.add_node("quality_checker", quality_checker)
-    main_workflow.add_node("source_linker", source_linker)
     main_workflow.add_node("update_position", update_position)
     
     # Main workflow edges starting with retrieve_rag_documents
@@ -1322,22 +1328,19 @@ def create_main_graph():
         conditional_quality_router,
         {
             "quality_checker": "quality_checker",
-            "source_linker": "source_linker"  # Skip quality checker if disabled
+            "end": END  # Skip quality checker if disabled, go directly to END
         }
     )
     
-    # Quality checker routes to source linker or back to generate_final_answer
+    # Quality checker routes to END or back to generate_final_answer
     main_workflow.add_conditional_edges(
         "quality_checker",
-        quality_router_with_source_linker,
+        quality_router,
         {
             "generate_final_answer": "generate_final_answer",  # Loop back for improvement
-            "source_linker": "source_linker"  # Quality passed, proceed to source linking
+            "end": END  # Quality passed, end the workflow
         }
     )
-    
-    # Source linker is the final step before END
-    main_workflow.add_edge("source_linker", END)
     
     return main_workflow.compile()
 

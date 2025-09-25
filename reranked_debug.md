@@ -1,23 +1,23 @@
-# Reranked Summaries Debug Output - 20250728_163114
+# Reranked Summaries Debug Output - 20250925_100014
 
 # Full State Dump
 
 ## user_query
 
-Wie können Rückstände aus der Überwachung entlassen werden?
+Was ist ein Kd Wert und wie ist er für Ra-226?
 
 ## additional_context
 
 ```
-1. Der Benutzer sucht nach Methoden zur sicheren Entsorgung von Materialien mit erhöhten Konzentrationen natürlicher Radionuklide, wobei gesetzliche Rahmenbedingungen und Compliance-Anforderungen im Vordergrund stehen.  
-2. Die Anforderungen beinhalten die Entwicklung von Verfahren, die sowohl technische als auch rechtliche Standards erfüllen, insbesondere in Bereichen wie Umweltüberwachung oder Energieversorgung.  
-3. Schwerpunkte liegen auf der Einhaltung nationaler und internationaler Vorgaben, der Integration von Compliance-Tools wie Risikobewertungen und der Bewältigung von Herausforderungen bei der Umsetzung regulierter Entsorgungspraktiken.  
-4. Die Lösungen müssen branchenspezifische Charakteristika berücksichtigen, um effiziente, nachhaltige und rechtlich abgesicherte Entsorgungsstrategien für radioaktive Rückstände zu gewährleisten.
+1. Der Nutzer benötigt eine präzise Definition des **Kd‑Werts** (Sorption‑/Partition‑Koeffizienten) inklusive der zugrunde liegenden physikalisch‑chemischen Konzepte und seiner Relevanz für die Umweltradioökologie von Ra‑226.  
+2. Er verlangt eine **tiefgehende technische Analyse** des Kd‑Werts bei Ra‑226, die experimentelle Messmethoden, Modellannahmen und die Einflussfaktoren (z. B. Boden‑pH, organischer Gehalt, Adsorptions­isomere) detailliert darstellt.  
+3. Der Fokus liegt auf einer **umfassenden Literaturrecherche**: der Nutzer möchte einen ausführlichen Text mit zusammenfassenden Tabellen, die aktuelle Messwerte, Referenzbereiche und Literaturquellen zu Ra‑226‑Kd‑Werten systematisch auflisten.  
+4. Ergänzend wird die **Umgebungskontextualisierung** gefordert – insbesondere die Bedeutung des Kd‑Werts für die Mobilität und Risikoabschätzung von Ra‑226 in Grundwasser‑ und Bodenschichten, inklusive praktischer Implikationen für die Umweltüberwachung.
 ```
 
 ## report_llm
 
-qwen3:30b-a3b
+gpt-oss:20b
 
 ## detected_language
 
@@ -25,298 +25,321 @@ German
 
 ## search_summaries
 
-### Wie können Rückstände aus der Überwachung entlassen werden?
+### Was ist ein Kd Wert und wie ist er für Ra-226?
 
 #### Item 1 (Rank 1)
 
-**Rerank Score:** 70.0
+**Rerank Score:** 2.0
 **Original Index:** 0
 **Position:** 0
 
 **Content:**
 ```
-Content: Die Entlassung von Rückständen aus der Überwachung erfolgt gemäß den Vorgaben des Strahlenschutzgesetzes (StrlSchG) unter strengen gesetzlichen Rahmenbedingungen:  
+Content: **Definition und Bedeutung von Kd (Ra)**  
+Kd‑Werte geben an, wie stark Radium adsorbiert wird; höhere Werte deuten auf stärkere Adsorption hin, wobei Radium bei hohen Kd‑Werten nahezu vollständig reversibel adsorbiert ist. [EPA_Kd-c.pdf--250804]  
 
-1. **Voraussetzungen für die Entlassung**:  
-   - Die zuständige Behörde entlässt überwachungsbedürftige Rückstände aus der Überwachung, wenn durch Maßnahmen zur Verwertung oder Beseitigung der erforderliche Schutz vor Strahlung sicherstellt ist (§ 62 Abs. 2).  
-   - Die Körperdosis beruflich Exponierter darf die Werte für die Einstufung als „beruflich exponierte Person“ nicht überschreiten.  
-   - Keine Bedenken gegen die abfallrechtliche Zulässigkeit des Verwertungs- oder Beseitigungsweges bestehen (§ 62 Abs. 2).  
+**Kd‑Messungen und Einflussfaktoren**  
+- In der Studie von Nathwani und Phillips (1979b) zeigen sich Kd‑Werte, die mit steigender Calcium‑Konzentration abnehmen, was die Sensitivität von Radium‑Adsorption gegenüber Calcium verdeutlicht. [EPA_Kd-c.pdf--250804]  
+- Serne (1979) stellte einen Zusammenhang zwischen Kd und der spezifischen Adsorptionskapazität (CEC) her, insbesondere bei sandigen Böden. [EPA_Kd-c.pdf--250804]  
+- Für sandige Böden liegen die Kd‑Werte zwischen 214 und 467 ml g⁻¹ (Table 4.1, trs476). [trs476_TheEnvironBehaviorRadium.pdf--250804]  
+- Die EPA‑Studie ergab ungewöhnlich hohe Kd‑Werte, die auf eine mögliche Kalzium‑Präzipitation hinweisen. [EPA_Kd-c.pdf--250804]  
 
-2. **Schutz der Bevölkerung**:  
-   - Der Schutzmaßstab ist, dass die effektive Dosis von Einzelpersonen durch Beseitigung/Verwertung nicht mehr als **1 Millisievert im Kalenderjahr** überschreitet (§ 62 Abs. 3).  
-   - Bei Verwendung der Rückstände als Bauprodukte müssen zudem die Anforderungen von § 133–135 erfüllt sein.  
+**Tabellarische Übersicht (TABLE 4.1, trs476)**  
+Soil Group | Kd (Ra) (L kg⁻¹) | Samples | Min | Max  
+Sand | 3 100 | 1 | 3 100 | 3 100  
+Loam | 1 100 | 1 | 1 100 | 1 100  
+Clay | 38 000 | 1 | 38 000 | 38 000  
+All soils | 2 500 | 1 000 | 950 | 950 000  
+Geometric Mean | 2.5 × 10³ | – | – | –  
+Geometric SD | 13 | – | – | –  
+Samples | 1 000 | – | – | –  
+Variability | 2 – 5 Ordnung der Größenordnung | – | – | –  
+(4.2.1.6)  
 
-3. **Verfahren und Dokumentation**:  
-   - Der verpflichtete Betreiber muss unverzüglich nach Feststellung der Überwachungsbedürftigkeit eine Anmeldung zur Verwertung/Beseitigung einreichen (§ 62 Abs. 1).  
-   - Bei Ablehnung einer Entlassungszulassung ist eine **Anzeige gemäß § 63** erforderlich, die innerhalb von einem Monat nach Feststellung der Überwachungsbedürftigkeit abzugeben ist (§ 63 Abs. 1).  
-   - Die Behörde kann verlangen, dass der Verbleib entfernter Kontaminationen nachgewiesen wird (§ 64 Abs. 2).  
+**Vertikale Mobilität (4.1)**  
+\[
+\frac{dC}{dt} = \frac{K_d}{\theta}\frac{d\theta}{dt} + \frac{K_d}{\theta}\frac{d\theta}{dt}
+\]  
+Beispielrechnung (4.2.1.6):  
+- Niedriges Ionen‑Stoff‑Wasser, 20 cm a⁻¹ Niederschlagsüberschuss, ρ = 1,4 g mL⁻¹, θ = 0,2 mL mL⁻¹, Kd = 2 500 L kg⁻¹ → interstitielle Geschwindigkeit 100 cm a⁻¹, Radium‑Geschwindigkeit VRa ≈ 0,005 cm a⁻¹. [trs476_TheEnvironBehaviorRadium.pdf--250804]  
 
-4. **Grenzüberschreitende Transporte**:  
-   - Die grenzüberschreitende Verbringung von Rückständen ins Inland zur Beseitigung ist **verboten** (§ 65 Abs. 7).  
-
-5. **Rechtliche Grundlagen**:  
-   - Eine abfallrechtliche Verwertung oder Beseitigung ohne Entlassung aus der Überwachung ist nicht zulässig (§ 62 Abs. 4).  
-   - Die Bundesregierung wird ermächtigt, durch Rechtsverordnung mit Zustimmung des Bundestags die konkreten Verwertungswege und Schutzmaßnahmen zu regeln (§ 63–65).  
-
-**Zusammenfassend**: Die Entlassung von Rückständen aus der Überwachung setzt eine umfassende Prüfung der Strahlenschutzanforderungen, die Einhaltung gesetzlicher Grenzwerte und die Zustimmung der zuständigen Behörde voraus. Zudem sind dokumentierte Nachweise zur Sicherheit und Verwertbarkeit erforderlich.
-Importance_score: 5.80
-Source_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712
-Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf
+**Relevanz für Umwelt‑ und Gesundheitsbewertung**  
+- Hohe Kd‑Werte für Radium (z. B. 38 000 L kg⁻¹ in Tonnenböden, 2 500 L kg⁻¹ im IAEA‑Katalog) deuten auf geringe Mobilität und damit auf ein geringeres Transport‑Risiko in Grundwasser hin. [trs476_TheEnvironBehaviorRadium.pdf--250804]  
+- Die starke Sensitivität gegenüber Calcium‑Konzentration und die Abnahme der Kd‑Werte bei erhöhtem Calcium sind entscheidend für die Modellierung von Radium‑Transport in Böden. [EPA_Kd-c.pdf--250804]  
+- Die hohe Variabilität (2–5 Ordnung der Größenordnung) unterstreicht die Notwendigkeit bodenspezifischer Kd‑Messungen für genaue Risikobewertungen. [trs476_TheEnvironBehaviorRadium.pdf--250804]  
+- Kd‑Werte werden in vertikalen Mobilitätsmodellen verwendet, um die Geschwindigkeit des Radium‑Transportes in Grundwasser zu schätzen, was für die Bewertung von Strahlenschutzmaßnahmen von zentraler Bedeutung ist. [trs476_TheEnvironBehaviorRadium.pdf--250804]
+Importance_score: 7.82
+Source_filename: EPA_Kd-c.pdf--250804, trs476_TheEnvironBehaviorRadium.pdf--250804, BfS_2012_SW_14_12-Natürliche Radioaktivität in Baumaterialien und die daraus resultierende Strahlenexposition.pdf--250804
+Source_path: kb/insert_data/EPA_Kd-c.pdf, kb/insert_data/trs476_TheEnvironBehaviorRadium.pdf, kb/insert_data/BfS_2012_SW_14_12-Natürliche Radioaktivität in Baumaterialien und die daraus resultierende Strahlenexposition.pdf
 ```
 
 **Metadata:**
 ```json
 {
   "position": 0,
-  "query": "Wie k\u00f6nnen R\u00fcckst\u00e4nde aus der \u00dcberwachung entlassen werden?",
+  "query": "Was ist ein Kd Wert und wie ist er f\u00fcr Ra-226?",
   "name": [
-    "StrlSchG.pdf--250712",
-    "StrlSchG.pdf--250712",
-    "StrlSchG.pdf--250712"
+    "EPA_Kd-c.pdf--250804",
+    "trs476_TheEnvironBehaviorRadium.pdf--250804",
+    "BfS_2012_SW_14_12-Nat\u00fcrliche Radioaktivit\u00e4t in Baumaterialien und die daraus resultierende Strahlenexposition.pdf--250804"
   ],
   "path": [
-    "kb/insert_data/StrlSchG.pdf",
-    "kb/insert_data/StrlSchG.pdf",
-    "kb/insert_data/StrlSchG.pdf"
+    "kb/insert_data/EPA_Kd-c.pdf",
+    "kb/insert_data/trs476_TheEnvironBehaviorRadium.pdf",
+    "kb/insert_data/BfS_2012_SW_14_12-Nat\u00fcrliche Radioaktivit\u00e4t in Baumaterialien und die daraus resultierende Strahlenexposition.pdf"
   ],
-  "rerank_score": 70.0,
+  "rerank_score": 2.0,
   "original_index": 0
 }
 ```
 
-### Welche rechtlichen Rahmenbedingungen gelten für die Entsorgung von Materialien mit erhöhten Konzentrationen natürlicher Radionuklide?
+### Definition und physikalisch‑chemische Grundlagen des Kd‑Werts bei Radium‑226
 
 #### Item 1 (Rank 1)
 
-**Rerank Score:** 60.0
+**Rerank Score:** 5.0
 **Original Index:** 0
 **Position:** 1
 
 **Content:**
 ```
-Content: Die Entsorgung von Rückständen mit erhöhter Konzentration natürlicher Radionuklide unter Berücksichtigung rechtlicher Rahmenbedingungen erfolgt gemäß folgenden Vorschriften:  
+Content: Kd‑Wert (Sorption‑/Partition‑Koeffizient) beschreibt das Verhältnis der Konzentration eines Stoffes in der festen Phase zu seiner Konzentration in der flüssigen Phase und wird in ml g⁻¹ angegeben. Für Radium‑226 (Ra‑226) liegen in der Literatur sehr unterschiedliche Werte vor, die stark von Boden­eigenschaften wie pH, organischem Gehalt, Sand‑/Silt‑/Clay‑anteil und CEC abhängen.  
 
-1. **Regeldeckungssummen (§ 8 Abs. 3–5, § 8a AtDeckV):**  
-   - Bei der Entsorgung radioaktiver Abfälle in einer Landessammelstelle oder zugelassener Einrichtung beträgt die Regeldeckungssumme **7 Millionen Euro**, sofern es sich nicht um eine Kernanlage handelt. Für Abfälle aus Anlagen im Sinne des Atomgesetzes (§ 7) steigt der Betrag auf **70 Millionen Euro**.  
-   - Bei Beförderung von radioaktiven Stoffen darf die Deckungssumme den Betrag von **35 Millionen Euro nicht überschreiten**, soweit dies angemessen ist (§ 8 Abs. 5).  
+In der EPA‑Publikation „Kd‑c“ werden mehrere Messungen und Zusammenstellungen von Kd‑Werten für Ra‑226 präsentiert.  
+- Looney et al. (1987) empfehlen einen Kd‑Wert von 100 ml g⁻¹ für Ra‑226 und geben einen möglichen Wertebereich von 10 bis 1 000 000 ml g⁻¹ an. Diese Empfehlung ist spezifisch für den Savannah River Plant‑Standort und muss bei anderen Standorten überprüft werden. [EPA_Kd-c.pdf--250804]  
+- Serne (1974) hat Kd‑Werte für vier sandige, aride Bodenproben aus Utah gemessen:  
+  - Boden I (pH 7.9–8.0): 354 ± 15 ml g⁻¹  
+  - Boden II (pH 7.6–7.7): 289 ± 7 ml g⁻¹  
+  - Boden III (pH 7.8–7.9): 467 ± 15 ml g⁻¹  
+  - Boden IV (pH 7.6–7.8): 214 ± 15 ml g⁻¹  
+  Diese Werte verdeutlichen die starke Abhängigkeit von Boden­pH und Textur. [EPA_Kd-c.pdf--250804]  
+- Thibault et al. (1990) haben eine umfangreiche Kompilation von Kd‑Werten für Ra‑226 aus verschiedenen Quellen erstellt, um die Migration von Radium in geologischen Lagerstätten zu bewerten. Die genauen Zahlen aus dieser Kompilation sind im vorliegenden Auszug nicht aufgeführt, werden jedoch als Referenz für weitere Analysen genannt. [EPA_Kd-c.pdf--250804]  
+- Table 5.26 aus der EPA‑Publikation listet die physikalisch‑chemischen Eigenschaften von Böden, für die Kd‑Werte ermittelt wurden:  
+  - Wendover Silty Clay: pH 5.4, organischer Gehalt 16.2 %, Sand 6.7 %, Silt 47.9 %, Clay 45.4 %, CEC 34.7 meq / 100 g  
+  - Grimsby Silt Loam: pH 4.3, organischer Gehalt 1.0 %, Sand 43.7 %, Silt 48.9 %, Clay 7.4 %, CEC 10.4 meq / 100 g  
+  - St. Thomas Sand: pH 5.2, organischer Gehalt 3.1 %, Sand 91.1 %, Silt 6.8 %, Clay 1.3 %, CEC 10.9 meq / 100 g  
+  Diese Parameter sind entscheidend für die Interpretation der Kd‑Werte. [EPA_Kd-c.pdf--250804]  
 
-2. **Entsorgungsbedingungen gemäß StrlSchG:**  
-   - Bei radioaktiver Kontamination durch einen Notfall gelten **Kontaminationswerte** als sicher, wenn die Abfälle in Anlagen entsorgt werden, die den Schutz von Mensch und Umwelt gewährleisten (§ 3 Abs. 1 StrlSchG).  
-   - Ausnahmen zur Rechtsvorschriften sind nur zulässig, **sofern keine Gesundheitsrisiken** entstehen oder EU-Recht verletzt wird (§ 2 Abs. 2 StrlSchG).  
+Das Dokument „strlsch_messungen_gamma_natrad_bf.pdf“ beschreibt Messmethoden zur Bestimmung von Ra‑226 (z. B. Auswertung der 186,2‑keV‑Linie oder der Gammalinien der Nachbarkerne), liefert jedoch keine Kd‑Werte. [strlsch_messungen_gamma_natrad_bf.pdf--250804]  
 
-3. **Verbot der Wiederverwendung (AtG):**  
-   - Radioaktive Stoffe mit erhöhter Konzentration natürlicher Radionuklide dürfen nicht wiederaufgenommen oder verarbeitet werden, wenn sie gemäß einer Verordnung unter § 1 Abs. 1 Nr. 1 des Atomgesetzes (AtG) freigegeben wurden (§ 3 AtG).  
-
-4. **Kernmaterialien und Transport:**  
-   - Für den Transport von Kernmaterialien gilt eine Regeldeckungssumme von **80 Millionen Euro**, die bei bestimmten Mengen oder Aktivitäten auf bis zu **125 Millionen Euro erhöht** werden kann (§ 8a Abs. 1 AtDeckV).  
-
-Diese Vorschriften sichern den Schutz vor Strahlungseffekten und ermöglichen eine rechtliche Entsorgung unter Einhaltung der Kreislaufwirtschafts- sowie Atomgesetze. Ausnahmen sind nur bei unbedenklicher Risikominimierung zulässig (§ 2 Abs. 2 StrlSchG).
-Importance_score: 6.73
-Source_filename: AtG.pdf--250712, StrlSchG.pdf--250712, AtDeckV.pdf--250712
-Source_path: kb/insert_data/AtG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/AtDeckV.pdf
+Die Kd‑Werte sind für die Umweltüberwachung von entscheidender Bedeutung, da sie die Mobilität von Ra‑226 in Grundwasser‑ und Bodenschichten bestimmen. Hohe Kd‑Werte deuten auf starke Adsorption und damit auf geringe Mobilität hin, während niedrige Werte auf eine höhere Freisetzung und potenziell höhere Strahlenbelastung des Grundwassers hinweisen. Diese Informationen werden bei Risikobewertungen, Standortwahl für Lagerstätten und bei der Entwicklung von Sanierungsstrategien verwendet.
+Importance_score: 6.78
+Source_filename: strlsch_messungen_gamma_natrad_bf.pdf--250804, EPA_Kd-c.pdf--250804, EPA_Kd-c.pdf--250804
+Source_path: kb/insert_data/strlsch_messungen_gamma_natrad_bf.pdf, kb/insert_data/EPA_Kd-c.pdf, kb/insert_data/EPA_Kd-c.pdf
 ```
 
 **Metadata:**
 ```json
 {
   "position": 1,
-  "query": "Welche rechtlichen Rahmenbedingungen gelten f\u00fcr die Entsorgung von Materialien mit erh\u00f6hten Konzentrationen nat\u00fcrlicher Radionuklide?",
+  "query": "Definition und physikalisch\u2011chemische Grundlagen des Kd\u2011Werts bei Radium\u2011226",
   "name": [
-    "AtG.pdf--250712",
-    "StrlSchG.pdf--250712",
-    "AtDeckV.pdf--250712"
+    "strlsch_messungen_gamma_natrad_bf.pdf--250804",
+    "EPA_Kd-c.pdf--250804",
+    "EPA_Kd-c.pdf--250804"
   ],
   "path": [
-    "kb/insert_data/AtG.pdf",
-    "kb/insert_data/StrlSchG.pdf",
-    "kb/insert_data/AtDeckV.pdf"
+    "kb/insert_data/strlsch_messungen_gamma_natrad_bf.pdf",
+    "kb/insert_data/EPA_Kd-c.pdf",
+    "kb/insert_data/EPA_Kd-c.pdf"
   ],
-  "rerank_score": 60.0,
+  "rerank_score": 5.0,
   "original_index": 0
 }
 ```
 
-### Wie werden Risikobewertungen in der Entwicklung von Entsorgungsverfahren für radioaktive Rückstände integriert?
+### Experimentelle Messmethoden und Standardprotokolle zur Bestimmung des Kd‑Werts von Ra‑226 in Böden
 
 #### Item 1 (Rank 1)
 
-**Rerank Score:** 30.0
+**Rerank Score:** 2.0
 **Original Index:** 0
 **Position:** 2
 
 **Content:**
 ```
-Content: Die Entlassung überwachungsbedürftiger Rückstände aus der Überwachtung zur Verwertung als Bauprodukt erfolgt gemäß § 30 des Strahlenschutzgesetzes (StrlSchV). Dazu muss der Antragsteller folgende Unterlagen vorlegen:  
-1. Eine Erklärung über den Verbleib der Rückstände,  
-2. eine Annahmeerklärung des Herstellers des Bauprodukts sowie  
-3. eine Bestätigung, dass die voraussichtliche Exposition durch Gammastrahlung nicht den Referenzwert nach § 133 StrlSchG überschreitet [StrlSchV.pdf--250712].  
+Content: **Definition des Kd‑Werts**  
+Der Kd‑Wert (Sorption‑/Partition‑Koeffizient) ist das Verhältnis der Konzentration eines Soluts, das an einer festen Phase adsorbiert ist, zur Konzentration des Soluts in der flüssigen Phase bei Gleichgewicht. Dieser Koeffizient beschreibt, wie stark ein Stoff an Boden‑ oder Sedimentpartikeln bindet und damit seine Mobilität im Grundwasser bestimmt. [EPA_Kd-a.pdf--250804]  
 
-Die zuständige Behörde prüft dabei, ob das Dosiskriterium gemäß § 62 Absatz 3 Satz 1 des StrlSchG nicht verletzt wird. Zudem bleiben die Bestimmungen des Kreislaufwirtschaftsgesetzes unberührt [StrlSchV.pdf--250712].  
+**Relevanz für Ra‑226**  
+Ra‑226 ist ein radioaktives Radionuklid, das in Trinkwasserproben nach den deutschen Leitlinien (Kapitel 7.2.5) in vier Quartalen gemessen wird, wenn die Gesamt‑Alpha‑Aktivität den Grenzwert überschreitet. Der Kd‑Wert von Ra‑226 ist entscheidend für die Abschätzung seiner Mobilität in Böden und Grundwasser sowie für die Risikobewertung von Kontaminationen. [EPA_Kd-a.pdf--250804]  
 
-Für die Freigabe radioaktiver Stoffe (§ 31 StrlSchV) ist sicherzustellen, dass eine effektive Dosis von maximal 10 Mikrosievert pro Kalenderjahr für Einzelpersonen der Bevölkerung entsteht. Eine Freigabe ersetzt keine Genehmigung nach § 7 Absatz 3 des Atomgesetzes (AtG) [StrlSchV.pdf--250712].  
+**Experimentelle Messmethoden**  
+1. **Laborbatch‑Methode** – Boden‑Proben werden mit einer definierten Konzentration des Radionuklids in einer Lösung inkubiert; nach Erreichen des Gleichgewichts wird die adsorbierte Menge gemessen. [EPA_Kd-a.pdf--250804]  
+2. **In‑situ‑Batch‑Methode** – ähnliche Prinzipien wie die Laborbatch‑Methode, jedoch direkt im Feld, um natürliche Bedingungen zu berücksichtigen. [EPA_Kd-a.pdf--250804]  
+3. **Laborfluss‑Durch‑Methode** – Bodenproben werden in einem kontinuierlichen Fluss von Lösung durchlaufen; die Adsorption wird über die Zeit verfolgt. [EPA_Kd-a.pdf--250804]  
+4. **Feldmodell‑Methode** – Modellierung der Transportprozesse im Feld unter Verwendung von Messdaten aus der Umgebung. [EPA_Kd-a.pdf--250804]  
+5. **Koc‑Methode** – Berechnung des Kd aus dem organischen Kohlenstoff‑Sorption‑Koeffizienten (Koc) der Bodenprobe. [EPA_Kd-a.pdf--250804]  
 
-Die Entsorgung abgebrannter Brennelemente und radioaktiver Abfälle erfolgt im Rahmen eines abgestuften Konzepts, wobei die Kosten von den Erzeugern getragen werden. Dabei sind faktengestützte Entscheidungsprozesse sowie die Berücksichtigung der Sicherheit (inklusive Schutzmaßnahmen) vorgeschrieben [AtG.pdf--250712].  
+**Modellannahmen und Einflussfaktoren**  
+- **Gleichgewicht**: Annahme, dass Adsorption und Desorption im Gleichgewicht sind.  
+- **Homogenität**: Bodenpartikel und Lösung gelten als homogen.  
+- **Einflussfaktoren**: Boden‑pH, organischer Gehalt, Partikelgröße, Lösung‑zu‑Feststoff‑Verhältnis, Temperatur, Elektrolytkonzentration. Diese Faktoren können die gemessenen Kd‑Werte um bis zu drei Größenordnungen variieren. [EPA_Kd-a.pdf--250804]  
 
-Zusätzlich gelten für die Überwachung und Verwertung von Rückständen im Rahmen des Strahlenschutzes strenge Vorschriften, darunter die Einhaltung internationaler Verpflichtungen und Sicherheitsstandards [StrlSchG.pdf--250712].
-Importance_score: 6.33
-Source_filename: StrlSchG.pdf--250712, AtG.pdf--250712, StrlSchV.pdf--250712
-Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/AtG.pdf, kb/insert_data/StrlSchV.pdf
+**Variabilität der Kd‑Werte**  
+Eine interlaboratorische Übung mit neun Labors zeigte, dass die Kd‑Werte für Cesium von 1,3 ± 0,4 bis 880 ± 160 ml/g und für Plutonium von 70 ± 36 bis 63 000 ± 19 000 ml/g schwankten – eine Variation von bis zu drei Größenordnungen. Für Strontium lagen die Werte innerhalb einer Größenordnung (1,4 ± 0,2 bis 14,9 ± 4,6 ml/g). Die Hauptursachen waren: Tracer‑Zugabe, Lösung‑zu‑Feststoff‑Verhältnis, Anfangskonzentration, Partikelgröße, Trennmethoden, Behältnisse und Temperatur. [EPA_Kd-a.pdf--250804]  
+
+**Literaturwerte (Beispiel für andere Radionuklide)**  
+
+| Radionuklid | Kd‑Bereich (ml/g) | Quelle |
+|-------------|-------------------|--------|
+| Cs | 1,3 ± 0,4 – 880 ± 160 | [EPA_Kd-a.pdf--250804] |
+| Pu | 70 ± 36 – 63 000 ± 19 000 | [EPA_Kd-a.pdf--250804] |
+| Sr | 1,4 ± 0,2 – 14,9 ± 4,6 | [EPA_Kd-a.pdf--250804] |
+
+**Keine spezifischen Kd‑Werte für Ra‑226 in den vorliegenden Quellen**  
+Die bereitgestellten Dokumente enthalten keine direkten Messwerte oder Literaturangaben für den Kd‑Wert von Ra‑226. Die Relevanz des Kd‑Werts für Ra‑226 wird jedoch aus den allgemeinen Prinzipien der Radionuklid‑Transportmodellierung und den Anforderungen der Trinkwasser‑Leitlinien abgeleitet. [EPA_Kd-a.pdf--250804]  
+
+**Umweltkontextualisierung**  
+Der Kd‑Wert bestimmt, ob Ra‑226 in Böden adsorbiert und damit aus dem Grundwasser zurückgehalten wird oder mobil bleibt und potenziell in die Trinkwasserversorgung gelangt. Ein hoher Kd‑Wert bedeutet starke Bindung an Bodenpartikel, geringere Mobilität und geringeres Risiko für die Trinkwasserversorgung. Umgekehrt führt ein niedriger Kd‑Wert zu erhöhter Mobilität und höherem Risiko. Die Bewertung der Mobilität von Ra‑226 erfolgt daher häufig in Kombination mit Messungen der Gesamt‑Alpha‑Aktivität und der spezifischen Radiumkonzentration in Wasserproben. [EPA_Kd-a.pdf--250804]  
+
+**Praktische Implikationen für die Umweltüberwachung**  
+- Regelmäßige Messungen der Ra‑226‑Konzentration in Wasserproben (Kapitel 7.2.5).  
+- Anwendung geeigneter Batch‑ oder Flow‑Through‑Methoden zur Bestimmung des Kd‑Werts in lokalen Böden.  
+- Berücksichtigung von Boden‑pH, organischem Gehalt und Partikelgröße bei der Interpretation der Kd‑Werte.  
+- Nutzung der Kd‑Werte in Transport‑ und Risikomodellen, um die potenzielle Ausbreitung von Ra‑226 im Grundwasser zu prognostizieren. [EPA_Kd-a.pdf--250804]
+Importance_score: 6.20
+Source_filename: 20180530_Leitfaden Trinkwasser_mit_Formblaettern.pdf--250804, EPA_Kd-a.pdf--250804, EPA_Kd-a.pdf--250804
+Source_path: kb/insert_data/20180530_Leitfaden Trinkwasser_mit_Formblaettern.pdf, kb/insert_data/EPA_Kd-a.pdf, kb/insert_data/EPA_Kd-a.pdf
 ```
 
 **Metadata:**
 ```json
 {
   "position": 2,
-  "query": "Wie werden Risikobewertungen in der Entwicklung von Entsorgungsverfahren f\u00fcr radioaktive R\u00fcckst\u00e4nde integriert?",
+  "query": "Experimentelle Messmethoden und Standardprotokolle zur Bestimmung des Kd\u2011Werts von Ra\u2011226 in B\u00f6den",
   "name": [
-    "StrlSchG.pdf--250712",
-    "AtG.pdf--250712",
-    "StrlSchV.pdf--250712"
+    "20180530_Leitfaden Trinkwasser_mit_Formblaettern.pdf--250804",
+    "EPA_Kd-a.pdf--250804",
+    "EPA_Kd-a.pdf--250804"
   ],
   "path": [
-    "kb/insert_data/StrlSchG.pdf",
-    "kb/insert_data/AtG.pdf",
-    "kb/insert_data/StrlSchV.pdf"
+    "kb/insert_data/20180530_Leitfaden Trinkwasser_mit_Formblaettern.pdf",
+    "kb/insert_data/EPA_Kd-a.pdf",
+    "kb/insert_data/EPA_Kd-a.pdf"
   ],
-  "rerank_score": 30.0,
+  "rerank_score": 2.0,
   "original_index": 0
 }
 ```
 
-### Welche technischen Verfahren sind für die sichere Entsorgung von Überwachungsrückständen unter Berücksichtigung von Umweltstandards erforderlich?
+### Tabellarische Übersicht aktueller Literaturwerte des Kd‑Werts für Ra‑226 in verschiedenen Boden‑ und Grundwasserproben
 
 #### Item 1 (Rank 1)
 
-**Rerank Score:** 50.0
+**Rerank Score:** 2.0
 **Original Index:** 0
 **Position:** 3
 
 **Content:**
 ```
-Content: Um die Beseitigung oder Verwertung von überwachungsbedürftigen Rückständen im Einklang mit rechtlichen Vorgaben durchzuführen, gelten folgende Regelungen:  
+Content: Die vorliegenden Quellen enthalten ausschließlich Angaben zu Aktivitätskonzentrationen von Radium‑226 (Ra‑226) in Bau­materialien und in Oberflächengewässern, jedoch keine Daten oder Berechnungen zum Sorptions‑/Partition‑Koeffizienten (Kd) von Ra‑226.  
 
-1. **Anmeldung und Genehmigung**  
-   Nach § 62 Absatz 1 des Strahlenschutzgesetzes (StrlSchG) muss der Verpflichtete die beabsichtigte Verwertung oder Beseitigung von Rückständen unverzüglich bei der zuständigen Behörde anmelden. Die Entlassung aus der Überwachung erfolgt durch schriftlichen Bescheid, sofern:  
-   - Der Schutz der Bevölkerung vor Strahlungsexposition sichergestellt ist (§ 62 Absatz 2 Nummer 1),  
-   - Bei Beseitigung oder Verwertung die Körperdosis beruflich Exponierter nicht überschreitet (Nummer 2) und  
-   - Keine Bedenken gegen die abfallrechtliche Zulässigkeit des Weges bestehen (Nummer 3).  
+**1. Aktivitätskonzentrationen in Bau­materialien**  
+Die Tabellen aus den Dokumenten *BfS_2012_Natürliche Radioaktivität in Baumaterialien.pdf* und *BfS_2012_SW_14_12-Natürliche Radioaktivität in Baumaterialien und die daraus resultierende Strahlenexposition.pdf* listen die spezifische Aktivität von Ra‑226 in verschiedenen Baustoffen (z. B. Ziegel, Mauerwerk, Beton) in Bq kg⁻¹. Beispiele:  
+- Ziegel: 570 ± 60 Bq kg⁻¹ (Kd‑Wert nicht angegeben) [BfS_2012_Natürliche Radioaktivität in Baumaterialien.pdf]  
+- Mauerwerk: 1120 ± 79 Bq kg⁻¹ (Kd‑Wert nicht angegeben) [BfS_2012_Natürliche Radioaktivität in Baumaterialien.pdf]  
 
-2. **Expositionsmaßstab**  
-   Der Schutz der Bevölkerung orientiert sich an einem Richtwert von einer effektiven Dosis von **1 Millisievert pro Kalenderjahr**, ohne weitere Maßnahmen nach Abschluss der Verwertung oder Beseitigung (§ 62 Absatz 3). Bei Verwendung als Bauprodukt müssen zudem die Anforderungen aus §§ 133 bis 135 erfüllt werden.  
+**2. Aktivitätskonzentrationen in Oberflächengewässern**  
+Die Quelle *fkz_3615_s_12232_strahlenexpositionen_norm_bf.pdf* enthält Messwerte von Ra‑226 in unfiltrierten und filtrierten Gewässern, die aus NORM‑Industrien stammen. Beispielwerte:  
+- Fossa Eugeniana: 29 mBq l⁻¹ (unfiltriert), 20 mBq l⁻¹ (filtriert) [fkz_3615_s_12232_strahlenexpositionen_norm_bf.pdf]  
+- Rheinberger Altrhein: 19 mBq l⁻¹ (unfiltriert), 14 mBq l⁻¹ (filtriert) [fkz_3615_s_12232_strahlenexpositionen_norm_bf.pdf]  
 
-3. **Dokumentation und Nachweis**  
-   Für die Freigabe der Rückstände sind folgende Unterlagen erforderlich:  
-   - Ein Verpflichtungserklärung zur Beseitigung oder Verwertung (§ 62 Absatz 1),  
-   - Eine Akzeptanzbestätigung durch den Recycler oder Disposer,  
-   - Nachweis der Abgabe dieser Dokumente an die zuständige Behörde für das betroffene Facility.  
+**3. Fehlende Kd‑Informationen**  
+Kein Abschnitt, keine Tabelle und keine Formel in den bereitgestellten Dokumenten beschreibt den Kd‑Wert, seine Berechnung, Einflussfaktoren (z. B. Boden‑pH, organischer Gehalt) oder Literaturwerte für Ra‑226. Daher kann keine technische Analyse oder Literaturübersicht zu Kd‑Werten für Ra‑226 aus diesen Quellen erstellt werden.  
 
-4. **Grenzüberschreitende Verbringung**  
-   Die Beseitigung von Rückständen ins Inland aus dem Ausland ist verboten (§ 62 Absatz 5). Für die Einfuhr müssen zusätzliche Nachweise erbracht werden, dass Überwachungsgrenzen und Verwertungswege eingehalten werden.  
-
-5. **Verordnungsermächtigung**  
-   Die Bundesregierung kann durch Rechtsverordnungen (mit Zustimmung des Bundestags) folgende Regelungen festlegen:  
-   - Grundsätze zur Ermittlung von Expositionen bei Rückständen,  
-   - Bedingungen für die Annahme einer maximalen Dosis von 1 Millisievert pro Jahr ohne weitere Maßnahmen (§ 63 Absatz 2),  
-   - Verfahrensregeln für Entlassung aus der Überwachung, insbesondere bei grenzüberschreitender Nutzung oder Beseitigung.  
-
-Diese Regelungen sichern die Einhaltung von Sicherheitsstandards und ermöglichen eine rechtssichere Entsorgung unter Berücksichtigung technischer sowie abfallrechtlicher Anforderungen (StrlSchG, § 62–63; StrlSchV, §§ 1–7).
-Importance_score: 5.48
-Source_filename: StrlSchV.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712
-Source_path: kb/insert_data/StrlSchV.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf
+**Fazit**  
+Die vorhandenen Dokumente liefern ausschließlich Aktivitätsdaten von Ra‑226 in Bau­materialien und Gewässern, enthalten jedoch keine Informationen zum Sorptions‑/Partition‑Koeffizienten (Kd) von Ra‑226. Für eine detaillierte Kd‑Analyse wären weitere, spezifisch zu Sorptionsstudien gehörende Quellen erforderlich.
+Importance_score: 5.65
+Source_filename: BfS_2012_Natürliche Radioaktivität in Baumaterialien.pdf--250804, BfS_2012_SW_14_12-Natürliche Radioaktivität in Baumaterialien und die daraus resultierende Strahlenexposition.pdf--250804, fkz_3615_s_12232_strahlenexpositionen_norm_bf.pdf--250804
+Source_path: kb/insert_data/BfS_2012_Natürliche Radioaktivität in Baumaterialien.pdf, kb/insert_data/BfS_2012_SW_14_12-Natürliche Radioaktivität in Baumaterialien und die daraus resultierende Strahlenexposition.pdf, kb/insert_data/fkz_3615_s_12232_strahlenexpositionen_norm_bf.pdf
 ```
 
 **Metadata:**
 ```json
 {
   "position": 3,
-  "query": "Welche technischen Verfahren sind f\u00fcr die sichere Entsorgung von \u00dcberwachungsr\u00fcckst\u00e4nden unter Ber\u00fccksichtigung von Umweltstandards erforderlich?",
+  "query": "Tabellarische \u00dcbersicht aktueller Literaturwerte des Kd\u2011Werts f\u00fcr Ra\u2011226 in verschiedenen Boden\u2011 und Grundwasserproben",
   "name": [
-    "StrlSchV.pdf--250712",
-    "StrlSchG.pdf--250712",
-    "StrlSchG.pdf--250712"
+    "BfS_2012_Nat\u00fcrliche Radioaktivit\u00e4t in Baumaterialien.pdf--250804",
+    "BfS_2012_SW_14_12-Nat\u00fcrliche Radioaktivit\u00e4t in Baumaterialien und die daraus resultierende Strahlenexposition.pdf--250804",
+    "fkz_3615_s_12232_strahlenexpositionen_norm_bf.pdf--250804"
   ],
   "path": [
-    "kb/insert_data/StrlSchV.pdf",
-    "kb/insert_data/StrlSchG.pdf",
-    "kb/insert_data/StrlSchG.pdf"
+    "kb/insert_data/BfS_2012_Nat\u00fcrliche Radioaktivit\u00e4t in Baumaterialien.pdf",
+    "kb/insert_data/BfS_2012_SW_14_12-Nat\u00fcrliche Radioaktivit\u00e4t in Baumaterialien und die daraus resultierende Strahlenexposition.pdf",
+    "kb/insert_data/fkz_3615_s_12232_strahlenexpositionen_norm_bf.pdf"
   ],
-  "rerank_score": 50.0,
+  "rerank_score": 2.0,
   "original_index": 0
 }
 ```
 
-### Wie lassen sich branchenspezifische Anforderungen bei der Umsetzung regulierter Entsorgungspraktiken berücksichtigen?
+### Einflussfaktoren auf den Kd‑Wert von Ra‑226: Boden‑pH, organischer Gehalt, Adsorptionsisomere und Minerallösungen
 
 #### Item 1 (Rank 1)
 
-**Rerank Score:** 70.0
+**Rerank Score:** 4.0
 **Original Index:** 0
 **Position:** 4
 
 **Content:**
 ```
-Content: Rückstände aus der Überwachung mit erhöhten Konzentrationen natürlicher Radionuklide können gemäß § 95a des Strahlenschutzgesetzes (StrlSchG) entsorgt werden, wobei Ausnahmen nur erlaubt sind, wenn keine Gesundheitsrisiken bestehen und EU-Rechtsakte nicht verletzt werden [Source_filename]. Die Bundesregierung regelt durch Rechtsverordnung mit Zustimmung des Bundestages die Vermeidung, Beseitigung oder Bewirtschaftung solcher Rückstände sowie den Betrieb von Anlagen zur Behandlung kontaminierter Abfälle [Source_filename]. Kontaminationswerte für Abfälle und Stoffe werden festgelegt; bei Unterschreitung sind zusätzliche Schutzmaßnahmen nicht erforderlich, sofern der Schutz von Mensch und Umwelt durch Kreislaufwirtschaftsgesetze und andere Bundesgesetze gewährleistet ist [Source_filename]. Die zuständigen Behörden dürfen Ausnahmen erteilen, wenn die radiologische Lage und Notfallumstände dies angemessen erlauben. Eigentümer, Betreiber von Anlagen sowie Sammler/Transporteure sind verpflichtet, Informationen über kontaminierte Stoffe zu bereitstellen [Source_filename].
-Importance_score: 6.42
-Source_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712
-Source_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf
+Content: Ein Kd‑Wert (Sorption‑/Partition‑Koeffizient) ist definiert als das Verhältnis der Konzentration des Radionuklids in der festen Phase zur Konzentration in der Boden­lösung: „concentration in the solid phase divided by the concentration of the radionuclide in the soil solution obtained from the contaminated soil“ [trs476_TheEnvironBehaviorRadium.pdf--250804].  
+
+**Physikalisch‑chemische Grundlagen für Ra‑226**  
+- Ra‑226 existiert im Boden als Ra²⁺ über den pH‑Bereich 4–8 und bildet kaum komplexe Spezies. Es hat eine hohe Affinität zu den regulären Austausch‑stellen des Bodens [trs476_TheEnvironBehaviorRadium.pdf--250804].  
+- Die Adsorption von Ra‑226 wird stark von der Cation‑Exchange‑Capacity (CEC) und dem organischen Gehalt (OM) bestimmt. Vandenhove und Van Hees fanden die Beziehungen  
+  \[
+  K_d(\text{Ra}) = 0.71 \times \text{CEC} - 0.64 \quad (R^2=0.91)
+  \]  
+  \[
+  K_d(\text{Ra}) = 27 \times \text{OM} - 27 \quad (R^2=0.83)
+  \]  
+  [trs476_TheEnvironBehaviorRadium.pdf--250804].  
+- Der Boden‑pH hat einen positiven Einfluss auf die Adsorption: mit steigendem pH steigt die Kd‑Werte [trs476_TheEnvironBehaviorRadium.pdf--250804].  
+- Calcium‑Ionen reduzieren die Adsorption von Ra‑226; höhere Ca²⁺‑Konzentrationen führen zu niedrigeren Kd‑Werten, was in den Messungen von Nathwani und Phillips (1979b) beobachtet wurde [EPA_Kd-c.pdf--250804].  
+
+**Literaturwerte und Messmethoden**  
+| Quelle | Bodenart | Kd‑Wert | Einheit | Bemerkung |
+|--------|----------|---------|---------|-----------|
+| Serne (1974) | Sandige, aride Böden aus Utah | 214–467 | ml g⁻¹ | pH 7,6–8,0, Kd korreliert mit CEC | [EPA_Kd-c.pdf--250804] |
+| Nathwani & Phillips (1979b) | Verschiedene Böden | sehr groß, >10⁴ ml g⁻¹ | – | Ungewöhnlich hohe Werte, möglicher Radium‑Precipitation | [EPA_Kd-c.pdf--250804] |
+| Sheppard et al. (TRS 476) | Verschiedene Bodenklassen | 47 L kg⁻¹ (n=37) | L kg⁻¹ | Unabhängig von Bodenart, Empfehlung für allgemeine Anwendung | [trs476_TheEnvironBehaviorRadium.pdf--250804] |
+| TRS 364 (IAEA) | Sand | 490 L kg⁻¹ | L kg⁻¹ | – | [trs476_TheEnvironBehaviorRadium.pdf--250804] |
+| TRS 364 (IAEA) | Loam | 36 000 L kg⁻¹ | L kg⁻¹ | – | [trs476_TheEnvironBehaviorRadium.pdf--250804] |
+| TRS 364 (IAEA) | Clay | 9 000 L kg⁻¹ | L kg⁻¹ | – | [trs476_TheEnvironBehaviorRadium.pdf--250804] |
+| TRS 364 (IAEA) | Organic | 2 400 L kg⁻¹ | L kg⁻¹ | – | [trs476_TheEnvironBehaviorRadium.pdf--250804] |
+| IAEA (aktuelle Kompilation) | Verschiedene | geometrisches Mittel variiert um 2–5 Ordnung | – | Kd‑Werte für Clay > Loam, erklärt durch höhere CEC | [trs476_TheEnvironBehaviorRadium.pdf--250804] |
+
+**Umwelt‑ und Risikokontext**  
+- Ra‑226 ist im Vergleich zu Uran weniger mobil, wie die niedrigen Mobilitätsanteile (12 % für 226Ra vs. 81 % für 238U) zeigen [trs476_TheEnvironBehaviorRadium.pdf--250804].  
+- Hohe Kd‑Werte bedeuten starke Boden‑Adsorption, was die Mobilität in Grundwasser reduziert und das Risiko für die Umwelt senkt.  
+- Boden­parameter wie CEC, OM und pH sind entscheidend für die Vorhersage der Ra‑226‑Mobilität; daher werden Kd‑Werte in Umwelt‑Monitoring‑Modellen verwendet, um die Ausbreitung von Ra‑226 in Böden und Grundwasser zu bewerten.  
+- Die große Streuung der Kd‑Werte (bis zu 5 Ordnung) unterstreicht die Notwendigkeit bodenspezifischer Messungen und die Vorsicht bei der Anwendung allgemeiner Schätzwerte.  
+
+Diese Zusammenfassung liefert die präzise Definition des Kd‑Werts, die physikalisch‑chemischen Grundlagen für Ra‑226, eine systematische Auflistung aktueller Messwerte aus der Literatur, sowie die Bedeutung des Kd‑Werts für die Mobilität und Risikoabschätzung von Ra‑226 in Böden und Grundwasser.
+Importance_score: 6.80
+Source_filename: trs476_TheEnvironBehaviorRadium.pdf--250804, EPA_Kd-c.pdf--250804, trs476_TheEnvironBehaviorRadium.pdf--250804
+Source_path: kb/insert_data/trs476_TheEnvironBehaviorRadium.pdf, kb/insert_data/EPA_Kd-c.pdf, kb/insert_data/trs476_TheEnvironBehaviorRadium.pdf
 ```
 
 **Metadata:**
 ```json
 {
   "position": 4,
-  "query": "Wie lassen sich branchenspezifische Anforderungen bei der Umsetzung regulierter Entsorgungspraktiken ber\u00fccksichtigen?",
+  "query": "Einflussfaktoren auf den Kd\u2011Wert von Ra\u2011226: Boden\u2011pH, organischer Gehalt, Adsorptionsisomere und Minerall\u00f6sungen",
   "name": [
-    "StrlSchG.pdf--250712",
-    "StrlSchG.pdf--250712",
-    "StrlSchG.pdf--250712"
+    "trs476_TheEnvironBehaviorRadium.pdf--250804",
+    "EPA_Kd-c.pdf--250804",
+    "trs476_TheEnvironBehaviorRadium.pdf--250804"
   ],
   "path": [
-    "kb/insert_data/StrlSchG.pdf",
-    "kb/insert_data/StrlSchG.pdf",
-    "kb/insert_data/StrlSchG.pdf"
+    "kb/insert_data/trs476_TheEnvironBehaviorRadium.pdf",
+    "kb/insert_data/EPA_Kd-c.pdf",
+    "kb/insert_data/trs476_TheEnvironBehaviorRadium.pdf"
   ],
-  "rerank_score": 70.0,
-  "original_index": 0
-}
-```
-
-### Welche Compliance-Tools sind effektiv zur Sicherstellung der Einhaltung internationaler Vorgaben bei der Entsorgung von Radionuklid-Rückständen?
-
-#### Item 1 (Rank 1)
-
-**Rerank Score:** 100.0
-**Original Index:** 0
-**Position:** 5
-
-**Content:**
-```
-Content: Die Entsorgung von Rückständen aus der Überwachung unterliegt strengen gesetzlichen Vorgaben und Compliance-Anforderungen. Für die sichere Entsorgung abgebrannter Brennelemente und radioaktiver Abfälle ist das Nationale Entsorgungsprogramm nach § 2c sowie dessen Umsetzung maßgeblich [AtG.pdf--250712]. Zudem sind Selbstbewertungen der kerntechnischen Anlagen erforderlich, wobei die Ergebnisse einer internationalen gegenseitigen Überprüfung durch das Bundesministerium für den Schutz des öffentlichen Lebens und die Strahlenschutzbehörden berücksichtigt werden [AtG.pdf--250712].  
-
-Für die Durchführung von Messungen mit erhöhter radioaktiver Konzentration müssen Sicherheitsmaßnahmen gemäß internationalen Verpflichtungen gewährleistet sein, wobei radioaktive Stoffe so gelagert werden müssen, dass die Sicherheitsvorschriften nicht beeinträchtigt werden [StrlSchV.pdf--250712]. Insbesondere Röntgeneinrichtungen und Anlagen zur Erzeugung ionisierender Strahlung sind mindestens alle fünf Jahre durch Sachverständige auf sicherheitstechnische Funktion, Sicherheit und Strahlenschutz zu prüfen [StrlSchV.pdf--250712].  
-
-Zur Überwachung von grenzüberschreitenden Transporten radioaktiver Substanzen ist eine Genehmigung durch die für die Beförderung zuständige Behörde erforderlich, wobei der Vertrag schriftformbedingt und vor Beginn der Beförderung abgeschlossen werden muss [StrlSchV.pdf--250712]. Die Bundesrepublik Deutschland setzt das Pariser Übereinkommen innerstaatlich um, soweit nicht gegenseitige Regelungen vorausgesetzt sind [AtG.pdf--250712].
-Importance_score: 5.20
-Source_filename: strlschg_en_bf.pdf--250712, AtG.pdf--250712, StrlSchV.pdf--250712
-Source_path: kb/insert_data/strlschg_en_bf.pdf, kb/insert_data/AtG.pdf, kb/insert_data/StrlSchV.pdf
-```
-
-**Metadata:**
-```json
-{
-  "position": 5,
-  "query": "Welche Compliance-Tools sind effektiv zur Sicherstellung der Einhaltung internationaler Vorgaben bei der Entsorgung von Radionuklid-R\u00fcckst\u00e4nden?",
-  "name": [
-    "strlschg_en_bf.pdf--250712",
-    "AtG.pdf--250712",
-    "StrlSchV.pdf--250712"
-  ],
-  "path": [
-    "kb/insert_data/strlschg_en_bf.pdf",
-    "kb/insert_data/AtG.pdf",
-    "kb/insert_data/StrlSchV.pdf"
-  ],
-  "rerank_score": 100.0,
+  "rerank_score": 4.0,
   "original_index": 0
 }
 ```
@@ -326,31 +349,31 @@ Source_path: kb/insert_data/strlschg_en_bf.pdf, kb/insert_data/AtG.pdf, kb/inser
 ### total_summaries_scored
 
 ```
-6
+5
 ```
 
 ### average_score
 
 ```
-63.333333333333336
+3.0
 ```
 
 ### highest_score
 
 ```
-100.0
+5.0
 ```
 
 ### lowest_score
 
 ```
-30.0
+2.0
 ```
 
 ### number_of_queries_processed
 
 ```
-6
+5
 ```
 
 ---
@@ -359,177 +382,159 @@ Source_path: kb/insert_data/strlschg_en_bf.pdf, kb/insert_data/AtG.pdf, kb/inser
 
 ```json
 {
-  "user_query": "Wie können Rückstände aus der Überwachung entlassen werden?",
-  "current_position": 1,
+  "user_query": "Was ist ein Kd Wert und wie ist er für Ra-226?",
+  "current_position": 3,
   "detected_language": {
     "detected_language": "German",
     "current_position": "detect_language"
   },
   "research_queries": [
-    "Wie können Rückstände aus der Überwachung entlassen werden?",
-    "Welche rechtlichen Rahmenbedingungen gelten für die Entsorgung von Materialien mit erhöhten Konzentrationen natürlicher Radionuklide?",
-    "Wie werden Risikobewertungen in der Entwicklung von Entsorgungsverfahren für radioaktive Rückstände integriert?",
-    "Welche technischen Verfahren sind für die sichere Entsorgung von Überwachungsrückständen unter Berücksichtigung von Umweltstandards erforderlich?",
-    "Wie lassen sich branchenspezifische Anforderungen bei der Umsetzung regulierter Entsorgungspraktiken berücksichtigen?",
-    "Welche Compliance-Tools sind effektiv zur Sicherstellung der Einhaltung internationaler Vorgaben bei der Entsorgung von Radionuklid-Rückständen?"
+    "Was ist ein Kd Wert und wie ist er für Ra-226?",
+    "Definition und physikalisch‑chemische Grundlagen des Kd‑Werts bei Radium‑226",
+    "Experimentelle Messmethoden und Standardprotokolle zur Bestimmung des Kd‑Werts von Ra‑226 in Böden",
+    "Tabellarische Übersicht aktueller Literaturwerte des Kd‑Werts für Ra‑226 in verschiedenen Boden‑ und Grundwasserproben",
+    "Einflussfaktoren auf den Kd‑Wert von Ra‑226: Boden‑pH, organischer Gehalt, Adsorptionsisomere und Minerallösungen"
   ],
   "retrieved_documents": {
-    "Wie können Rückstände aus der Überwachung entlassen werden?": [
+    "Was ist ein Kd Wert und wie ist er für Ra-226?": [
       "Document objects with metadata containing Unknown references"
     ],
-    "Welche rechtlichen Rahmenbedingungen gelten für die Entsorgung von Materialien mit erhöhten Konzentrationen natürlicher Radionuklide?": [
+    "Definition und physikalisch‑chemische Grundlagen des Kd‑Werts bei Radium‑226": [
       "Document objects with metadata containing Unknown references"
     ],
-    "Wie werden Risikobewertungen in der Entwicklung von Entsorgungsverfahren für radioaktive Rückstände integriert?": [
+    "Experimentelle Messmethoden und Standardprotokolle zur Bestimmung des Kd‑Werts von Ra‑226 in Böden": [
       "Document objects with metadata containing Unknown references"
     ],
-    "Welche technischen Verfahren sind für die sichere Entsorgung von Überwachungsrückständen unter Berücksichtigung von Umweltstandards erforderlich?": [
+    "Tabellarische Übersicht aktueller Literaturwerte des Kd‑Werts für Ra‑226 in verschiedenen Boden‑ und Grundwasserproben": [
       "Document objects with metadata containing Unknown references"
     ],
-    "Wie lassen sich branchenspezifische Anforderungen bei der Umsetzung regulierter Entsorgungspraktiken berücksichtigen?": [
-      "Document objects with metadata containing Unknown references"
-    ],
-    "Welche Compliance-Tools sind effektiv zur Sicherstellung der Einhaltung internationaler Vorgaben bei der Entsorgung von Radionuklid-Rückständen?": [
+    "Einflussfaktoren auf den Kd‑Wert von Ra‑226: Boden‑pH, organischer Gehalt, Adsorptionsisomere und Minerallösungen": [
       "Document objects with metadata containing Unknown references"
     ]
   },
   "search_summaries": {
-    "Wie können Rückstände aus der Überwachung entlassen werden?": [
+    "Was ist ein Kd Wert und wie ist er für Ra-226?": [
       {
-        "content": "Content: Die Entlassung von Rückständen aus der Überwachung erfolgt gemäß den Vorgaben des Strahlenschutzgesetzes (StrlSchG) unter strengen gesetzlichen Rahmenbedingungen:  \n\n1. **Voraussetzungen für die Entlassung**:  \n   - Die zuständige Behörde entlässt überwachungsbedürftige Rückstände aus der Überwachung, wenn durch Maßnahmen zur Verwertung oder Beseitigung der erforderliche Schutz vor Strahlung sicherstellt ist (§ 62 Abs. 2).  \n   - Die Körperdosis beruflich Exponierter darf die Werte für die Einstufung als „beruflich exponierte Person“ nicht überschreiten.  \n   - Keine Bedenken gegen die abfallrechtliche Zulässigkeit des Verwertungs- oder Beseitigungsweges bestehen (§ 62 Abs. 2).  \n\n2. **Schutz der Bevölkerung**:  \n   - Der Schutzmaßstab ist, dass die effektive Dosis von Einzelpersonen durch Beseitigung/Verwertung nicht mehr als **1 Millisievert im Kalenderjahr** überschreitet (§ 62 Abs. 3).  \n   - Bei Verwendung der Rückstände als Bauprodukte müssen zudem die Anforderungen von § 133–135 erfüllt sein.  \n\n3. **Verfahren und Dokumentation**:  \n   - Der verpflichtete Betreiber muss unverzüglich nach Feststellung der Überwachungsbedürftigkeit eine Anmeldung zur Verwertung/Beseitigung einreichen (§ 62 Abs. 1).  \n   - Bei Ablehnung einer Entlassungszulassung ist eine **Anzeige gemäß § 63** erforderlich, die innerhalb von einem Monat nach Feststellung der Überwachungsbedürftigkeit abzugeben ist (§ 63 Abs. 1).  \n   - Die Behörde kann verlangen, dass der Verbleib entfernter Kontaminationen nachgewiesen wird (§ 64 Abs. 2).  \n\n4. **Grenzüberschreitende Transporte**:  \n   - Die grenzüberschreitende Verbringung von Rückständen ins Inland zur Beseitigung ist **verboten** (§ 65 Abs. 7).  \n\n5. **Rechtliche Grundlagen**:  \n   - Eine abfallrechtliche Verwertung oder Beseitigung ohne Entlassung aus der Überwachung ist nicht zulässig (§ 62 Abs. 4).  \n   - Die Bundesregierung wird ermächtigt, durch Rechtsverordnung mit Zustimmung des Bundestags die konkreten Verwertungswege und Schutzmaßnahmen zu regeln (§ 63–65).  \n\n**Zusammenfassend**: Die Entlassung von Rückständen aus der Überwachung setzt eine umfassende Prüfung der Strahlenschutzanforderungen, die Einhaltung gesetzlicher Grenzwerte und die Zustimmung der zuständigen Behörde voraus. Zudem sind dokumentierte Nachweise zur Sicherheit und Verwertbarkeit erforderlich.\nImportance_score: 5.80\nSource_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712\nSource_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf",
+        "content": "Content: **Definition und Bedeutung von Kd (Ra)**  \nKd‑Werte geben an, wie stark Radium adsorbiert wird; höhere Werte deuten auf stärkere Adsorption hin, wobei Radium bei hohen Kd‑Werten nahezu vollständig reversibel adsorbiert ist. [EPA_Kd-c.pdf--250804]  \n\n**Kd‑Messungen und Einflussfaktoren**  \n- In der Studie von Nathwani und Phillips (1979b) zeigen sich Kd‑Werte, die mit steigender Calcium‑Konzentration abnehmen, was die Sensitivität von Radium‑Adsorption gegenüber Calcium verdeutlicht. [EPA_Kd-c.pdf--250804]  \n- Serne (1979) stellte einen Zusammenhang zwischen Kd und der spezifischen Adsorptionskapazität (CEC) her, insbesondere bei sandigen Böden. [EPA_Kd-c.pdf--250804]  \n- Für sandige Böden liegen die Kd‑Werte zwischen 214 und 467 ml g⁻¹ (Table 4.1, trs476). [trs476_TheEnvironBehaviorRadium.pdf--250804]  \n- Die EPA‑Studie ergab ungewöhnlich hohe Kd‑Werte, die auf eine mögliche Kalzium‑Präzipitation hinweisen. [EPA_Kd-c.pdf--250804]  \n\n**Tabellarische Übersicht (TABLE 4.1, trs476)**  \nSoil Group | Kd (Ra) (L kg⁻¹) | Samples | Min | Max  \nSand | 3 100 | 1 | 3 100 | 3 100  \nLoam | 1 100 | 1 | 1 100 | 1 100  \nClay | 38 000 | 1 | 38 000 | 38 000  \nAll soils | 2 500 | 1 000 | 950 | 950 000  \nGeometric Mean | 2.5 × 10³ | – | – | –  \nGeometric SD | 13 | – | – | –  \nSamples | 1 000 | – | – | –  \nVariability | 2 – 5 Ordnung der Größenordnung | – | – | –  \n(4.2.1.6)  \n\n**Vertikale Mobilität (4.1)**  \n\\[\n\\frac{dC}{dt} = \\frac{K_d}{\\theta}\\frac{d\\theta}{dt} + \\frac{K_d}{\\theta}\\frac{d\\theta}{dt}\n\\]  \nBeispielrechnung (4.2.1.6):  \n- Niedriges Ionen‑Stoff‑Wasser, 20 cm a⁻¹ Niederschlagsüberschuss, ρ = 1,4 g mL⁻¹, θ = 0,2 mL mL⁻¹, Kd = 2 500 L kg⁻¹ → interstitielle Geschwindigkeit 100 cm a⁻¹, Radium‑Geschwindigkeit VRa ≈ 0,005 cm a⁻¹. [trs476_TheEnvironBehaviorRadium.pdf--250804]  \n\n**Relevanz für Umwelt‑ und Gesundheitsbewertung**  \n- Hohe Kd‑Werte für Radium (z. B. 38 000 L kg⁻¹ in Tonnenböden, 2 500 L kg⁻¹ im IAEA‑Katalog) deuten auf geringe Mobilität und damit auf ein geringeres Transport‑Risiko in Grundwasser hin. [trs476_TheEnvironBehaviorRadium.pdf--250804]  \n- Die starke Sensitivität gegenüber Calcium‑Konzentration und die Abnahme der Kd‑Werte bei erhöhtem Calcium sind entscheidend für die Modellierung von Radium‑Transport in Böden. [EPA_Kd-c.pdf--250804]  \n- Die hohe Variabilität (2–5 Ordnung der Größenordnung) unterstreicht die Notwendigkeit bodenspezifischer Kd‑Messungen für genaue Risikobewertungen. [trs476_TheEnvironBehaviorRadium.pdf--250804]  \n- Kd‑Werte werden in vertikalen Mobilitätsmodellen verwendet, um die Geschwindigkeit des Radium‑Transportes in Grundwasser zu schätzen, was für die Bewertung von Strahlenschutzmaßnahmen von zentraler Bedeutung ist. [trs476_TheEnvironBehaviorRadium.pdf--250804]\nImportance_score: 7.82\nSource_filename: EPA_Kd-c.pdf--250804, trs476_TheEnvironBehaviorRadium.pdf--250804, BfS_2012_SW_14_12-Natürliche Radioaktivität in Baumaterialien und die daraus resultierende Strahlenexposition.pdf--250804\nSource_path: kb/insert_data/EPA_Kd-c.pdf, kb/insert_data/trs476_TheEnvironBehaviorRadium.pdf, kb/insert_data/BfS_2012_SW_14_12-Natürliche Radioaktivität in Baumaterialien und die daraus resultierende Strahlenexposition.pdf",
         "metadata": {
           "position": 0,
-          "query": "Wie können Rückstände aus der Überwachung entlassen werden?",
+          "query": "Was ist ein Kd Wert und wie ist er für Ra-226?",
           "name": [
-            "StrlSchG.pdf--250712",
-            "StrlSchG.pdf--250712",
-            "StrlSchG.pdf--250712"
+            "EPA_Kd-c.pdf--250804",
+            "trs476_TheEnvironBehaviorRadium.pdf--250804",
+            "BfS_2012_SW_14_12-Natürliche Radioaktivität in Baumaterialien und die daraus resultierende Strahlenexposition.pdf--250804"
           ],
           "path": [
-            "kb/insert_data/StrlSchG.pdf",
-            "kb/insert_data/StrlSchG.pdf",
-            "kb/insert_data/StrlSchG.pdf"
+            "kb/insert_data/EPA_Kd-c.pdf",
+            "kb/insert_data/trs476_TheEnvironBehaviorRadium.pdf",
+            "kb/insert_data/BfS_2012_SW_14_12-Natürliche Radioaktivität in Baumaterialien und die daraus resultierende Strahlenexposition.pdf"
           ],
-          "rerank_score": 70.0,
+          "rerank_score": 2.0,
           "original_index": 0
         }
       }
     ],
-    "Welche rechtlichen Rahmenbedingungen gelten für die Entsorgung von Materialien mit erhöhten Konzentrationen natürlicher Radionuklide?": [
+    "Definition und physikalisch‑chemische Grundlagen des Kd‑Werts bei Radium‑226": [
       {
-        "content": "Content: Die Entsorgung von Rückständen mit erhöhter Konzentration natürlicher Radionuklide unter Berücksichtigung rechtlicher Rahmenbedingungen erfolgt gemäß folgenden Vorschriften:  \n\n1. **Regeldeckungssummen (§ 8 Abs. 3–5, § 8a AtDeckV):**  \n   - Bei der Entsorgung radioaktiver Abfälle in einer Landessammelstelle oder zugelassener Einrichtung beträgt die Regeldeckungssumme **7 Millionen Euro**, sofern es sich nicht um eine Kernanlage handelt. Für Abfälle aus Anlagen im Sinne des Atomgesetzes (§ 7) steigt der Betrag auf **70 Millionen Euro**.  \n   - Bei Beförderung von radioaktiven Stoffen darf die Deckungssumme den Betrag von **35 Millionen Euro nicht überschreiten**, soweit dies angemessen ist (§ 8 Abs. 5).  \n\n2. **Entsorgungsbedingungen gemäß StrlSchG:**  \n   - Bei radioaktiver Kontamination durch einen Notfall gelten **Kontaminationswerte** als sicher, wenn die Abfälle in Anlagen entsorgt werden, die den Schutz von Mensch und Umwelt gewährleisten (§ 3 Abs. 1 StrlSchG).  \n   - Ausnahmen zur Rechtsvorschriften sind nur zulässig, **sofern keine Gesundheitsrisiken** entstehen oder EU-Recht verletzt wird (§ 2 Abs. 2 StrlSchG).  \n\n3. **Verbot der Wiederverwendung (AtG):**  \n   - Radioaktive Stoffe mit erhöhter Konzentration natürlicher Radionuklide dürfen nicht wiederaufgenommen oder verarbeitet werden, wenn sie gemäß einer Verordnung unter § 1 Abs. 1 Nr. 1 des Atomgesetzes (AtG) freigegeben wurden (§ 3 AtG).  \n\n4. **Kernmaterialien und Transport:**  \n   - Für den Transport von Kernmaterialien gilt eine Regeldeckungssumme von **80 Millionen Euro**, die bei bestimmten Mengen oder Aktivitäten auf bis zu **125 Millionen Euro erhöht** werden kann (§ 8a Abs. 1 AtDeckV).  \n\nDiese Vorschriften sichern den Schutz vor Strahlungseffekten und ermöglichen eine rechtliche Entsorgung unter Einhaltung der Kreislaufwirtschafts- sowie Atomgesetze. Ausnahmen sind nur bei unbedenklicher Risikominimierung zulässig (§ 2 Abs. 2 StrlSchG).\nImportance_score: 6.73\nSource_filename: AtG.pdf--250712, StrlSchG.pdf--250712, AtDeckV.pdf--250712\nSource_path: kb/insert_data/AtG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/AtDeckV.pdf",
+        "content": "Content: Kd‑Wert (Sorption‑/Partition‑Koeffizient) beschreibt das Verhältnis der Konzentration eines Stoffes in der festen Phase zu seiner Konzentration in der flüssigen Phase und wird in ml g⁻¹ angegeben. Für Radium‑226 (Ra‑226) liegen in der Literatur sehr unterschiedliche Werte vor, die stark von Boden­eigenschaften wie pH, organischem Gehalt, Sand‑/Silt‑/Clay‑anteil und CEC abhängen.  \n\nIn der EPA‑Publikation „Kd‑c“ werden mehrere Messungen und Zusammenstellungen von Kd‑Werten für Ra‑226 präsentiert.  \n- Looney et al. (1987) empfehlen einen Kd‑Wert von 100 ml g⁻¹ für Ra‑226 und geben einen möglichen Wertebereich von 10 bis 1 000 000 ml g⁻¹ an. Diese Empfehlung ist spezifisch für den Savannah River Plant‑Standort und muss bei anderen Standorten überprüft werden. [EPA_Kd-c.pdf--250804]  \n- Serne (1974) hat Kd‑Werte für vier sandige, aride Bodenproben aus Utah gemessen:  \n  - Boden I (pH 7.9–8.0): 354 ± 15 ml g⁻¹  \n  - Boden II (pH 7.6–7.7): 289 ± 7 ml g⁻¹  \n  - Boden III (pH 7.8–7.9): 467 ± 15 ml g⁻¹  \n  - Boden IV (pH 7.6–7.8): 214 ± 15 ml g⁻¹  \n  Diese Werte verdeutlichen die starke Abhängigkeit von Boden­pH und Textur. [EPA_Kd-c.pdf--250804]  \n- Thibault et al. (1990) haben eine umfangreiche Kompilation von Kd‑Werten für Ra‑226 aus verschiedenen Quellen erstellt, um die Migration von Radium in geologischen Lagerstätten zu bewerten. Die genauen Zahlen aus dieser Kompilation sind im vorliegenden Auszug nicht aufgeführt, werden jedoch als Referenz für weitere Analysen genannt. [EPA_Kd-c.pdf--250804]  \n- Table 5.26 aus der EPA‑Publikation listet die physikalisch‑chemischen Eigenschaften von Böden, für die Kd‑Werte ermittelt wurden:  \n  - Wendover Silty Clay: pH 5.4, organischer Gehalt 16.2 %, Sand 6.7 %, Silt 47.9 %, Clay 45.4 %, CEC 34.7 meq / 100 g  \n  - Grimsby Silt Loam: pH 4.3, organischer Gehalt 1.0 %, Sand 43.7 %, Silt 48.9 %, Clay 7.4 %, CEC 10.4 meq / 100 g  \n  - St. Thomas Sand: pH 5.2, organischer Gehalt 3.1 %, Sand 91.1 %, Silt 6.8 %, Clay 1.3 %, CEC 10.9 meq / 100 g  \n  Diese Parameter sind entscheidend für die Interpretation der Kd‑Werte. [EPA_Kd-c.pdf--250804]  \n\nDas Dokument „strlsch_messungen_gamma_natrad_bf.pdf“ beschreibt Messmethoden zur Bestimmung von Ra‑226 (z. B. Auswertung der 186,2‑keV‑Linie oder der Gammalinien der Nachbarkerne), liefert jedoch keine Kd‑Werte. [strlsch_messungen_gamma_natrad_bf.pdf--250804]  \n\nDie Kd‑Werte sind für die Umweltüberwachung von entscheidender Bedeutung, da sie die Mobilität von Ra‑226 in Grundwasser‑ und Bodenschichten bestimmen. Hohe Kd‑Werte deuten auf starke Adsorption und damit auf geringe Mobilität hin, während niedrige Werte auf eine höhere Freisetzung und potenziell höhere Strahlenbelastung des Grundwassers hinweisen. Diese Informationen werden bei Risikobewertungen, Standortwahl für Lagerstätten und bei der Entwicklung von Sanierungsstrategien verwendet.\nImportance_score: 6.78\nSource_filename: strlsch_messungen_gamma_natrad_bf.pdf--250804, EPA_Kd-c.pdf--250804, EPA_Kd-c.pdf--250804\nSource_path: kb/insert_data/strlsch_messungen_gamma_natrad_bf.pdf, kb/insert_data/EPA_Kd-c.pdf, kb/insert_data/EPA_Kd-c.pdf",
         "metadata": {
           "position": 1,
-          "query": "Welche rechtlichen Rahmenbedingungen gelten für die Entsorgung von Materialien mit erhöhten Konzentrationen natürlicher Radionuklide?",
+          "query": "Definition und physikalisch‑chemische Grundlagen des Kd‑Werts bei Radium‑226",
           "name": [
-            "AtG.pdf--250712",
-            "StrlSchG.pdf--250712",
-            "AtDeckV.pdf--250712"
+            "strlsch_messungen_gamma_natrad_bf.pdf--250804",
+            "EPA_Kd-c.pdf--250804",
+            "EPA_Kd-c.pdf--250804"
           ],
           "path": [
-            "kb/insert_data/AtG.pdf",
-            "kb/insert_data/StrlSchG.pdf",
-            "kb/insert_data/AtDeckV.pdf"
+            "kb/insert_data/strlsch_messungen_gamma_natrad_bf.pdf",
+            "kb/insert_data/EPA_Kd-c.pdf",
+            "kb/insert_data/EPA_Kd-c.pdf"
           ],
-          "rerank_score": 60.0,
+          "rerank_score": 5.0,
           "original_index": 0
         }
       }
     ],
-    "Wie werden Risikobewertungen in der Entwicklung von Entsorgungsverfahren für radioaktive Rückstände integriert?": [
+    "Experimentelle Messmethoden und Standardprotokolle zur Bestimmung des Kd‑Werts von Ra‑226 in Böden": [
       {
-        "content": "Content: Die Entlassung überwachungsbedürftiger Rückstände aus der Überwachtung zur Verwertung als Bauprodukt erfolgt gemäß § 30 des Strahlenschutzgesetzes (StrlSchV). Dazu muss der Antragsteller folgende Unterlagen vorlegen:  \n1. Eine Erklärung über den Verbleib der Rückstände,  \n2. eine Annahmeerklärung des Herstellers des Bauprodukts sowie  \n3. eine Bestätigung, dass die voraussichtliche Exposition durch Gammastrahlung nicht den Referenzwert nach § 133 StrlSchG überschreitet [StrlSchV.pdf--250712].  \n\nDie zuständige Behörde prüft dabei, ob das Dosiskriterium gemäß § 62 Absatz 3 Satz 1 des StrlSchG nicht verletzt wird. Zudem bleiben die Bestimmungen des Kreislaufwirtschaftsgesetzes unberührt [StrlSchV.pdf--250712].  \n\nFür die Freigabe radioaktiver Stoffe (§ 31 StrlSchV) ist sicherzustellen, dass eine effektive Dosis von maximal 10 Mikrosievert pro Kalenderjahr für Einzelpersonen der Bevölkerung entsteht. Eine Freigabe ersetzt keine Genehmigung nach § 7 Absatz 3 des Atomgesetzes (AtG) [StrlSchV.pdf--250712].  \n\nDie Entsorgung abgebrannter Brennelemente und radioaktiver Abfälle erfolgt im Rahmen eines abgestuften Konzepts, wobei die Kosten von den Erzeugern getragen werden. Dabei sind faktengestützte Entscheidungsprozesse sowie die Berücksichtigung der Sicherheit (inklusive Schutzmaßnahmen) vorgeschrieben [AtG.pdf--250712].  \n\nZusätzlich gelten für die Überwachung und Verwertung von Rückständen im Rahmen des Strahlenschutzes strenge Vorschriften, darunter die Einhaltung internationaler Verpflichtungen und Sicherheitsstandards [StrlSchG.pdf--250712].\nImportance_score: 6.33\nSource_filename: StrlSchG.pdf--250712, AtG.pdf--250712, StrlSchV.pdf--250712\nSource_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/AtG.pdf, kb/insert_data/StrlSchV.pdf",
+        "content": "Content: **Definition des Kd‑Werts**  \nDer Kd‑Wert (Sorption‑/Partition‑Koeffizient) ist das Verhältnis der Konzentration eines Soluts, das an einer festen Phase adsorbiert ist, zur Konzentration des Soluts in der flüssigen Phase bei Gleichgewicht. Dieser Koeffizient beschreibt, wie stark ein Stoff an Boden‑ oder Sedimentpartikeln bindet und damit seine Mobilität im Grundwasser bestimmt. [EPA_Kd-a.pdf--250804]  \n\n**Relevanz für Ra‑226**  \nRa‑226 ist ein radioaktives Radionuklid, das in Trinkwasserproben nach den deutschen Leitlinien (Kapitel 7.2.5) in vier Quartalen gemessen wird, wenn die Gesamt‑Alpha‑Aktivität den Grenzwert überschreitet. Der Kd‑Wert von Ra‑226 ist entscheidend für die Abschätzung seiner Mobilität in Böden und Grundwasser sowie für die Risikobewertung von Kontaminationen. [EPA_Kd-a.pdf--250804]  \n\n**Experimentelle Messmethoden**  \n1. **Laborbatch‑Methode** – Boden‑Proben werden mit einer definierten Konzentration des Radionuklids in einer Lösung inkubiert; nach Erreichen des Gleichgewichts wird die adsorbierte Menge gemessen. [EPA_Kd-a.pdf--250804]  \n2. **In‑situ‑Batch‑Methode** – ähnliche Prinzipien wie die Laborbatch‑Methode, jedoch direkt im Feld, um natürliche Bedingungen zu berücksichtigen. [EPA_Kd-a.pdf--250804]  \n3. **Laborfluss‑Durch‑Methode** – Bodenproben werden in einem kontinuierlichen Fluss von Lösung durchlaufen; die Adsorption wird über die Zeit verfolgt. [EPA_Kd-a.pdf--250804]  \n4. **Feldmodell‑Methode** – Modellierung der Transportprozesse im Feld unter Verwendung von Messdaten aus der Umgebung. [EPA_Kd-a.pdf--250804]  \n5. **Koc‑Methode** – Berechnung des Kd aus dem organischen Kohlenstoff‑Sorption‑Koeffizienten (Koc) der Bodenprobe. [EPA_Kd-a.pdf--250804]  \n\n**Modellannahmen und Einflussfaktoren**  \n- **Gleichgewicht**: Annahme, dass Adsorption und Desorption im Gleichgewicht sind.  \n- **Homogenität**: Bodenpartikel und Lösung gelten als homogen.  \n- **Einflussfaktoren**: Boden‑pH, organischer Gehalt, Partikelgröße, Lösung‑zu‑Feststoff‑Verhältnis, Temperatur, Elektrolytkonzentration. Diese Faktoren können die gemessenen Kd‑Werte um bis zu drei Größenordnungen variieren. [EPA_Kd-a.pdf--250804]  \n\n**Variabilität der Kd‑Werte**  \nEine interlaboratorische Übung mit neun Labors zeigte, dass die Kd‑Werte für Cesium von 1,3 ± 0,4 bis 880 ± 160 ml/g und für Plutonium von 70 ± 36 bis 63 000 ± 19 000 ml/g schwankten – eine Variation von bis zu drei Größenordnungen. Für Strontium lagen die Werte innerhalb einer Größenordnung (1,4 ± 0,2 bis 14,9 ± 4,6 ml/g). Die Hauptursachen waren: Tracer‑Zugabe, Lösung‑zu‑Feststoff‑Verhältnis, Anfangskonzentration, Partikelgröße, Trennmethoden, Behältnisse und Temperatur. [EPA_Kd-a.pdf--250804]  \n\n**Literaturwerte (Beispiel für andere Radionuklide)**  \n\n| Radionuklid | Kd‑Bereich (ml/g) | Quelle |\n|-------------|-------------------|--------|\n| Cs | 1,3 ± 0,4 – 880 ± 160 | [EPA_Kd-a.pdf--250804] |\n| Pu | 70 ± 36 – 63 000 ± 19 000 | [EPA_Kd-a.pdf--250804] |\n| Sr | 1,4 ± 0,2 – 14,9 ± 4,6 | [EPA_Kd-a.pdf--250804] |\n\n**Keine spezifischen Kd‑Werte für Ra‑226 in den vorliegenden Quellen**  \nDie bereitgestellten Dokumente enthalten keine direkten Messwerte oder Literaturangaben für den Kd‑Wert von Ra‑226. Die Relevanz des Kd‑Werts für Ra‑226 wird jedoch aus den allgemeinen Prinzipien der Radionuklid‑Transportmodellierung und den Anforderungen der Trinkwasser‑Leitlinien abgeleitet. [EPA_Kd-a.pdf--250804]  \n\n**Umweltkontextualisierung**  \nDer Kd‑Wert bestimmt, ob Ra‑226 in Böden adsorbiert und damit aus dem Grundwasser zurückgehalten wird oder mobil bleibt und potenziell in die Trinkwasserversorgung gelangt. Ein hoher Kd‑Wert bedeutet starke Bindung an Bodenpartikel, geringere Mobilität und geringeres Risiko für die Trinkwasserversorgung. Umgekehrt führt ein niedriger Kd‑Wert zu erhöhter Mobilität und höherem Risiko. Die Bewertung der Mobilität von Ra‑226 erfolgt daher häufig in Kombination mit Messungen der Gesamt‑Alpha‑Aktivität und der spezifischen Radiumkonzentration in Wasserproben. [EPA_Kd-a.pdf--250804]  \n\n**Praktische Implikationen für die Umweltüberwachung**  \n- Regelmäßige Messungen der Ra‑226‑Konzentration in Wasserproben (Kapitel 7.2.5).  \n- Anwendung geeigneter Batch‑ oder Flow‑Through‑Methoden zur Bestimmung des Kd‑Werts in lokalen Böden.  \n- Berücksichtigung von Boden‑pH, organischem Gehalt und Partikelgröße bei der Interpretation der Kd‑Werte.  \n- Nutzung der Kd‑Werte in Transport‑ und Risikomodellen, um die potenzielle Ausbreitung von Ra‑226 im Grundwasser zu prognostizieren. [EPA_Kd-a.pdf--250804]\nImportance_score: 6.20\nSource_filename: 20180530_Leitfaden Trinkwasser_mit_Formblaettern.pdf--250804, EPA_Kd-a.pdf--250804, EPA_Kd-a.pdf--250804\nSource_path: kb/insert_data/20180530_Leitfaden Trinkwasser_mit_Formblaettern.pdf, kb/insert_data/EPA_Kd-a.pdf, kb/insert_data/EPA_Kd-a.pdf",
         "metadata": {
           "position": 2,
-          "query": "Wie werden Risikobewertungen in der Entwicklung von Entsorgungsverfahren für radioaktive Rückstände integriert?",
+          "query": "Experimentelle Messmethoden und Standardprotokolle zur Bestimmung des Kd‑Werts von Ra‑226 in Böden",
           "name": [
-            "StrlSchG.pdf--250712",
-            "AtG.pdf--250712",
-            "StrlSchV.pdf--250712"
+            "20180530_Leitfaden Trinkwasser_mit_Formblaettern.pdf--250804",
+            "EPA_Kd-a.pdf--250804",
+            "EPA_Kd-a.pdf--250804"
           ],
           "path": [
-            "kb/insert_data/StrlSchG.pdf",
-            "kb/insert_data/AtG.pdf",
-            "kb/insert_data/StrlSchV.pdf"
+            "kb/insert_data/20180530_Leitfaden Trinkwasser_mit_Formblaettern.pdf",
+            "kb/insert_data/EPA_Kd-a.pdf",
+            "kb/insert_data/EPA_Kd-a.pdf"
           ],
-          "rerank_score": 30.0,
+          "rerank_score": 2.0,
           "original_index": 0
         }
       }
     ],
-    "Welche technischen Verfahren sind für die sichere Entsorgung von Überwachungsrückständen unter Berücksichtigung von Umweltstandards erforderlich?": [
+    "Tabellarische Übersicht aktueller Literaturwerte des Kd‑Werts für Ra‑226 in verschiedenen Boden‑ und Grundwasserproben": [
       {
-        "content": "Content: Um die Beseitigung oder Verwertung von überwachungsbedürftigen Rückständen im Einklang mit rechtlichen Vorgaben durchzuführen, gelten folgende Regelungen:  \n\n1. **Anmeldung und Genehmigung**  \n   Nach § 62 Absatz 1 des Strahlenschutzgesetzes (StrlSchG) muss der Verpflichtete die beabsichtigte Verwertung oder Beseitigung von Rückständen unverzüglich bei der zuständigen Behörde anmelden. Die Entlassung aus der Überwachung erfolgt durch schriftlichen Bescheid, sofern:  \n   - Der Schutz der Bevölkerung vor Strahlungsexposition sichergestellt ist (§ 62 Absatz 2 Nummer 1),  \n   - Bei Beseitigung oder Verwertung die Körperdosis beruflich Exponierter nicht überschreitet (Nummer 2) und  \n   - Keine Bedenken gegen die abfallrechtliche Zulässigkeit des Weges bestehen (Nummer 3).  \n\n2. **Expositionsmaßstab**  \n   Der Schutz der Bevölkerung orientiert sich an einem Richtwert von einer effektiven Dosis von **1 Millisievert pro Kalenderjahr**, ohne weitere Maßnahmen nach Abschluss der Verwertung oder Beseitigung (§ 62 Absatz 3). Bei Verwendung als Bauprodukt müssen zudem die Anforderungen aus §§ 133 bis 135 erfüllt werden.  \n\n3. **Dokumentation und Nachweis**  \n   Für die Freigabe der Rückstände sind folgende Unterlagen erforderlich:  \n   - Ein Verpflichtungserklärung zur Beseitigung oder Verwertung (§ 62 Absatz 1),  \n   - Eine Akzeptanzbestätigung durch den Recycler oder Disposer,  \n   - Nachweis der Abgabe dieser Dokumente an die zuständige Behörde für das betroffene Facility.  \n\n4. **Grenzüberschreitende Verbringung**  \n   Die Beseitigung von Rückständen ins Inland aus dem Ausland ist verboten (§ 62 Absatz 5). Für die Einfuhr müssen zusätzliche Nachweise erbracht werden, dass Überwachungsgrenzen und Verwertungswege eingehalten werden.  \n\n5. **Verordnungsermächtigung**  \n   Die Bundesregierung kann durch Rechtsverordnungen (mit Zustimmung des Bundestags) folgende Regelungen festlegen:  \n   - Grundsätze zur Ermittlung von Expositionen bei Rückständen,  \n   - Bedingungen für die Annahme einer maximalen Dosis von 1 Millisievert pro Jahr ohne weitere Maßnahmen (§ 63 Absatz 2),  \n   - Verfahrensregeln für Entlassung aus der Überwachung, insbesondere bei grenzüberschreitender Nutzung oder Beseitigung.  \n\nDiese Regelungen sichern die Einhaltung von Sicherheitsstandards und ermöglichen eine rechtssichere Entsorgung unter Berücksichtigung technischer sowie abfallrechtlicher Anforderungen (StrlSchG, § 62–63; StrlSchV, §§ 1–7).\nImportance_score: 5.48\nSource_filename: StrlSchV.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712\nSource_path: kb/insert_data/StrlSchV.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf",
+        "content": "Content: Die vorliegenden Quellen enthalten ausschließlich Angaben zu Aktivitätskonzentrationen von Radium‑226 (Ra‑226) in Bau­materialien und in Oberflächengewässern, jedoch keine Daten oder Berechnungen zum Sorptions‑/Partition‑Koeffizienten (Kd) von Ra‑226.  \n\n**1. Aktivitätskonzentrationen in Bau­materialien**  \nDie Tabellen aus den Dokumenten *BfS_2012_Natürliche Radioaktivität in Baumaterialien.pdf* und *BfS_2012_SW_14_12-Natürliche Radioaktivität in Baumaterialien und die daraus resultierende Strahlenexposition.pdf* listen die spezifische Aktivität von Ra‑226 in verschiedenen Baustoffen (z. B. Ziegel, Mauerwerk, Beton) in Bq kg⁻¹. Beispiele:  \n- Ziegel: 570 ± 60 Bq kg⁻¹ (Kd‑Wert nicht angegeben) [BfS_2012_Natürliche Radioaktivität in Baumaterialien.pdf]  \n- Mauerwerk: 1120 ± 79 Bq kg⁻¹ (Kd‑Wert nicht angegeben) [BfS_2012_Natürliche Radioaktivität in Baumaterialien.pdf]  \n\n**2. Aktivitätskonzentrationen in Oberflächengewässern**  \nDie Quelle *fkz_3615_s_12232_strahlenexpositionen_norm_bf.pdf* enthält Messwerte von Ra‑226 in unfiltrierten und filtrierten Gewässern, die aus NORM‑Industrien stammen. Beispielwerte:  \n- Fossa Eugeniana: 29 mBq l⁻¹ (unfiltriert), 20 mBq l⁻¹ (filtriert) [fkz_3615_s_12232_strahlenexpositionen_norm_bf.pdf]  \n- Rheinberger Altrhein: 19 mBq l⁻¹ (unfiltriert), 14 mBq l⁻¹ (filtriert) [fkz_3615_s_12232_strahlenexpositionen_norm_bf.pdf]  \n\n**3. Fehlende Kd‑Informationen**  \nKein Abschnitt, keine Tabelle und keine Formel in den bereitgestellten Dokumenten beschreibt den Kd‑Wert, seine Berechnung, Einflussfaktoren (z. B. Boden‑pH, organischer Gehalt) oder Literaturwerte für Ra‑226. Daher kann keine technische Analyse oder Literaturübersicht zu Kd‑Werten für Ra‑226 aus diesen Quellen erstellt werden.  \n\n**Fazit**  \nDie vorhandenen Dokumente liefern ausschließlich Aktivitätsdaten von Ra‑226 in Bau­materialien und Gewässern, enthalten jedoch keine Informationen zum Sorptions‑/Partition‑Koeffizienten (Kd) von Ra‑226. Für eine detaillierte Kd‑Analyse wären weitere, spezifisch zu Sorptionsstudien gehörende Quellen erforderlich.\nImportance_score: 5.65\nSource_filename: BfS_2012_Natürliche Radioaktivität in Baumaterialien.pdf--250804, BfS_2012_SW_14_12-Natürliche Radioaktivität in Baumaterialien und die daraus resultierende Strahlenexposition.pdf--250804, fkz_3615_s_12232_strahlenexpositionen_norm_bf.pdf--250804\nSource_path: kb/insert_data/BfS_2012_Natürliche Radioaktivität in Baumaterialien.pdf, kb/insert_data/BfS_2012_SW_14_12-Natürliche Radioaktivität in Baumaterialien und die daraus resultierende Strahlenexposition.pdf, kb/insert_data/fkz_3615_s_12232_strahlenexpositionen_norm_bf.pdf",
         "metadata": {
           "position": 3,
-          "query": "Welche technischen Verfahren sind für die sichere Entsorgung von Überwachungsrückständen unter Berücksichtigung von Umweltstandards erforderlich?",
+          "query": "Tabellarische Übersicht aktueller Literaturwerte des Kd‑Werts für Ra‑226 in verschiedenen Boden‑ und Grundwasserproben",
           "name": [
-            "StrlSchV.pdf--250712",
-            "StrlSchG.pdf--250712",
-            "StrlSchG.pdf--250712"
+            "BfS_2012_Natürliche Radioaktivität in Baumaterialien.pdf--250804",
+            "BfS_2012_SW_14_12-Natürliche Radioaktivität in Baumaterialien und die daraus resultierende Strahlenexposition.pdf--250804",
+            "fkz_3615_s_12232_strahlenexpositionen_norm_bf.pdf--250804"
           ],
           "path": [
-            "kb/insert_data/StrlSchV.pdf",
-            "kb/insert_data/StrlSchG.pdf",
-            "kb/insert_data/StrlSchG.pdf"
+            "kb/insert_data/BfS_2012_Natürliche Radioaktivität in Baumaterialien.pdf",
+            "kb/insert_data/BfS_2012_SW_14_12-Natürliche Radioaktivität in Baumaterialien und die daraus resultierende Strahlenexposition.pdf",
+            "kb/insert_data/fkz_3615_s_12232_strahlenexpositionen_norm_bf.pdf"
           ],
-          "rerank_score": 50.0,
+          "rerank_score": 2.0,
           "original_index": 0
         }
       }
     ],
-    "Wie lassen sich branchenspezifische Anforderungen bei der Umsetzung regulierter Entsorgungspraktiken berücksichtigen?": [
+    "Einflussfaktoren auf den Kd‑Wert von Ra‑226: Boden‑pH, organischer Gehalt, Adsorptionsisomere und Minerallösungen": [
       {
-        "content": "Content: Rückstände aus der Überwachung mit erhöhten Konzentrationen natürlicher Radionuklide können gemäß § 95a des Strahlenschutzgesetzes (StrlSchG) entsorgt werden, wobei Ausnahmen nur erlaubt sind, wenn keine Gesundheitsrisiken bestehen und EU-Rechtsakte nicht verletzt werden [Source_filename]. Die Bundesregierung regelt durch Rechtsverordnung mit Zustimmung des Bundestages die Vermeidung, Beseitigung oder Bewirtschaftung solcher Rückstände sowie den Betrieb von Anlagen zur Behandlung kontaminierter Abfälle [Source_filename]. Kontaminationswerte für Abfälle und Stoffe werden festgelegt; bei Unterschreitung sind zusätzliche Schutzmaßnahmen nicht erforderlich, sofern der Schutz von Mensch und Umwelt durch Kreislaufwirtschaftsgesetze und andere Bundesgesetze gewährleistet ist [Source_filename]. Die zuständigen Behörden dürfen Ausnahmen erteilen, wenn die radiologische Lage und Notfallumstände dies angemessen erlauben. Eigentümer, Betreiber von Anlagen sowie Sammler/Transporteure sind verpflichtet, Informationen über kontaminierte Stoffe zu bereitstellen [Source_filename].\nImportance_score: 6.42\nSource_filename: StrlSchG.pdf--250712, StrlSchG.pdf--250712, StrlSchG.pdf--250712\nSource_path: kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf, kb/insert_data/StrlSchG.pdf",
+        "content": "Content: Ein Kd‑Wert (Sorption‑/Partition‑Koeffizient) ist definiert als das Verhältnis der Konzentration des Radionuklids in der festen Phase zur Konzentration in der Boden­lösung: „concentration in the solid phase divided by the concentration of the radionuclide in the soil solution obtained from the contaminated soil“ [trs476_TheEnvironBehaviorRadium.pdf--250804].  \n\n**Physikalisch‑chemische Grundlagen für Ra‑226**  \n- Ra‑226 existiert im Boden als Ra²⁺ über den pH‑Bereich 4–8 und bildet kaum komplexe Spezies. Es hat eine hohe Affinität zu den regulären Austausch‑stellen des Bodens [trs476_TheEnvironBehaviorRadium.pdf--250804].  \n- Die Adsorption von Ra‑226 wird stark von der Cation‑Exchange‑Capacity (CEC) und dem organischen Gehalt (OM) bestimmt. Vandenhove und Van Hees fanden die Beziehungen  \n  \\[\n  K_d(\\text{Ra}) = 0.71 \\times \\text{CEC} - 0.64 \\quad (R^2=0.91)\n  \\]  \n  \\[\n  K_d(\\text{Ra}) = 27 \\times \\text{OM} - 27 \\quad (R^2=0.83)\n  \\]  \n  [trs476_TheEnvironBehaviorRadium.pdf--250804].  \n- Der Boden‑pH hat einen positiven Einfluss auf die Adsorption: mit steigendem pH steigt die Kd‑Werte [trs476_TheEnvironBehaviorRadium.pdf--250804].  \n- Calcium‑Ionen reduzieren die Adsorption von Ra‑226; höhere Ca²⁺‑Konzentrationen führen zu niedrigeren Kd‑Werten, was in den Messungen von Nathwani und Phillips (1979b) beobachtet wurde [EPA_Kd-c.pdf--250804].  \n\n**Literaturwerte und Messmethoden**  \n| Quelle | Bodenart | Kd‑Wert | Einheit | Bemerkung |\n|--------|----------|---------|---------|-----------|\n| Serne (1974) | Sandige, aride Böden aus Utah | 214–467 | ml g⁻¹ | pH 7,6–8,0, Kd korreliert mit CEC | [EPA_Kd-c.pdf--250804] |\n| Nathwani & Phillips (1979b) | Verschiedene Böden | sehr groß, >10⁴ ml g⁻¹ | – | Ungewöhnlich hohe Werte, möglicher Radium‑Precipitation | [EPA_Kd-c.pdf--250804] |\n| Sheppard et al. (TRS 476) | Verschiedene Bodenklassen | 47 L kg⁻¹ (n=37) | L kg⁻¹ | Unabhängig von Bodenart, Empfehlung für allgemeine Anwendung | [trs476_TheEnvironBehaviorRadium.pdf--250804] |\n| TRS 364 (IAEA) | Sand | 490 L kg⁻¹ | L kg⁻¹ | – | [trs476_TheEnvironBehaviorRadium.pdf--250804] |\n| TRS 364 (IAEA) | Loam | 36 000 L kg⁻¹ | L kg⁻¹ | – | [trs476_TheEnvironBehaviorRadium.pdf--250804] |\n| TRS 364 (IAEA) | Clay | 9 000 L kg⁻¹ | L kg⁻¹ | – | [trs476_TheEnvironBehaviorRadium.pdf--250804] |\n| TRS 364 (IAEA) | Organic | 2 400 L kg⁻¹ | L kg⁻¹ | – | [trs476_TheEnvironBehaviorRadium.pdf--250804] |\n| IAEA (aktuelle Kompilation) | Verschiedene | geometrisches Mittel variiert um 2–5 Ordnung | – | Kd‑Werte für Clay > Loam, erklärt durch höhere CEC | [trs476_TheEnvironBehaviorRadium.pdf--250804] |\n\n**Umwelt‑ und Risikokontext**  \n- Ra‑226 ist im Vergleich zu Uran weniger mobil, wie die niedrigen Mobilitätsanteile (12 % für 226Ra vs. 81 % für 238U) zeigen [trs476_TheEnvironBehaviorRadium.pdf--250804].  \n- Hohe Kd‑Werte bedeuten starke Boden‑Adsorption, was die Mobilität in Grundwasser reduziert und das Risiko für die Umwelt senkt.  \n- Boden­parameter wie CEC, OM und pH sind entscheidend für die Vorhersage der Ra‑226‑Mobilität; daher werden Kd‑Werte in Umwelt‑Monitoring‑Modellen verwendet, um die Ausbreitung von Ra‑226 in Böden und Grundwasser zu bewerten.  \n- Die große Streuung der Kd‑Werte (bis zu 5 Ordnung) unterstreicht die Notwendigkeit bodenspezifischer Messungen und die Vorsicht bei der Anwendung allgemeiner Schätzwerte.  \n\nDiese Zusammenfassung liefert die präzise Definition des Kd‑Werts, die physikalisch‑chemischen Grundlagen für Ra‑226, eine systematische Auflistung aktueller Messwerte aus der Literatur, sowie die Bedeutung des Kd‑Werts für die Mobilität und Risikoabschätzung von Ra‑226 in Böden und Grundwasser.\nImportance_score: 6.80\nSource_filename: trs476_TheEnvironBehaviorRadium.pdf--250804, EPA_Kd-c.pdf--250804, trs476_TheEnvironBehaviorRadium.pdf--250804\nSource_path: kb/insert_data/trs476_TheEnvironBehaviorRadium.pdf, kb/insert_data/EPA_Kd-c.pdf, kb/insert_data/trs476_TheEnvironBehaviorRadium.pdf",
         "metadata": {
           "position": 4,
-          "query": "Wie lassen sich branchenspezifische Anforderungen bei der Umsetzung regulierter Entsorgungspraktiken berücksichtigen?",
+          "query": "Einflussfaktoren auf den Kd‑Wert von Ra‑226: Boden‑pH, organischer Gehalt, Adsorptionsisomere und Minerallösungen",
           "name": [
-            "StrlSchG.pdf--250712",
-            "StrlSchG.pdf--250712",
-            "StrlSchG.pdf--250712"
+            "trs476_TheEnvironBehaviorRadium.pdf--250804",
+            "EPA_Kd-c.pdf--250804",
+            "trs476_TheEnvironBehaviorRadium.pdf--250804"
           ],
           "path": [
-            "kb/insert_data/StrlSchG.pdf",
-            "kb/insert_data/StrlSchG.pdf",
-            "kb/insert_data/StrlSchG.pdf"
+            "kb/insert_data/trs476_TheEnvironBehaviorRadium.pdf",
+            "kb/insert_data/EPA_Kd-c.pdf",
+            "kb/insert_data/trs476_TheEnvironBehaviorRadium.pdf"
           ],
-          "rerank_score": 70.0,
-          "original_index": 0
-        }
-      }
-    ],
-    "Welche Compliance-Tools sind effektiv zur Sicherstellung der Einhaltung internationaler Vorgaben bei der Entsorgung von Radionuklid-Rückständen?": [
-      {
-        "content": "Content: Die Entsorgung von Rückständen aus der Überwachung unterliegt strengen gesetzlichen Vorgaben und Compliance-Anforderungen. Für die sichere Entsorgung abgebrannter Brennelemente und radioaktiver Abfälle ist das Nationale Entsorgungsprogramm nach § 2c sowie dessen Umsetzung maßgeblich [AtG.pdf--250712]. Zudem sind Selbstbewertungen der kerntechnischen Anlagen erforderlich, wobei die Ergebnisse einer internationalen gegenseitigen Überprüfung durch das Bundesministerium für den Schutz des öffentlichen Lebens und die Strahlenschutzbehörden berücksichtigt werden [AtG.pdf--250712].  \n\nFür die Durchführung von Messungen mit erhöhter radioaktiver Konzentration müssen Sicherheitsmaßnahmen gemäß internationalen Verpflichtungen gewährleistet sein, wobei radioaktive Stoffe so gelagert werden müssen, dass die Sicherheitsvorschriften nicht beeinträchtigt werden [StrlSchV.pdf--250712]. Insbesondere Röntgeneinrichtungen und Anlagen zur Erzeugung ionisierender Strahlung sind mindestens alle fünf Jahre durch Sachverständige auf sicherheitstechnische Funktion, Sicherheit und Strahlenschutz zu prüfen [StrlSchV.pdf--250712].  \n\nZur Überwachung von grenzüberschreitenden Transporten radioaktiver Substanzen ist eine Genehmigung durch die für die Beförderung zuständige Behörde erforderlich, wobei der Vertrag schriftformbedingt und vor Beginn der Beförderung abgeschlossen werden muss [StrlSchV.pdf--250712]. Die Bundesrepublik Deutschland setzt das Pariser Übereinkommen innerstaatlich um, soweit nicht gegenseitige Regelungen vorausgesetzt sind [AtG.pdf--250712].\nImportance_score: 5.20\nSource_filename: strlschg_en_bf.pdf--250712, AtG.pdf--250712, StrlSchV.pdf--250712\nSource_path: kb/insert_data/strlschg_en_bf.pdf, kb/insert_data/AtG.pdf, kb/insert_data/StrlSchV.pdf",
-        "metadata": {
-          "position": 5,
-          "query": "Welche Compliance-Tools sind effektiv zur Sicherstellung der Einhaltung internationaler Vorgaben bei der Entsorgung von Radionuklid-Rückständen?",
-          "name": [
-            "strlschg_en_bf.pdf--250712",
-            "AtG.pdf--250712",
-            "StrlSchV.pdf--250712"
-          ],
-          "path": [
-            "kb/insert_data/strlschg_en_bf.pdf",
-            "kb/insert_data/AtG.pdf",
-            "kb/insert_data/StrlSchV.pdf"
-          ],
-          "rerank_score": 100.0,
+          "rerank_score": 4.0,
           "original_index": 0
         }
       }
     ]
   },
   "final_answer": "",
+  "linked_final_answer": null,
+  "selected_database": "NORM__Qwen--Qwen3-Embedding-0.6B--3000--600",
   "quality_check": null,
-  "report_llm": "qwen3:30b-a3b",
-  "summarization_llm": "qwen3:latest",
+  "report_llm": "gpt-oss:20b",
+  "summarization_llm": "gpt-oss:20b",
   "enable_quality_checker": false,
-  "human_feedback": "1. Es sind Materialien mit erhöhten Gehalten an natürlich vorkommenden Radionukliden. 2. es geht um gesetzliche Vorgaben. 3. Es geht um Compliance",
-  "analysis": "{'detected_language': 'German', 'current_position': 'detect_language'}  \n**Key Insights**:  \n- Die Rückstände beinhalten Materialien mit erhöhten natürlichen Radionuklid-Gehalten, was spezifische Behandlungsanforderungen erfordert.  \n- Der Fokus liegt auf gesetzlichen Vorgaben und der Einhaltung von Compliance-Standards.  \n\n**Research Focus**:  \n- Analyse der rechtlichen Rahmenbedingungen für die Entsorgung von Materialien mit natürlichen Radionukliden.  \n- Entwicklung von Verfahren zur Sicherstellung der Compliance während der Rückstandsbefreitung.  \n\n**Constraints**:  \n- Einschränkungen durch gesetzliche Vorschriften (z. B. Strahlenschutzgesetz, EU-Richtlinien).  \n- Notwendigkeit der Einhaltung von Grenzwerten für Radionuklide.  \n\n**Additional Context**:  \n- Die Rückstände stammen aus Überwachungsprozessen, möglicherweise im Umwelt- oder Industriebereich.  \n- Relevanz von internationalen und nationalen Vorschriften für radioaktive Abfälle.  \n\n**Recommendations**:  \n- Einbeziehung von Rechtsprechung und Normen (z. B. DIN, ICRP) in die Forschung.  \n- Fokus auf praxistaugliche Lösungen, die gleichzeitig rechtliche Anforderungen und Sicherheitsstandards erfüllen.  \n- Kooperation mit Behörden oder Experten für Strahlenschutz zur Validierung von Methoden.",
-  "follow_up_questions": "1. Welche spezifischen gesetzlichen Rahmenbedingungen (z. B. nationale Gesetze, EU-Richtlinien, internationale Abkommen) sollen im Fokus der Forschung stehen, und welche haben Vorrang bei der Entsorgung von Materialien mit natürlichen Radionukliden?  \n2. In welchen konkreten Anwendungsbereichen (z. B. Umweltüberwachung, Industrie, Energieversorgung) entstehen die Rückstände, und welche besonderen charakteristischen Merkmale dieser Bereiche müssen bei der Entwicklung von Entsorgungsverfahren berücksichtigt werden?  \n3. Welche Methoden oder Tools zur Sicherstellung der Compliance (z. B. Risikobewertungen, Normenkonformität, Behördenkooperation) werden in der Praxis bevorzugt, und welche Herausforderungen bestehen bei deren Implementierung?",
-  "additional_context": "1. Der Benutzer sucht nach Methoden zur sicheren Entsorgung von Materialien mit erhöhten Konzentrationen natürlicher Radionuklide, wobei gesetzliche Rahmenbedingungen und Compliance-Anforderungen im Vordergrund stehen.  \n2. Die Anforderungen beinhalten die Entwicklung von Verfahren, die sowohl technische als auch rechtliche Standards erfüllen, insbesondere in Bereichen wie Umweltüberwachung oder Energieversorgung.  \n3. Schwerpunkte liegen auf der Einhaltung nationaler und internationaler Vorgaben, der Integration von Compliance-Tools wie Risikobewertungen und der Bewältigung von Herausforderungen bei der Umsetzung regulierter Entsorgungspraktiken.  \n4. Die Lösungen müssen branchenspezifische Charakteristika berücksichtigen, um effiziente, nachhaltige und rechtlich abgesicherte Entsorgungsstrategien für radioaktive Rückstände zu gewährleisten."
+  "all_reranked_summaries": null,
+  "reflection_count": 0,
+  "internet_result": null,
+  "internet_search_term": null,
+  "web_search_enabled": false,
+  "human_feedback": "1. Radioökologie. 2. Literaturrecherche benötigt. 3. ausführlicher Text mit zusammenfassenden Tabellen und Quellenangaben",
+  "analysis": "```json\n{\n  \"detected_language\": \"German\",\n  \"current_position\": \"detect_language\",\n  \"Key Insights\": [\n    \"Der Fokus liegt auf der Radioökologie, insbesondere der Umweltverträglichkeit von Ra‑226.\",\n    \"Der Nutzer verlangt eine umfangreiche Literaturrecherche.\",\n    \"Er erwartet einen ausführlichen Text, der wichtige Werte zusammenfasst und mit Tabellen sowie Quellenangaben präsentiert.\"\n  ],\n  \"Research Focus\": [\n    \"Verhalten von Ra‑226 in natürlichen Ökosystemen (Verteilung zwischen Wasser, Boden, Sedimenten).\",\n    \"Bestimmung des Partitionierungskoeffizienten (Kd) unter variierenden Umweltbedingungen (pH, Temperatur, Bindegliedern).\",\n    \"Bewertung von Transport- und Retentionsmechanismen sowie Risikoeinschätzung für Ökosysteme.\"\n  ],\n  \"Constraints\": [\n    \"Die Ergebnisse müssen durch Literatur belegt werden (Peer‑Reviewed Journale, Fachbücher, offizielle Datenbanken).\",\n    \"Die Darstellung soll Tabellen enthalten, die Werte und Studienergebnisse übersichtlich zusammenfassen.\",\n    \"Quellenangaben sind exakt (APA, Vancouver oder einheitliches Format).\"\n  ],\n  \"Additional Context\": [\n    \"Keine spezifischen zusätzlichen Informationen wurden bereitgestellt; die Anfrage ist allgemein gehalten.\"\n  ],\n  \"Recommendations\": [\n    \"Starte mit einer systematischen Literaturrecherche (z. B. PubMed, Web of Science, Scopus, Google Scholar).\",\n    \"Nutze Suchbegriffe wie \\\"Ra‑226 Kd\\\", \\\"Radium 226 partition coefficient\\\", \\\"radioecology Ra‑226\\\".\",\n    \"Klassifiziere gefundene Studien nach Umweltmatrix (Wasser, Sediment, Boden) und Parameter (pH, Temperatur, organische Bindung).\",\n    \"Erstelle für jede Kategorie eine Tabelle, die Kd‑Werte, Referenz, Methodik und Bedingungen angibt.\",\n    \"Füge einen ausführlichen Text hinzu, der die Zusammenhänge erklärt, Trends diskutiert und Implikationen für die Umweltbewertung hervorhebt.\",\n    \"Vergiss nicht, am Ende eine Bibliographie in einheitlichem Format aufzuführen.\"\n  ]\n}\n```",
+  "follow_up_questions": "1. Welche spezifischen Umweltmatrices (z. B. Grundwasser, Oberflächenwasser, Böden, Sedimente) sollen in der Untersuchung der Kd‑Werte für Ra‑226 besonders berücksichtigt werden, und gibt es bestimmte Regionen oder Gebiete, die für die Analyse Priorität haben?  \n2. Welche vorhandenen Literaturquellen oder Datenbanken haben Sie bereits geprüft, und welche Arten von Studien (z. B. experimentelle Messungen, Modellierungen, Langzeitüberwachungsdaten) sind für Sie am relevantesten?  \n3. In welchem Zitierstil und mit welchen Formatierungsrichtlinien möchten Sie die Ergebnisse präsentieren, und bevorzugen Sie dabei eine bestimmte Datenvisualisierung (z. B. Tabellen, Grafiken, GIS‑Karten)?",
+  "additional_context": "1. Der Nutzer benötigt eine präzise Definition des **Kd‑Werts** (Sorption‑/Partition‑Koeffizienten) inklusive der zugrunde liegenden physikalisch‑chemischen Konzepte und seiner Relevanz für die Umweltradioökologie von Ra‑226.  \n2. Er verlangt eine **tiefgehende technische Analyse** des Kd‑Werts bei Ra‑226, die experimentelle Messmethoden, Modellannahmen und die Einflussfaktoren (z. B. Boden‑pH, organischer Gehalt, Adsorptions­isomere) detailliert darstellt.  \n3. Der Fokus liegt auf einer **umfassenden Literaturrecherche**: der Nutzer möchte einen ausführlichen Text mit zusammenfassenden Tabellen, die aktuelle Messwerte, Referenzbereiche und Literaturquellen zu Ra‑226‑Kd‑Werten systematisch auflisten.  \n4. Ergänzend wird die **Umgebungskontextualisierung** gefordert – insbesondere die Bedeutung des Kd‑Werts für die Mobilität und Risikoabschätzung von Ra‑226 in Grundwasser‑ und Bodenschichten, inklusive praktischer Implikationen für die Umweltüberwachung."
 }
 ```
 

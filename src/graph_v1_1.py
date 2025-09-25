@@ -233,7 +233,8 @@ def retrieve_rag_documents(state: ResearcherState, config: RunnableConfig):
             
             # Use the exact same parameters that work in the UI
             # Use the correct database as specified by user
-            database_name = 'Qwen--Qwen3-Embedding-0.6B--3000--600'
+            database_name = state.get("selected_database", 'Qwen--Qwen3-Embedding-0.6B--3000--600')
+            print(f"  [DEBUG] Using selected database from state: {database_name}")
             # Import and use the default tenant ID
             from src.vector_db_v1_1 import DEFAULT_TENANT_ID
             tenant_id = DEFAULT_TENANT_ID  # This will be 'default_tenant'
