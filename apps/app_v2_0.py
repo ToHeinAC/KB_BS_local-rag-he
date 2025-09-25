@@ -719,6 +719,7 @@ def parse_structured_llm_output(final_answer):
     """
     Parse structured LLM output that contains thinking and final answer parts.
     Handles various formats including JSON strings, Python dict strings, and direct dicts.
+    Enhanced to handle nested JSON structures and complex formatting.
     
     Args:
         final_answer: String, dict, or other format containing the structured output
@@ -741,12 +742,39 @@ def parse_structured_llm_output(final_answer):
         if final_answer.strip().startswith('{') and ('}' in final_answer):
             try:
                 import json
+                import re
+                
+                # Clean up the JSON string - handle potential formatting issues
+                cleaned_json = final_answer.strip()
+                
+                # Handle cases where there might be multiple JSON objects or nested structures
+                # Try to extract the main JSON object
+                if cleaned_json.count('{') > 1:
+                    # Find the main JSON structure
+                    brace_count = 0
+                    start_idx = cleaned_json.find('{')
+                    end_idx = start_idx
+                    
+                    for i, char in enumerate(cleaned_json[start_idx:], start_idx):
+                        if char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                end_idx = i + 1
+                                break
+                    
+                    if end_idx > start_idx:
+                        cleaned_json = cleaned_json[start_idx:end_idx]
+                
                 # Try JSON parsing first
-                parsed = json.loads(final_answer)
+                parsed = json.loads(cleaned_json)
                 if isinstance(parsed, dict):
                     final_answer = parsed
-                    print(f"[DEBUG] Successfully parsed JSON dict")
-            except (json.JSONDecodeError, ValueError):
+                    print(f"[DEBUG] Successfully parsed JSON dict with keys: {list(parsed.keys())}")
+                    
+            except (json.JSONDecodeError, ValueError) as json_error:
+                print(f"[DEBUG] JSON parsing failed: {json_error}")
                 try:
                     # Try ast.literal_eval for Python dict strings
                     import ast
@@ -756,8 +784,20 @@ def parse_structured_llm_output(final_answer):
                         print(f"[DEBUG] Successfully parsed Python dict string")
                 except (ValueError, SyntaxError) as e:
                     print(f"[DEBUG] Failed to parse dict string: {e}")
-                    # Return original string if parsing fails
-                    return final_answer, None
+                    # Try to extract JSON from within the string using regex
+                    json_match = re.search(r'\{[^{}]*"thinking"[^{}]*"final"[^{}]*\}', final_answer, re.DOTALL)
+                    if json_match:
+                        try:
+                            parsed = json.loads(json_match.group())
+                            if isinstance(parsed, dict):
+                                final_answer = parsed
+                                print(f"[DEBUG] Successfully extracted and parsed JSON from text")
+                        except:
+                            print(f"[DEBUG] Failed to parse extracted JSON, using original string")
+                            final_content = final_answer
+                    else:
+                        # Return original string if all parsing fails
+                        final_content = final_answer
         else:
             # Regular string, apply cleanup and return
             final_content = final_answer
@@ -793,6 +833,15 @@ def parse_structured_llm_output(final_answer):
         thinking_content = thinking_content.strip()
         if len(thinking_content) < 10 or thinking_content.lower() in ["none", "null", "n/a", ""]:
             thinking_content = None
+    
+    # Clean up final content - remove any remaining <think> blocks
+    if isinstance(final_content, str):
+        import re
+        # Remove <think>...</think> blocks from final content
+        final_content = re.sub(r'<think>.*?</think>', '', final_content, flags=re.DOTALL)
+        # Remove malformed <think> tags
+        final_content = re.sub(r'<think>.*', '', final_content, flags=re.DOTALL)
+        final_content = final_content.strip()
     
     print(f"[DEBUG] Final result - thinking: {thinking_content is not None}, content length: {len(str(final_content))}")
     return final_content, thinking_content

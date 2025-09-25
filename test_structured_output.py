@@ -74,10 +74,11 @@ def test_fallback_json_parsing():
 
 IMPORTANT: Your response MUST be a valid JSON object with exactly this structure:
 {
-    "content": "your markdown-formatted report here"
+    "thinking": "your reasoning process here",
+    "final": "your markdown-formatted report here"
 }
 
-Do not include any text outside the JSON object. The 'content' field should contain the complete report in markdown format."""
+Do not include any text outside the JSON object. The 'thinking' field should contain your reasoning process, and the 'final' field should contain the complete report in markdown format."""
         
         test_prompt = """
         Based on the following information, generate a brief research report:
@@ -113,23 +114,62 @@ Do not include any text outside the JSON object. The 'content' field should cont
             print(f"Cleaned response: {cleaned_response[:200]}...")
             
             parsed_json = json.loads(cleaned_response)
-            final_answer = parsed_json.get('content', raw_response)
+            thinking_content = parsed_json.get('thinking', '')
+            final_content = parsed_json.get('final', raw_response)
             
             print("✅ JSON parsing successful!")
-            print(f"Extracted content type: {type(final_answer)}")
-            print(f"Extracted content length: {len(final_answer)} characters")
-            print(f"Extracted content preview: {final_answer[:200]}...")
+            print(f"Thinking content type: {type(thinking_content)}")
+            print(f"Thinking content length: {len(thinking_content)} characters")
+            print(f"Thinking content preview: {thinking_content[:200]}...")
+            print(f"Final content type: {type(final_content)}")
+            print(f"Final content length: {len(final_content)} characters")
+            print(f"Final content preview: {final_content[:200]}...")
             
-            return True, final_answer
+            return True, (final_content, thinking_content)
             
         except json.JSONDecodeError as json_error:
             print(f"❌ JSON parsing failed: {str(json_error)}")
             print("Using raw response as fallback...")
-            return False, raw_response
+            return False, (raw_response, None)
             
     except Exception as e:
         print(f"❌ Fallback test failed: {str(e)}")
-        return False, None
+        return False, (None, None)
+
+def test_parse_structured_output():
+    """Test the parse_structured_llm_output function with the specific JSON structure."""
+    print("\n📋 Test 3: parse_structured_llm_output Function")
+    print("-" * 50)
+    
+    # Import the function from the app
+    try:
+        from apps.app_v2_0 import parse_structured_llm_output
+        
+        # Test with the exact JSON structure you provided
+        test_json = '''{
+            "thinking": "I reviewed the highest‑ranked primary summary (score 8.9) and all supporting summaries. The user asks for a precise definition of the Kd‑Wert and a detailed depiction of its calculation and interpretation for Ra‑226, including experimental values for different soils, influencing factors, applications in transport models, exposure assessment, and regulatory guidance.",
+            "final": "# Kd‑Wert (Distributionskoeffizient) – Definition und Bedeutung für Radium‑226\n\n## 1. Definition\nDer Kd‑Wert beschreibt das Gleichgewicht zwischen der Konzentration eines Stoffes in der festen Phase (Boden, Sediment) und seiner Konzentration in der flüssigen Phase (Wasser). Er wird als K_{d}=\\frac{C_{s}}{C_{w}} ausgedrückt.\n\n## 2. Berechnung im Labor\nIn Batch‑Expositions‑Methoden wird ein Boden‑Wasser‑Gemisch mit einem definierten S/L‑Verhältnis inkubiert, bis ein Gleichgewicht erreicht ist."
+        }'''
+        
+        print("Testing with structured JSON input...")
+        final_content, thinking_content = parse_structured_llm_output(test_json)
+        
+        print("✅ Parsing successful!")
+        print(f"Thinking content found: {thinking_content is not None}")
+        if thinking_content:
+            print(f"Thinking length: {len(thinking_content)} characters")
+            print(f"Thinking preview: {thinking_content[:100]}...")
+        
+        print(f"Final content found: {final_content is not None}")
+        if final_content:
+            print(f"Final content length: {len(final_content)} characters")
+            print(f"Final content preview: {final_content[:100]}...")
+        
+        return True, (final_content, thinking_content)
+        
+    except Exception as e:
+        print(f"❌ parse_structured_llm_output test failed: {str(e)}")
+        return False, (None, None)
 
 def main():
     """Run all tests."""
@@ -142,18 +182,22 @@ def main():
     # Test fallback JSON parsing
     fallback_success, fallback_content = test_fallback_json_parsing()
     
+    # Test the parse_structured_llm_output function
+    parse_success, parse_content = test_parse_structured_output()
+    
     # Summary
     print("\n📊 Test Summary")
     print("=" * 60)
     print(f"Structured Output: {'✅ PASS' if structured_success else '❌ FAIL'}")
     print(f"Fallback JSON Parsing: {'✅ PASS' if fallback_success else '❌ FAIL'}")
+    print(f"parse_structured_llm_output: {'✅ PASS' if parse_success else '❌ FAIL'}")
     
-    if structured_success or fallback_success:
+    if structured_success or fallback_success or parse_success:
         print("\n🎉 At least one method works! The implementation should be reliable.")
     else:
-        print("\n⚠️ Both methods failed. Please check the implementation.")
+        print("\n⚠️ All methods failed. Please check the implementation.")
     
-    return structured_success or fallback_success
+    return structured_success or fallback_success or parse_success
 
 if __name__ == "__main__":
     success = main()
