@@ -867,6 +867,14 @@ def linkify_sources(markdown_text: str, selected_database: str = None, kb_path="
     def replace_with_link(match):
         source_ref = match.group(1)
         
+        # Skip URL references - don't process links that contain http:// or https://
+        if source_ref.startswith(('http://', 'https://', 'www.')):
+            return match.group(0)  # Return original [URL] unchanged
+        
+        # Skip if it looks like a URL without protocol (contains common URL patterns)
+        if any(pattern in source_ref.lower() for pattern in ['.com', '.org', '.net', '.edu', '.gov', '.de', '.uk']):
+            return match.group(0)  # Return original [URL] unchanged
+        
         # Handle all possible reference formats:
         # [StrlSchG], [StrlSchG.pdf], [StrlSchG--250508], [StrlSchG--250508.pdf]
         
