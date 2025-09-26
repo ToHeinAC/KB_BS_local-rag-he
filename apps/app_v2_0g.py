@@ -1860,15 +1860,18 @@ def main():
                 # Display quality metrics
                 col_q1, col_q2, col_q3 = st.columns(3)
                 with col_q1:
-                    st.metric("Quality Score", f"{overall_score}/{max_score}")
+                    st.metric("Qualitätsbewertung", f"{overall_score}/{max_score}")
                 with col_q2:
                     status_color = "🟢" if passes_quality else "🔴"
-                    st.metric("Assessment", f"{status_color} {'PASS' if passes_quality else 'FAIL'}")
+                    st.metric("Resultat", f"{status_color} {'BESTANDEN' if passes_quality else 'NICHT BESTANDEN'}")
                 with col_q3:
-                    if needs_improvement:
-                        improvement_status = "🔄 Verbesserung notwendig"
-                    else:
+                    if passes_quality:
                         improvement_status = "✅ Qualität ausreichend"
+                    else:
+                        if needs_improvement:
+                            improvement_status = "🔄 Verbesserung notwendig"
+                        else:
+                            improvement_status = "✅ Qualität ausreichend"
                     st.metric("Status", improvement_status)
                 
                 # Display detailed quality analysis if available
