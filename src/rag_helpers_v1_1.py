@@ -762,6 +762,10 @@ def extract_database_prefix(database_name: str) -> str:
         "StrlSch__Qwen--Qwen3-Embedding-0.6B--3000--600" -> "StrlSch"
         "NORM__Qwen--Qwen3-Embedding-0.6B--3000--600" -> "NORM"
     """
+    # Handle None or empty database names
+    if not database_name:
+        return ""
+    
     # Split by double underscore and take the first part
     parts = database_name.split("__")
     return parts[0] if parts else database_name
@@ -782,6 +786,11 @@ def resolve_source_directory(database_name: str, kb_path="./kb") -> Path:
     
     prefix = extract_database_prefix(database_name)
     kb_path = Path(kb_path)
+    
+    # If no database name provided, search all subdirectories in kb_path
+    if not prefix:
+        # Return kb_path itself for broad search
+        return kb_path
     
     # Try different possible patterns for source directories
     possible_patterns = [
@@ -861,11 +870,20 @@ def linkify_sources(markdown_text: str, selected_database: str = None, kb_path="
     import re
     from pathlib import Path
     
-    # Pattern to match source references: [filename.pdf], [filename--timestamp.pdf], or [shortname]
-    source_pattern = re.compile(r'\[([^[\]]+?)\]')
+    # Pattern to match source references with BOTH square brackets and parentheses:
+    # [filename.pdf], [filename--timestamp.pdf], (filename.pdf), (filename--timestamp.pdf)
+    # CRITICAL: Only match references that look like filenames, not mathematical notation or other content
+    # Matches:
+    #   - Must start with a letter
+    #   - Can contain letters, numbers, underscores, hyphens, dots
+    #   - Minimum 3 characters total
+    #   - Supports both [...] and (...) delimiters
+    # Excludes: pure numbers, mathematical symbols (^, {, }, \, etc.), LaTeX notation
+    source_pattern = re.compile(r'[\[\(]([A-Za-z][A-Za-z0-9_\-\.]{2,}(?:\.pdf)?)[\]\)]')
     
     def replace_with_link(match):
         source_ref = match.group(1)
+        original_brackets = match.group(0)[0] + match.group(0)[-1]  # Store original brackets
         
         # Skip URL references - don't process links that contain http:// or https://
         if source_ref.startswith(('http://', 'https://', 'www.')):
@@ -874,6 +892,10 @@ def linkify_sources(markdown_text: str, selected_database: str = None, kb_path="
         # Skip if it looks like a URL without protocol (contains common URL patterns)
         if any(pattern in source_ref.lower() for pattern in ['.com', '.org', '.net', '.edu', '.gov', '.de', '.uk']):
             return match.group(0)  # Return original [URL] unchanged
+        
+        # Skip if it's too short or looks like mathematical notation
+        if len(source_ref) < 3 or source_ref.isdigit():
+            return match.group(0)  # Return original unchanged
         
         # Handle all possible reference formats:
         # [StrlSchG], [StrlSchG.pdf], [StrlSchG--250508], [StrlSchG--250508.pdf]
@@ -896,15 +918,23 @@ def linkify_sources(markdown_text: str, selected_database: str = None, kb_path="
             pdf_path = find_matching_pdf(source_ref, selected_database, kb_path)
         
         if pdf_path and pdf_path.exists():
-            # Create a data URL for the PDF
+            # Use base64 data URL for browser compatibility
+            # Streamlit strips JavaScript, so we use a direct data URL in href
             try:
+                import base64
+                
+                # Read and encode the PDF
                 pdf_bytes = pdf_path.read_bytes()
                 b64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
+                
+                # Create data URL with base64-encoded PDF
                 data_url = f"data:application/pdf;base64,{b64_pdf}"
                 
-                # Return HTML link that opens in new window
-                display_name = pdf_path.name if source_ref.endswith('.pdf') else f"{source_ref} ({pdf_path.name})"
-                return f'<a href="{data_url}" target="_blank" style="color: #1f77b4; text-decoration: none;">📄 {display_name}</a>'
+                # Return HTML link with target="_blank"
+                # Note: This works in Streamlit with unsafe_allow_html=True
+                display_name = pdf_path.name if source_ref.endswith('.pdf') else f"{source_ref}"
+                
+                return f'<a href="{data_url}" target="_blank" rel="noopener noreferrer" style="color: #1f77b4; text-decoration: underline; cursor: pointer;">📄 {display_name}</a>'
             except Exception as e:
                 return f'<span style="color: red;">📄 {source_ref} (Error: {str(e)})</span>'
         else:

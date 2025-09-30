@@ -172,16 +172,40 @@ def invoke_ollama(model, system_prompt, user_prompt, output_format=None):
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
     ]
-    response = chat(
-        messages=messages,
-        model=model,
-        format=output_format.model_json_schema() if output_format else None
-    )
+    
+    try:
+        response = chat(
+            messages=messages,
+            model=model,
+            format=output_format.model_json_schema() if output_format else None
+        )
+        
+        # Check if response is empty
+        if not response or not response.message or not response.message.content:
+            error_msg = f"Error: The LLM model {model} returned an empty response. This may indicate the model is not working properly or the prompt is too complex. Please try a different model or simplify the query."
+            print(f"  [ERROR] {error_msg}")
+            raise ValueError(error_msg)
+        
+        content = response.message.content
+        
+        # Additional check for empty string
+        if not content.strip():
+            error_msg = f"Error: The LLM model {model} returned an empty response. This may indicate the model is not working properly or the prompt is too complex. Please try a different model or simplify the query."
+            print(f"  [ERROR] {error_msg}")
+            raise ValueError(error_msg)
 
-    if output_format:
-        return output_format.model_validate_json(response.message.content)
-    else:
-        return response.message.content
+        if output_format:
+            return output_format.model_validate_json(content)
+        else:
+            return content
+            
+    except Exception as e:
+        # If it's already our custom error, re-raise it
+        if "returned an empty response" in str(e):
+            raise
+        # Otherwise, wrap the error with more context
+        print(f"  [ERROR] Exception in invoke_ollama with model {model}: {str(e)}")
+        raise Exception(f"Error invoking model {model}: {str(e)}") from e
     
 def invoke_llm(
     model,  # Specify the model name from OpenRouter

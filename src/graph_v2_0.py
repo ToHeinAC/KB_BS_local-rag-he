@@ -1060,13 +1060,26 @@ Do not include any text outside the JSON object. The 'content' field should cont
                 # Last resort: use raw response
                 final_answer = raw_response
         
+        # Final validation check
+        if not final_answer or not final_answer.strip():
+            error_msg = f"Error: The LLM model {report_llm} returned an empty response. This may indicate the model is not working properly or the prompt is too complex. Please try a different model or simplify the query."
+            print(f"  [ERROR] {error_msg}")
+            return {"final_answer": error_msg}
+        
         print(f"  [INFO] Final answer generated successfully (length: {len(final_answer)})")
         
         return {"final_answer": final_answer}
         
     except Exception as e:
-        print(f"  [ERROR] Exception in enhanced generate_final_answer: {str(e)}")
-        return {"final_answer": f"Error occurred during final answer generation: {str(e)}. Check logs for details."}
+        error_str = str(e)
+        print(f"  [ERROR] Exception in enhanced generate_final_answer: {error_str}")
+        
+        # If it's an empty response error, pass it through
+        if "returned an empty response" in error_str:
+            return {"final_answer": error_str}
+        
+        # Otherwise, provide a generic error message
+        return {"final_answer": f"Error occurred during final answer generation: {error_str}. Please try a different LLM model or check if the model is available."}
 
 
 def _generate_final_answer_prompt(initial_query: str, reranked_summaries: list[dict], 

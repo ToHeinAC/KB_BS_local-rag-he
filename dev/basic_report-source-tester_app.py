@@ -188,17 +188,23 @@ def main():
     st.markdown("""
     **Instructions:**
     1. Click on any blue source reference (📄 filename.pdf) to open the PDF in a new window/tab
-    2. The PDF will open directly in your browser's PDF viewer
+    2. The PDF opens using a `file://` URL (efficient, no base64 encoding)
     3. You can close the PDF tab to return to this app
     
     **Source Reference Format:**
     - `[StrlSchG--250508.pdf]` → Links to `StrlSchG.pdf`
     - `[filename--timestamp.pdf]` → Links to `filename.pdf`
+    - `[filename.pdf]` → Links to exact filename
     
     **Status Indicators:**
-    - 📄 Blue link: PDF found and ready to open
-    - 📄 Orange text: PDF file not found
+    - 📄 Blue underlined link: PDF found and ready to open with `file://` URL
+    - 📄 Orange text: PDF file not found in source directory
     - 📄 Red text: Error reading PDF file
+    
+    **Recent Update (2025-09-30):**
+    - ✅ Now uses clean `file://` URLs instead of base64-encoded data
+    - ✅ Much faster and lighter (no massive HTML strings)
+    - ✅ Better browser compatibility
     """)
 
 if __name__ == "__main__":

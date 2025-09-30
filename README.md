@@ -64,10 +64,37 @@ The application can be configured with the following options:
 
 ## Getting Started
 
-1. Install dependencies: `pip install -r requirements.txt`
-2. Run the application: `streamlit run apps/app_v2_0.py`
-3. Enter a query and follow the HITL workflow
-4. After completing the HITL phase, the main research workflow will automatically start
+### Quick Start
+
+The easiest way to start the application is using the provided scripts:
+
+**Using Make (recommended):**
+```bash
+make start       # Start English version (default)
+make start-de    # Start German version
+make start-v1    # Start V1.1 version
+make test        # Run tests
+make help        # Show all commands
+```
+
+**Using the run script:**
+```bash
+./run.sh         # Start English version (default)
+./run.sh v2_0    # Start English version
+./run.sh v2_0g   # Start German version
+./run.sh v1_1    # Start V1.1 version
+```
+
+**Manual start:**
+```bash
+uv run streamlit run apps/app_v2_0.py --server.port 8501 --server.address localhost
+```
+
+### Usage
+
+1. Enter a query and follow the HITL workflow
+2. After completing the HITL phase, the main research workflow will automatically start
+3. Source links in the final report will be clickable file:// URLs that open PDFs in your browser
 
 ## Development
 

@@ -715,11 +715,152 @@ Be very precise in your extraction. Look for keys like 'thinking', 'reasoning', 
         print(f"[DEBUG] LLM analysis failed: {e}")
         return None, content_str
 
+def display_final_report_with_links(result, language="en", show_in_chat_message=True, show_buttons=True, key_prefix=""):
+    """
+    Unified function to display final report with source links, thinking process, and action buttons.
+    Handles all complexity of structured output, source linking, and quality assessment notices.
+    
+    Args:
+        result: The result dictionary from reporting phase
+        language: "en" or "de" for language-specific messages
+        show_in_chat_message: Whether to wrap content in st.chat_message
+        show_buttons: Whether to show action buttons
+        key_prefix: Prefix for Streamlit widget keys to avoid duplicates
+    """
+    # Get answers with proper fallback
+    original_answer = result.get("final_answer", "")
+    linked_answer = result.get("linked_final_answer", "")
+    
+    if not original_answer or not original_answer.strip():
+        warning_msg = "No report generated." if language == "en" else "Kein Bericht generiert."
+        st.warning(warning_msg)
+        return
+    
+    # Show improvement notice if quality checker triggered reflection loop
+    quality_check = result.get("quality_check", {})
+    if quality_check and quality_check.get("needs_improvement", False):
+        info_msg = ("ℹ️ This report has been regenerated based on quality assessment feedback through reflection loop." 
+                   if language == "en" else 
+                   "ℹ️ Dieser Bericht wurde aufgrund von Qualitätssicherungsfeedback durch den Reflexionszyklus erneut generiert.")
+        st.info(info_msg)
+    
+    # Get thinking process from structured output
+    thinking_process = result.get("thinking_process", "")
+    if thinking_process and thinking_process.strip():
+        expander_label = "🧠 LLM Thinking Process" if language == "en" else "🧠 LLM Denkprozess"
+        with st.expander(expander_label, expanded=False):
+            st.text(thinking_process.strip())
+    
+    # Parse structured output to separate thinking and final content
+    final_content, thinking_content = parse_structured_llm_output(original_answer)
+    
+    # Display function
+    def _display_content():
+        # Show thinking process in expander if available from parsing
+        if thinking_content:
+            expander_label = "🧠 LLM Thinking Process" if language == "en" else "🧠 LLM Denkprozess"
+            with st.expander(expander_label, expanded=False):
+                st.markdown(thinking_content)
+        
+        # Display the main content with HTML support for clickable links if available
+        if linked_answer and linked_answer.strip():
+            try:
+                # Parse linked version for final content
+                linked_content, _ = parse_structured_llm_output(linked_answer)
+                st.markdown(linked_content, unsafe_allow_html=True)
+            except Exception as e:
+                print(f"[DEBUG] Error displaying linked answer, using original: {e}")
+                st.markdown(final_content)
+        else:
+            # Use the regular version without links
+            st.markdown(final_content)
+    
+    # Display with or without chat message wrapper
+    if show_in_chat_message:
+        with st.chat_message("assistant"):
+            _display_content()
+    else:
+        _display_content()
+    
+    # Show action buttons if requested
+    if show_buttons:
+        col_btn1, col_btn2, col_btn3 = st.columns(3)
+        
+        copy_label = "📋 Copy Report to Clipboard" if language == "en" else "📋 Kopiere Bericht in die Zwischenablage"
+        download_label = "📥 Download Report" if language == "en" else "📥 Download Bericht"
+        new_research_label = "🔄 Start New Research" if language == "en" else "🔄 Starte neue Forschung"
+        
+        copy_success = "Report copied to clipboard!" if language == "en" else "Bericht kopiert in die Zwischenablage!"
+        copy_error = "Could not copy to clipboard." if language == "en" else "Konnte Bericht nicht in die Zwischenablage kopieren."
+        
+        with col_btn1:
+            if st.button(copy_label, key=f"{key_prefix}copy_btn"):
+                if copy_to_clipboard(original_answer):
+                    st.success(copy_success)
+                else:
+                    st.error(copy_error)
+        
+        with col_btn2:
+            from datetime import datetime
+            st.download_button(
+                label=download_label,
+                data=original_answer,
+                file_name=f"research_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                mime="text/markdown",
+                key=f"{key_prefix}download_btn"
+            )
+        
+        with col_btn3:
+            if st.button(new_research_label, key=f"{key_prefix}new_research_btn"):
+                clear_chat()
+                st.rerun()
+
+def _deep_search_dict(data, target_keys):
+    """
+    Recursively search through nested dicts/lists to find values for target keys.
+    Returns the deepest/most specific match found.
+    
+    Args:
+        data: Dict, list, or other data structure to search
+        target_keys: List of key names to search for (e.g., ['thinking', 'think'])
+        
+    Returns:
+        Found value or None
+    """
+    if isinstance(data, dict):
+        # First check current level
+        for key in target_keys:
+            if key in data and data[key]:
+                # If the value itself is a dict/list with the same keys, recurse deeper
+                value = data[key]
+                if isinstance(value, (dict, list)):
+                    deeper = _deep_search_dict(value, target_keys)
+                    if deeper is not None:
+                        return deeper
+                return value
+        
+        # Then search all nested values
+        for value in data.values():
+            if isinstance(value, (dict, list)):
+                result = _deep_search_dict(value, target_keys)
+                if result is not None:
+                    return result
+    
+    elif isinstance(data, list):
+        # Search through list items
+        for item in data:
+            if isinstance(item, (dict, list)):
+                result = _deep_search_dict(item, target_keys)
+                if result is not None:
+                    return result
+    
+    return None
+
 def parse_structured_llm_output(final_answer):
     """
     Parse structured LLM output that contains thinking and final answer parts.
     Handles various formats including JSON strings, Python dict strings, and direct dicts.
-    Enhanced to handle nested JSON structures and complex formatting.
+    Enhanced to RECURSIVELY search through deeply nested structures to find thinking/final content.
     
     Args:
         final_answer: String, dict, or other format containing the structured output
@@ -802,7 +943,7 @@ def parse_structured_llm_output(final_answer):
             # Regular string, apply cleanup and return
             final_content = final_answer
     
-    # Handle dictionary input
+    # Handle dictionary input - use RECURSIVE deep search
     if isinstance(final_answer, dict):
         print(f"[DEBUG] Processing dictionary with keys: {list(final_answer.keys())}")
         
@@ -810,23 +951,20 @@ def parse_structured_llm_output(final_answer):
         thinking_keys = ['thinking', 'think', 'thought', 'reasoning', 'analysis', 'process']
         final_keys = ['final', 'answer', 'content', 'response', 'result', 'report']
         
-        # Extract thinking content
-        for key in thinking_keys:
-            if key in final_answer and final_answer[key]:
-                thinking_content = final_answer[key]
-                print(f"[DEBUG] Found thinking content with key: {key}")
-                break
+        # RECURSIVELY search for thinking content at any depth
+        thinking_content = _deep_search_dict(final_answer, thinking_keys)
+        if thinking_content:
+            print(f"[DEBUG] Found thinking content through deep search")
         
-        # Extract final content
-        for key in final_keys:
-            if key in final_answer and final_answer[key]:
-                final_content = final_answer[key]
-                print(f"[DEBUG] Found final content with key: {key}")
-                break
-        
-        # If no specific keys found, use the whole dict as final content
-        if final_content == final_answer:
+        # RECURSIVELY search for final content at any depth
+        final_content_from_search = _deep_search_dict(final_answer, final_keys)
+        if final_content_from_search:
+            final_content = final_content_from_search
+            print(f"[DEBUG] Found final content through deep search")
+        else:
+            # If no specific keys found, use the whole dict as final content
             final_content = str(final_answer)
+            print(f"[DEBUG] Using entire dict as final content")
     
     # Clean up thinking content - don't show if it's too short or just placeholder text
     if isinstance(thinking_content, str):
@@ -1529,10 +1667,13 @@ def execute_reporting_phase(enable_web_search=False):
                     status_color = "🟢" if passes_quality else "🔴"
                     st.metric("Assessment", f"{status_color} {'PASS' if passes_quality else 'FAIL'}")
                 with col_q3:
-                    if needs_improvement:
-                        improvement_status = "🔄 Needs Improvement"
-                    else:
+                    if passes_quality:
                         improvement_status = "✅ Quality Passed"
+                    else:
+                        if needs_improvement:
+                            improvement_status = "🔄 Needs Improvement"
+                        else:
+                            improvement_status = "✅ Quality Passed"
                     st.metric("Status", improvement_status)
                 
                 # Display detailed quality analysis if available
@@ -1595,58 +1736,14 @@ def execute_reporting_phase(enable_web_search=False):
                         st.text(full_assessment)
             
             # Final report section
-            final_answer = result.get("final_answer", "")
             with st.expander("📋 Final Report", expanded=False):
-                if final_answer and final_answer.strip():
-                    # Show improvement notice if quality checker triggered reflection loop
-                    if quality_check and quality_check.get("needs_improvement", False):
-                        st.info("ℹ️ This report has been regenerated based on quality assessment feedback through reflection loop.")
-                    
-                    # Get thinking process from structured output
-                    thinking_process = result.get("thinking_process", "")
-                    
-                    # Show thinking process in a collapsed expander if available
-                    if thinking_process and thinking_process.strip():
-                        with st.expander("🧠 LLM Thinking Process", expanded=False):
-                            st.text(thinking_process.strip())
-                    
-                    # Display the final answer with proper formatting
-                    if final_answer:
-                        report_llm = result.get("report_llm", "qwen3:latest")
-                        formatted_content, thinking_content = format_final_answer_dict(final_answer, report_llm)
-                        
-                        # Show thinking process in expander if available
-                        if thinking_content:
-                            with st.expander("🧠 LLM Thinking Process", expanded=False):
-                                st.markdown(thinking_content)
-                        
-                        # Display the main content
-                        st.markdown(formatted_content)
-                    else:
-                        st.warning("The answer appears to be empty. Please check the LLM response.")
-                    
-                    # Copy to clipboard and download buttons
-                    col_btn1, col_btn2 = st.columns(2)
-                    with col_btn1:
-                        if st.button("📋 Copy Report to Clipboard"):
-                            if copy_to_clipboard(final_answer):
-                                st.success("Report copied to clipboard!")
-                            else:
-                                st.error("Could not copy to clipboard.")
-                    
-                    with col_btn2:
-                        from datetime import datetime
-                        st.download_button(
-                            label="📥 Download Report",
-                            data=final_answer,
-                            file_name=f"research_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
-                            mime="text/markdown"
-                        )
-                else:
-                    st.warning("No report generated. This could be due to:")
-                    st.markdown("- No reranked summaries found")
-                    st.markdown("- All summaries scored below relevance threshold")
-                    st.markdown("- Report generation failed")
+                display_final_report_with_links(
+                    result=result, 
+                    language="en", 
+                    show_in_chat_message=False, 
+                    show_buttons=True,
+                    key_prefix="tab_"
+                )
         
         else:
             st.info("📚 Complete the Retrieval & Summarization phase first to proceed with reporting.")
@@ -1664,88 +1761,25 @@ def execute_reporting_phase(enable_web_search=False):
         st.session_state.reporting_result.get("final_answer")):
         
         result = st.session_state.reporting_result
-        final_answer = result.get("linked_final_answer") or result.get("final_answer", "")
-        original_answer = result.get("final_answer", "")
         
-        if final_answer and final_answer.strip():
+        if result.get("final_answer") and result.get("final_answer").strip():
             # Add some spacing
             st.markdown("---")
             
             # Main final answer section - prominently displayed
             st.markdown("# 🎯 Final Research Report")
             
-            # Show improvement notice if quality checker triggered reflection loop
+            # Use the unified display function
+            display_final_report_with_links(
+                result=result,
+                language="en",
+                show_in_chat_message=True,
+                show_buttons=True,
+                key_prefix="main_"
+            )
+            
+            # Show quality assessment details if available
             quality_check = result.get("quality_check", {})
-            if quality_check and quality_check.get("needs_improvement", False):
-                st.info("ℹ️ This report has been regenerated based on quality assessment feedback through reflection loop.")
-            
-            # Get thinking process from structured output
-            thinking_process = result.get("thinking_process", "")
-            
-            # Show thinking process in a collapsed expander if available
-            if thinking_process and thinking_process.strip():
-                with st.expander("🧠 LLM Thinking Process", expanded=False):
-                    st.text(thinking_process.strip())
-            
-            # Display the final answer prominently using chat message
-            with st.chat_message("assistant"):
-                if final_answer:
-                    # Parse structured output to separate thinking and final content
-                    # Use original_answer for thinking extraction (without HTML links)
-                    final_content, thinking_content = parse_structured_llm_output(original_answer)
-                    
-                    # Show thinking process in expander if available
-                    if thinking_content:
-                        with st.expander("🧠 LLM Thinking Process", expanded=False):
-                            st.markdown(thinking_content)
-                    
-                    # Display the main content with HTML support for clickable links
-                    if result.get("linked_final_answer"):
-                        # Use the linked version with clickable source links
-                        linked_content, _ = parse_structured_llm_output(final_answer)
-                        st.markdown(linked_content, unsafe_allow_html=True)
-                    else:
-                        # Use the regular version without links
-                        st.markdown(final_content)
-                else:
-                    st.warning("The answer appears to be empty. Please check the LLM response.")
-            
-            # Action buttons in columns
-            col_btn1, col_btn2, col_btn3 = st.columns(3)
-            
-            with col_btn1:
-                if st.button("📋 Copy Report to Clipboard", key="main_copy_btn"):
-                    if copy_to_clipboard(final_answer):
-                        st.success("Report copied to clipboard!")
-                    else:
-                        st.error("Could not copy to clipboard.")
-            
-            with col_btn2:
-                from datetime import datetime
-                st.download_button(
-                    label="📥 Download Report",
-                    data=final_answer,
-                    file_name=f"research_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
-                    mime="text/markdown",
-                    key="main_download_btn"
-                )
-            
-            with col_btn3:
-                if st.button("🔄 Start New Research", key="main_new_research_btn"):
-                    clear_chat()
-                    st.rerun()
-            
-            # Show thinking process in a collapsed expander if found
-            if think_matches:
-                with st.expander("🧠 LLM Thinking Process", expanded=False):
-                    for i, think_content in enumerate(think_matches, 1):
-                        if len(think_matches) > 1:
-                            st.markdown(f"**Thinking Block {i}:**")
-                        st.text(think_content.strip())
-                        if i < len(think_matches):
-                            st.divider()
-            
-            # Show quality assessment if available
             if quality_check:
                 with st.expander("📊 Quality Assessment Details", expanded=False):
                     if "overall_score" in quality_check:
