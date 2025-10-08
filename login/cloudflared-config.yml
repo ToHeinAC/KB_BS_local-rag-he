@@ -1,0 +1,16 @@
+tunnel: YOUR_TUNNEL_ID_HERE
+credentials-file: /home/he/.cloudflared/YOUR_TUNNEL_ID_HERE.json
+
+ingress:
+  # LAUNCHER - Access this first to control your app
+  # This is your control panel - login here to start/stop the main app
+  - hostname: launcher.your-domain.com
+    service: http://localhost:8502
+  
+  # MAIN RAG APP - Started/stopped by the launcher
+  # This is where app_v2_0g.py runs - access via launcher's "Open App" button
+  - hostname: rag-app.your-domain.com
+    service: http://localhost:8501
+  
+  # Catch-all rule (required)
+  - service: http_status:404
