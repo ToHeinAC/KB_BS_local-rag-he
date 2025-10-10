@@ -20,11 +20,41 @@ APP_COMMAND = "uv run streamlit run apps/app_v2_0g.py --server.port 8501 --serve
 
 # Cloudflare Tunnel URLs (set these in environment or they'll default to localhost)
 # For persistent tunnel setup, these will be set to brain-nw1 URLs
-LAUNCHER_URL = os.getenv("LAUNCHER_URL", f"http://localhost:8502")
-MAIN_APP_URL = os.getenv("MAIN_APP_URL", f"http://localhost:{APP_PORT}")
+# For quick tunnels, read from saved URL files
+def get_tunnel_urls():
+    """Get current tunnel URLs from environment or saved files."""
+    launcher_url = os.getenv("LAUNCHER_URL", f"http://localhost:8502")
+    main_app_url = os.getenv("MAIN_APP_URL", f"http://localhost:{APP_PORT}")
+    
+    # Check for quick tunnel URLs in saved files
+    launcher_url_file = "/tmp/launcher-url.txt"
+    app_url_file = "/tmp/app-url.txt"
+    
+    if os.path.exists(launcher_url_file):
+        try:
+            with open(launcher_url_file, 'r') as f:
+                file_launcher_url = f.read().strip()
+                if file_launcher_url and file_launcher_url.startswith('https://'):
+                    launcher_url = file_launcher_url
+        except:
+            pass
+    
+    if os.path.exists(app_url_file):
+        try:
+            with open(app_url_file, 'r') as f:
+                file_app_url = f.read().strip()
+                if file_app_url and file_app_url.startswith('https://'):
+                    main_app_url = file_app_url
+        except:
+            pass
+    
+    return launcher_url, main_app_url
+
+LAUNCHER_URL, MAIN_APP_URL = get_tunnel_urls()
 
 # Check if we're using the persistent tunnel setup
 IS_PERSISTENT = "brain-nw1" in LAUNCHER_URL
+IS_QUICK_TUNNEL = "trycloudflare.com" in LAUNCHER_URL and not IS_PERSISTENT
 
 def check_password():
     """Returns `True` if the user had the correct password."""
@@ -163,8 +193,13 @@ def get_app_status():
 # Main app
 st.title("🧠 BrAIn-nw1 RAG Researcher Launcher")
 st.markdown("### Remote Control Panel for RAG Deep Researcher")
+
+# Display tunnel URL information prominently
 if IS_PERSISTENT:
     st.success("✅ Using persistent tunnel URLs")
+elif IS_QUICK_TUNNEL:
+    st.warning("⚠️ Using Quick Tunnels (URLs are temporary)")
+
 st.caption("Start, stop, and monitor your RAG application from anywhere")
 st.markdown("---")
 
@@ -174,12 +209,47 @@ if not check_password():
 
 # Logged in - show controls
 st.success("✅ Authenticated")
+
+# Get app status early so we can use it everywhere
+status = get_app_status()
+
+# Show current tunnel URLs in an info box
+with st.expander("🌐 Current Tunnel URLs", expanded=IS_QUICK_TUNNEL):
+    st.markdown("**Access these URLs from anywhere:**")
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.code(f"🔐 Launcher: {LAUNCHER_URL}", language="text")
+    with col2:
+        st.link_button("Open", LAUNCHER_URL, use_container_width=True)
+    
+    col3, col4 = st.columns([3, 1])
+    with col3:
+        st.code(f"🚀 Main App: {MAIN_APP_URL}", language="text")
+    with col4:
+        if status.get("running", False):
+            st.link_button("Open", MAIN_APP_URL, use_container_width=True, type="primary")
+        else:
+            st.button("Start First", disabled=True, use_container_width=True)
+    
+    if IS_QUICK_TUNNEL:
+        st.info("""
+        💡 **Quick Tunnel URLs:**
+        - These URLs change each time you restart the tunnels
+        - Bookmark the current URLs for this session
+        - To get new URLs: stop tunnels and run `./start-quick-tunnels.sh`
+        """)
+    elif IS_PERSISTENT:
+        st.success("""
+        ✅ **Persistent URLs:**
+        - These URLs stay the same across restarts
+        - Bookmark them for permanent access
+        """)
+
 st.markdown("---")
 
 # Status section
 st.subheader("📊 Application Status")
-
-status = get_app_status()
 
 if status["running"]:
     st.success(f"✅ **App is RUNNING** (PID: {status['pid']})")
