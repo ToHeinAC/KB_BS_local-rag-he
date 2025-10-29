@@ -24,7 +24,8 @@ from src.rag_helpers_v1_1 import (
     clean_,
     source_summarizer_ollama,
     get_license_content,
-    similarity_search_for_tenant
+    similarity_search_for_tenant,
+    extract_embedding_model
 )
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
@@ -306,22 +307,9 @@ def get_all_documents_in_vectordb(tenant_id, embed_llm, persist_directory):
         raise e
 
 # Function to extract embedding model name from database directory
-def extract_embedding_from_db_name(db_name):
-    """Extract the embedding model name from a database directory name
-    
-    Args:
-        db_name (str): The database directory name
-        
-    Returns:
-        str: The embedding model name or None if not found
-    """
-    parts = db_name.split('--')
-    if len(parts) >= 2:
-        # Reconstruct the model name by replacing -- with /
-        model_parts = parts[:-2] if len(parts) > 2 else [parts[0]]
-        model_name = '/'.join([p.replace('--', '/') for p in model_parts])
-        return model_name
-    return None
+# Now using the corrected version from rag_helpers_v1_1.py via import
+# This handles complex database names like "StrlSch-ext__Qwen--Qwen3-Embedding-0.6B--3000--600"
+# and correctly extracts "Qwen/Qwen3-Embedding-0.6B"
 
 # Function to list available databases
 def list_available_databases():
@@ -496,7 +484,7 @@ with tab1:
             # Display available databases with their embedding models
             db_options_with_models = {}
             for db in available_dbs:
-                embedding_model = extract_embedding_from_db_name(db)
+                embedding_model = extract_embedding_model(db)
                 if embedding_model:
                     db_options_with_models[db] = f"{db} (Embedding: {embedding_model})"
                 else:
@@ -511,7 +499,7 @@ with tab1:
             
             if st.button("Use Selected Database"):
                 # Extract embedding model from database name
-                embedding_model = extract_embedding_from_db_name(selected_db)
+                embedding_model = extract_embedding_model(selected_db)
                 if embedding_model:
                     st.session_state.embedding_model = embedding_model
                     st.session_state.selected_database = selected_db

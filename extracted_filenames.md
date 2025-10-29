@@ -1,0 +1,213 @@
+# Extracted Filenames
+
+- 021lexikon2009_06.pdf
+- 180221_UM-Infoblatt_Freigabe.pdf
+- 180731_UM_Stellungnahme_Freigabe.pdf
+- 20161115_Nachnutzung_Deponie.pdf
+- 3_23_REI.pdf
+- 6_StrahlenmesstechnikFH_Furtwangen2003.pdf
+- 9907-12 Endbericht_BS.pdf
+- 9Radionuklide.pdf
+- Aktivierung_atw_2017_02.pdf
+- Allgemeine_Chemie.pdf
+- Alpha-Spektrometrie.pdf
+- AtDeckV.pdf
+- AtEV.pdf
+- AtG.pdf
+- Ausarbeitung_Kernspaltung.pdf
+- BMU-entwurf_sicherheitsanforderungen,Rev.1.pdf
+- BS_FreigabeHistorie_240703.pdf
+- Bayes_book.pdf
+- Beta-Spektrometrie.pdf
+- BfE-KE-05-19_barrierearm.pdf
+- BfS_2018_3614R03520_FGW.pdf
+- BfS_2018_3614S70051_Freigrenzen_BS.pdf
+- DIN 25422_Stand_12-2024.PDF
+- DIN 25457-1_2024-05.PDF
+- DIN 25457-4_2013_04.pdf
+- DIN 25457-6_2018-07.PDF
+- DIN 25457-7_2017-08.PDF
+- DIN ISO 7503-01_2016.pdf
+- DIN ISO 7503-02_2016.pdf
+- DIN ISO 7503-03_2016.pdf
+- EN 60325_2004.pdf
+- ESK_Empfehlung_Stilllegung_2015.pdf
+- GRS-506_Freigabemodelle_Artmann_2020.pdf
+- GRS-730_2023.pdf
+- Herausgabe_ArtikelStrahlenschutzpraxis_2004.pdf
+- Herausgabe_atw_2023.pdf
+- KTA 1201 Anfoderungen an das Betriebshandbuch.pdf
+- KTA 1401_2017-11.pdf
+- KTA 1402_2017-11.pdf
+- KTA 1404_2013-11.pdf
+- KWO_Deponie_bei_Stilllegung_und_Abbau.pdf
+- KernphysikalischeVersuche.pdf
+- Kerntechnik_Transmutation.pdf
+- Leitfaden Stillegung 3_73.pdf
+- Leitfaden_zur_Freigabe.pdf
+- Lexikon_zur_Kernenergie_2011.pdf
+- LfU_Bayern_IntegraleMessmethoden.pdf
+- Messstrategien_fuer_die_In-situ-Gammaspektrometrie.pdf
+- Modul 9 Anforderungen an den Strahlenschutz.pdf
+- Normalverteilung.pdf
+- Physikalische_Grundlagen_der_Nuklearmedizin.pdf
+- Punkt-Kern-Integration_2007_5.pdf
+- RadioaktiverZerfall.pdf
+- RadioaktiverZerfall2.pdf
+- RadioaktiverZerfall3.pdf
+- Radiochemische Probenaufbereitung.pdf
+- Radioisotope Production.pdf
+- Radionuklide.pdf
+- Raetzke_Freigabe_atw_2019.pdf
+- SSK-Band01.pdf
+- SSK-Band02.pdf
+- SSK-Band03.pdf
+- SSK-Band04.pdf
+- SSK-Band05.pdf
+- SSK-Band06.pdf
+- SSK-Band07.pdf
+- SSK-Band08.pdf
+- SSK-Band09.pdf
+- SSK-Band10.pdf
+- SSK-Band11.pdf
+- SSK-Band12.pdf
+- SSK-Band13.pdf
+- SSK-Band14.pdf
+- SSK-Band15.pdf
+- SSK-Band16.pdf
+- SSK-Band17.pdf
+- SSK-Band18.pdf
+- SSK-Band19.pdf
+- SSK-Band20.pdf
+- SSK-Band21.pdf
+- SSK-Band22.pdf
+- SSK-Band23.pdf
+- SSK-Band24.pdf
+- SSK-Band25.pdf
+- SSK-Band26.pdf
+- SSK-Band27.pdf
+- SSK-Band28.pdf
+- SSK-Band29.pdf
+- SSK-Band30.pdf
+- SSK-Band31.pdf
+- SSK-Band32.pdf
+- SSK-Band33.pdf
+- SSK-Band34.pdf
+- SSK-Band35.pdf
+- SSK-Band36.pdf
+- SSK-Band37.pdf
+- SSK-Band38.pdf
+- SSK-Band39.pdf
+- SSK-Band40.pdf
+- SSK-Band41.pdf
+- SSK-Band42.pdf
+- SSK-Band43.pdf
+- SSK-Band44.pdf
+- SSK-Band45.pdf
+- SSK-Band46.pdf
+- SSK-Band47.pdf
+- SSK-Band48.pdf
+- SSK-Band49.pdf
+- SSK-Band50.pdf
+- SSK-Band51.pdf
+- SSK-Band52.pdf
+- SSK-Band53.pdf
+- SSK-Band54.pdf
+- SSK-Band55.pdf
+- SSK-Band56.pdf
+- SSK-Band57.pdf
+- SSK-Band58.pdf
+- SSK-Band59.pdf
+- SSK-Band60.pdf
+- SSK-Band61.pdf
+- SSK-Band62.pdf
+- SSK-Band63.pdf
+- SSK-Band64.pdf
+- SSK-Band65.pdf
+- SSK-Band66.pdf
+- SSK-Band67.pdf
+- SSK-Band68.pdf
+- SSK-Band69.pdf
+- SSK-Heft01.pdf
+- SSK-Heft01A.pdf
+- SSK-Heft02.pdf
+- SSK-Heft03.pdf
+- SSK-Heft04.pdf
+- SSK-Heft05.pdf
+- SSK-Heft06.pdf
+- SSK-Heft07.pdf
+- SSK-Heft08.pdf
+- SSK-Heft09.pdf
+- SSK-Heft10.pdf
+- SSK-Heft11.pdf
+- SSK-Heft12.pdf
+- SSK-Heft13.pdf
+- SSK-Heft14.pdf
+- SSK-Heft15.pdf
+- SSK-Heft16.pdf
+- SSK-Heft17.pdf
+- SSK-Heft18.pdf
+- SSK-Heft19.pdf
+- SSK-Heft20.pdf
+- SSK-Heft21.pdf
+- SSK-Heft22.pdf
+- SSK-Heft23.pdf
+- SSK-Heft24.pdf
+- SSK-Heft25.pdf
+- SSK-Heft26.pdf
+- SSK-Heft27.pdf
+- SSK-Heft28.pdf
+- SSK-Heft29.pdf
+- SSK-Heft30.pdf
+- SSK-Heft31.pdf
+- SSK-Heft32.pdf
+- SSK-Heft33.pdf
+- SSK-Heft34.pdf
+- SSK-Heft35.pdf
+- SSK-Heft36.pdf
+- SSK-Heft37.pdf
+- SSK-Heft38.pdf
+- SSK-Heft39.pdf
+- SSK-Heft40.pdf
+- SSK-Heft41.pdf
+- SSK-Heft42.pdf
+- SSK-Heft43.pdf
+- SSK-Heft44.pdf
+- SSK-Heft45.pdf
+- SSK-Heft46.pdf
+- SSK-Heft47.pdf
+- SSK-Heft48.pdf
+- SSK-Heft49.pdf
+- SSK-Heft50.pdf
+- SSK-Heft51.pdf
+- SSK-Heft51A.pdf
+- SSK-Heft52.pdf
+- SSK-Heft53.pdf
+- SSK-Heft54.pdf
+- SSK-Heft55.pdf
+- SSK-Heft56.pdf
+- SSK-Heft57.pdf
+- SSK-Heft58.pdf
+- SSK-Heft59.pdf
+- SSK-Heft60.pdf
+- SSK-Heft61.pdf
+- SSK-Heft62.pdf
+- SSK-Heft63.pdf
+- SSK-Heft64.pdf
+- SSK-Heft65.pdf
+- SSK-Heft66.pdf
+- SSK-Heft67.pdf
+- SSK-Heft68.pdf
+- SSK-Heft69.pdf
+- Stilllegungsleitfaden_26_06_2009.pdf
+- Stochastik_Einführung_Vorlesungsskript2006.pdf
+- StrlSchG.pdf
+- StrlSchV.pdf
+- VGB Bericht DIN ISO 11929-Stand (verabschiedet).pdf
+- boschuere_stilllegung.pdf
+- faltblatt_stilllegung.pdf
+- gammaspektrometrie.pdf
+- listeAntragsunterlagenSAG_KBR.pdf
+- rl_inkorporationsueberwachung_bf.pdf
+- strlschg_en_bf.pdf
+- strlschv_en_bf.pdf
