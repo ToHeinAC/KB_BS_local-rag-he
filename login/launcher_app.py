@@ -16,7 +16,7 @@ st.set_page_config(
 # Simple authentication - use environment variables for security
 ADMIN_PASSWORD = os.getenv("LAUNCHER_PASSWORD", "changeme123")
 APP_PORT = 8501
-APP_COMMAND = "uv run streamlit run apps/app_v2_0g.py --server.port 8501 --server.headless true"
+APP_COMMAND = "uv run streamlit run apps/app_v2_1g.py --server.port 8501 --server.headless true"
 
 # Cloudflare Tunnel URLs (set these in environment or they'll default to localhost)
 # For persistent tunnel setup, these will be set to brain-nw1 URLs

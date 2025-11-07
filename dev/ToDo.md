@@ -6,10 +6,12 @@
 - [ ] clear button resolved
     - priority: high (current version)
     - clear button shall be changed to start new button which starts a complete new session
-- [ ] simplified GUI
+- [x] simplified GUI ✅ COMPLETED
     - priority: high (current version)
     - only single main window, no 3 phases (i.e. phases 2 and 3 are merged into phase 1)
     - GUI shall reflect the current status of the merged phases to give the user a clear overview of the current state (st.progress and st.spinner or st.status)
+    - Implementation: When /end is typed, automatically execute Phase 2 and Phase 3 in sequence with st.status progress indicators
+    - Status: Fully implemented in app_v2_1.py - unified workflow with automatic phase execution
 - [ ] advanced vectordatabase handling
     - priority: high (current version)
     - 1 stage: multiselect of vectordatabases via GUI possible, for the search process all selected databases shall be used in the search such that in the retrieval phase the documents are retrieved from all selected databases, e.g. k=5 then in total the 5 most similar documents are retrieved from all selected databases and then the final k=5 most similar documents are selected for the next phase 
@@ -21,5 +23,18 @@
     - priority: medium (future version)
     - 1 stage: other text based data as .doc, .docx, .ppt, .pptx, .txt, .md, .csv, .xls, .xlsx
     - 2 stage: images as .png, .jpg, .jpeg, .gif, .bmp, .webp, .svg, .tiff, .heic, .heif
+
+
+
+
+Remember to restore the port settings when done testing:
+
+Change 
+/home/he/.streamlit/config.toml
+ line 5 back to port = 8502
+Change 
+/home/he/ai/dev/langgraph/KB_BS_local-rag-he/.streamlit/config.toml
+ line 16 back to serverPort = 8501
+This keeps ports 8501 and 8502 available for deployment as required.
 
     

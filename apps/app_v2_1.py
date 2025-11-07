@@ -1,0 +1,1653 @@
+import streamlit as st
+import streamlit_nested_layout
+import warnings
+import logging
+import os
+import re
+import sys
+import time
+import tempfile
+from datetime import datetime, timedelta
+from pathlib import Path
+from IPython.display import Image, display
+
+# Add a workaround for the Streamlit/torch module path extraction issue
+# This needs to be done before importing torch
+class PathHack:
+    def __init__(self, path):
+        self.path = path
+    def _path(self):
+        return [self.path]
+    def __getattr__(self, name):
+        if name == '_path':
+            return self._path
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+
+sys.modules['torch._classes.__path__'] = PathHack(os.path.dirname(os.path.abspath(__file__)))
+
+# Now import torch after the workaround
+import torch
+
+# Import visualization libraries (with fallback if not available)
+try:
+    import networkx as nx
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyBboxPatch
+    NETWORKX_AVAILABLE = True
+except ImportError:
+    NETWORKX_AVAILABLE = False
+
+# Add project root to Python path to fix import issues
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Suppress specific PyTorch warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+logging.getLogger("streamlit").setLevel(logging.ERROR)
+
+# Import ResearcherStateV2 and InitState for the enhanced workflow with HITL
+from src.state_v2_0 import ResearcherStateV2, InitState
+from src.graph_v2_0 import hitl_graph, main_graph, create_hitl_graph, researcher_main
+from src.graph_retrieval_summarization import create_retrieval_summarization_graph
+from src.utils_v1_1 import get_report_structures, process_uploaded_files, clear_cuda_memory
+from src.rag_helpers_v1_1 import (
+    get_report_llm_models, 
+    get_summarization_llm_models, 
+    get_all_available_models,
+    get_license_content,
+    extract_embedding_model,
+    linkify_sources
+)
+
+# Set page configuration
+st.set_page_config(
+    page_title="RAG Deep Researcher v2.0 - Human-in-the-Loop (HITL)",
+    page_icon="🔍",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+clear_cuda_memory()
+
+# Load LLM models
+report_llm_models = get_report_llm_models()
+summarization_llm_models = get_summarization_llm_models()
+
+# Create header with two columns (matching app_v1_1.py and v2_0g)
+header_col1, header_col2 = st.columns([0.5, 0.5])
+with header_col1:
+    st.markdown(
+        '<h1>🔍 Br<span style="color:darkorange;"><b>AI</b></span>n</h1>',
+        unsafe_allow_html=True, help="Human-In-The-Loop (HITL) RAG Researcher V2.1"
+    )
+    st.markdown("## Knowledge Database Connector")
+    st.markdown('<p style="text-align: right; font-size:12px; font-weight:bold; color:darkorange; margin-top:0px;">LICENSE</p>', 
+                unsafe_allow_html=True, help=get_license_content())    
+with header_col2:
+    st.image("Header für Chatbot.png", use_container_width=True)
+
+# Sidebar configuration
+with st.sidebar:
+    st.header("⚙️ Configuration")       
+    # Define DATABASE_PATH like in app_v1_1.py
+    DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "kb", "database")
+
+    with st.expander("🗄️ Knowledge Database", expanded=False): # External Database Configuration (moved to top)    
+        # Initialize session state for external database
+        if "use_ext_database" not in st.session_state:
+            st.session_state.use_ext_database = True
+        if "selected_database" not in st.session_state:
+            st.session_state.selected_database = ""
+        if "k_results" not in st.session_state:
+            st.session_state.k_results = 3
+
+        # Enable external database checkbox
+        st.session_state.use_ext_database = st.checkbox(
+            "Use external knowledge database", 
+            value=st.session_state.use_ext_database,
+            help="Use an existing knowledge database for document retrieval"
+        )
+        
+        # Database selection
+        if st.session_state.use_ext_database:
+            # Get available databases
+            database_dir = Path(DATABASE_PATH)
+            database_options = [d.name for d in database_dir.iterdir() if d.is_dir()] if database_dir.exists() else []
+        
+            if database_options:
+                # Select database
+                selected_db = st.selectbox(
+                    "Select Knowledge Database",
+                    options=database_options,
+                    index=database_options.index(st.session_state.selected_database) if st.session_state.selected_database in database_options else 0,
+                    help="Select knowledge database"
+                )
+                st.session_state.selected_database = selected_db
+                
+                # Extract and update embedding model from database name
+                embedding_model_name = extract_embedding_model(selected_db)
+                if embedding_model_name:
+                    # Update the global configuration to use this embedding model
+                    from src.configuration_v1_1 import update_embedding_model
+                    update_embedding_model(embedding_model_name)
+                    st.info(f"Knowledge database selected: {selected_db}")
+                    st.success(f"Embedding model updated: {embedding_model_name}")
+                
+                # Number of results to retrieve
+                st.session_state.k_results = st.slider(
+                    "Number of query results", 
+                    min_value=1, 
+                    max_value=10, 
+                    value=st.session_state.k_results,
+                    help="Number of query results"
+                )
+            else:
+                st.warning("⚠️ No knowledge databases found")
+                st.session_state.use_ext_database = False
+
+    with st.expander("🤖 Model Selection", expanded=False):
+        # Report LLM selection
+        if "report_llm" not in st.session_state:
+            st.session_state.report_llm = report_llm_models[0] if report_llm_models else "qwen3:latest"
+        
+        st.session_state.report_llm = st.selectbox(
+            "Report LLM Model",
+            options=report_llm_models,
+            index=report_llm_models.index(st.session_state.report_llm) if st.session_state.report_llm in report_llm_models else 0,
+            help="LLM model for report generation"
+        )
+        
+        # Summarization LLM selection
+        if "summarization_llm" not in st.session_state:
+            st.session_state.summarization_llm = summarization_llm_models[0] if summarization_llm_models else "qwen3:latest"
+        
+        st.session_state.summarization_llm = st.selectbox(
+            "Summarization LLM Model",
+            options=summarization_llm_models,
+            index=summarization_llm_models.index(st.session_state.summarization_llm) if st.session_state.summarization_llm in summarization_llm_models else 0,
+            help="LLM model for document summarization"
+        )
+
+    with st.expander("🔧 Advanced Research Settings", expanded=False):
+        # Maximum number of research queries
+        if "max_search_queries" not in st.session_state:
+            st.session_state.max_search_queries = 3
+        
+        st.session_state.max_search_queries = st.slider(
+            "Maximum number of research queries",
+            min_value=1,
+            max_value=10,
+            value=st.session_state.max_search_queries,
+            help="Maximum number of research queries"
+        )
+        
+        # Enable web search
+        if "enable_web_search" not in st.session_state:
+            st.session_state.enable_web_search = False
+            
+        st.session_state.enable_web_search = st.checkbox(
+            "Enable Web Search",
+            value=st.session_state.enable_web_search,
+            help="Enable web search"
+        )
+        
+        # Quality checker settings
+        if "enable_quality_checker" not in st.session_state:
+            st.session_state.enable_quality_checker = True
+            
+        st.session_state.enable_quality_checker = st.checkbox(
+            "Enable Quality Checker",
+            value=st.session_state.enable_quality_checker,
+            help="Enable quality checker"
+        )
+
+    # Start new session button
+    if st.button("🔄 Start New Session", help="Start a complete new session and reset all settings", type="primary"):
+        # Clear ALL session state to start completely fresh
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
+
+# Function to clean model names for display
+def clean_model_name(model_name):
+    """Clean model name by removing common prefixes and suffixes for better display"""
+    return model_name.replace(":latest", "").replace("_", " ").title()
+
+
+# Function to get embedding model
+def get_embedding_model(model_name):
+    """Get the embedding model path from the model name"""
+    return model_name.replace("/", "_")
+
+def create_mermaid_png_representation(researcher):
+    """
+    Create a Mermaid PNG diagram representation of the workflow.
+    
+    Returns:
+        PNG bytes of the Mermaid diagram
+    """
+    return researcher.get_graph().draw_mermaid_png()
+
+def generate_workflow_visualization_legacy(researcher, workflow_type="main", return_mermaid_only=False):
+    """
+    Generate a visualization of the LangGraph workflow using NetworkX
+    
+    Args:
+        researcher: The researcher graph to visualize
+        workflow_type (str): Type of workflow - "hitl" or "main"
+        return_mermaid_only (bool): If True, only return the Mermaid representation
+        
+    Returns:
+        str: Path to the visualization image or Mermaid representation
+    """
+    if return_mermaid_only:
+        return create_mermaid_representation(researcher)
+    
+    if not NETWORKX_AVAILABLE:
+        st.warning("NetworkX and matplotlib are not available. Cannot generate workflow visualization.")
+        return create_mermaid_representation(researcher)
+    
+    try:
+        # Create a directed graph
+        G = nx.DiGraph()
+        
+        # Define nodes and edges based on workflow type
+        if workflow_type == "hitl":
+            # HITL workflow nodes
+            nodes = [
+                ("START", "Start"),
+                ("analyse_user_feedback", "Analyze User\nFeedback"),
+                ("generate_follow_up_questions", "Generate Follow-up\nQuestions"),
+                ("generate_knowledge_base_questions", "Generate KB\nQuestions"),
+                ("END", "To Main Workflow")
+            ]
+            
+            # HITL workflow edges
+            edges = [
+                ("START", "analyse_user_feedback"),
+                ("analyse_user_feedback", "generate_follow_up_questions"),
+                ("generate_follow_up_questions", "generate_knowledge_base_questions"),
+                ("generate_knowledge_base_questions", "END")
+            ]
+        elif workflow_type == "integrated":
+            # Integrated workflow nodes (HITL + Main)
+            nodes = [
+                ("START", "Start"),
+                ("analyse_user_feedback", "Analyze User\nFeedback (HITL)"),
+                ("generate_follow_up_questions", "Generate Follow-up\nQuestions (HITL)"),
+                ("generate_knowledge_base_questions", "Generate KB\nQuestions (HITL)"),
+                ("display_embedding_model_info", "Display Embedding\nModel Info"),
+                ("detect_language", "Detect Language"),
+                ("generate_research_queries", "Generate Research\nQueries"),
+                ("retrieve_rag_documents", "Retrieve RAG\nDocuments"),
+                ("summarize_query_research", "Summarize Query\nResearch"),
+                ("generate_final_answer", "Generate Final\nAnswer"),
+                ("quality_checker", "Quality Checker"),
+                ("END", "End")
+            ]
+            
+            # Integrated workflow edges
+            edges = [
+                ("START", "analyse_user_feedback"),
+                ("analyse_user_feedback", "generate_follow_up_questions"),
+                ("generate_follow_up_questions", "generate_knowledge_base_questions"),
+                ("generate_knowledge_base_questions", "display_embedding_model_info"),
+                ("display_embedding_model_info", "detect_language"),
+                ("detect_language", "generate_research_queries"),
+                ("generate_research_queries", "retrieve_rag_documents"),
+                ("retrieve_rag_documents", "summarize_query_research"),
+                ("summarize_query_research", "generate_final_answer"),
+                ("generate_final_answer", "quality_checker"),
+                ("quality_checker", "generate_final_answer"),  # Quality loop
+                ("generate_final_answer", "END"),
+                ("quality_checker", "END")
+            ]
+        else:  # main workflow
+            # Main workflow nodes
+            nodes = [
+                ("START", "From HITL"),
+                ("display_embedding_model_info", "Display Embedding\nModel Info"),
+                ("detect_language", "Detect Language"),
+                ("generate_research_queries", "Generate Research\nQueries"),
+                ("retrieve_rag_documents", "Retrieve RAG\nDocuments"),
+                ("summarize_query_research", "Summarize Query\nResearch"),
+                ("generate_final_answer", "Generate Final\nAnswer"),
+                ("quality_checker", "Quality Checker"),
+                ("END", "End")
+            ]
+            
+            # Main workflow edges
+            edges = [
+                ("START", "display_embedding_model_info"),
+                ("display_embedding_model_info", "detect_language"),
+                ("detect_language", "generate_research_queries"),
+                ("generate_research_queries", "retrieve_rag_documents"),
+                ("retrieve_rag_documents", "summarize_query_research"),
+                ("summarize_query_research", "generate_final_answer"),
+                ("generate_final_answer", "quality_checker"),
+                ("quality_checker", "generate_final_answer"),  # Quality loop
+                ("generate_final_answer", "END"),
+                ("quality_checker", "END")
+            ]
+        
+        # Add nodes to graph
+        for node_id, label in nodes:
+            G.add_node(node_id, label=label)
+        
+        # Add edges to graph
+        G.add_edges_from(edges)
+        
+        # Create layout
+        pos = nx.spring_layout(G, k=3, iterations=50)
+        
+        # Create figure
+        plt.figure(figsize=(16, 12))
+        plt.clf()
+        
+        # Define colors for different node types based on workflow type
+        node_colors = []
+        for node_id, _ in nodes:
+            if node_id in ["START", "END"]:
+                node_colors.append('#FF6B6B')  # Red for start/end
+            elif workflow_type == "hitl":
+                # HITL workflow coloring
+                if node_id == "analyse_user_feedback":
+                    node_colors.append('#4ECDC4')  # Teal for user feedback analysis
+                elif node_id == "generate_follow_up_questions":
+                    node_colors.append('#6EC4DB')  # Light blue for follow-up questions
+                elif node_id == "generate_knowledge_base_questions":
+                    node_colors.append('#56B870')  # Green for KB questions
+                else:
+                    node_colors.append('#95E1D3')  # Default for HITL nodes
+            elif workflow_type == "integrated":
+                # Integrated workflow coloring (HITL + Main)
+                if node_id in ["analyse_user_feedback", "generate_follow_up_questions", "generate_knowledge_base_questions"]:
+                    node_colors.append('#4ECDC4')  # Teal for HITL nodes
+                elif node_id == "quality_checker":
+                    node_colors.append('#FFE66D')  # Yellow for quality checker
+                elif node_id in ["generate_research_queries", "generate_final_answer"]:
+                    node_colors.append('#78C3FB')  # Blue for generation nodes
+                elif node_id == "retrieve_rag_documents":
+                    node_colors.append('#F8B195')  # Orange for retrieval
+                elif node_id == "summarize_query_research":
+                    node_colors.append('#C06C84')  # Purple for summarization
+                else:
+                    node_colors.append('#95E1D3')  # Light green for regular nodes
+            else:
+                # Main workflow coloring
+                if node_id == "quality_checker":
+                    node_colors.append('#FFE66D')  # Yellow for quality checker
+                elif node_id in ["generate_research_queries", "generate_final_answer"]:
+                    node_colors.append('#78C3FB')  # Blue for generation nodes
+                elif node_id == "retrieve_rag_documents":
+                    node_colors.append('#F8B195')  # Orange for retrieval
+                elif node_id == "summarize_query_research":
+                    node_colors.append('#C06C84')  # Purple for summarization
+                else:
+                    node_colors.append('#95E1D3')  # Light green for regular nodes
+        
+        # Draw nodes
+        nx.draw_networkx_nodes(G, pos, node_color=node_colors, 
+                              node_size=3000, alpha=0.9)
+        
+        # Draw edges
+        nx.draw_networkx_edges(G, pos, edge_color='gray', 
+                              arrows=True, arrowsize=20, 
+                              arrowstyle='->', alpha=0.6)
+        
+        # Draw labels
+        labels = {node_id: data['label'] for node_id, data in G.nodes(data=True)}
+        nx.draw_networkx_labels(G, pos, labels, font_size=8, font_weight='bold')
+        
+        # Set title based on workflow type
+        if workflow_type == "hitl":
+            plt.title("RAG Deep Researcher v2.0 - Human-in-the-Loop Initial Workflow", 
+                     fontsize=16, fontweight='bold', pad=20)
+        elif workflow_type == "integrated":
+            plt.title("RAG Deep Researcher v2.0 - Complete Integrated Workflow", 
+                     fontsize=16, fontweight='bold', pad=20)
+        else:
+            plt.title("RAG Deep Researcher v2.0 - Main Research Workflow", 
+                     fontsize=16, fontweight='bold', pad=20)
+        plt.axis('off')
+        plt.tight_layout()
+        
+        # Save to temporary file
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+        plt.savefig(temp_file.name, dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        return temp_file.name
+        
+    except Exception as e:
+        st.error(f"Error generating workflow visualization: {str(e)}")
+        return create_mermaid_representation(researcher)
+
+def generate_langgraph_visualization():
+    """
+    Generate PNG visualizations of the HITL and main LangGraph workflows using draw_mermaid_png().
+    """
+    try:
+        from IPython.display import Image, display
+        from src.graph_v2_0 import create_hitl_graph, create_main_graph
+        
+        # Get graph instances
+        hitl_graph = create_hitl_graph()
+        main_graph = create_main_graph()
+        
+        # Display in Streamlit
+        st.subheader("🔄 Workflow Visualization")
+        
+        # Create tabs for different workflow visualizations
+        tab1, tab2 = st.tabs(["HITL Workflow", "Main Research Workflow"])
+        
+        # HITL workflow tab
+        with tab1:
+            st.markdown("### Human-in-the-Loop (HITL) Workflow")
+            st.markdown("This is the initial workflow that gathers human feedback before starting the main research process.")
+            try:
+                hitl_png = hitl_graph.get_graph().draw_mermaid_png()
+                st.image(hitl_png)
+            except Exception as e:
+                st.error(f"Could not generate HITL workflow PNG: {str(e)}")
+        
+        # Main workflow tab
+        with tab2:
+            st.markdown("### Main Research Workflow")
+            st.markdown("This is the main workflow that executes after the HITL process completes.")
+            try:
+                main_png = main_graph.get_graph().draw_mermaid_png()
+                st.image(main_png)
+            except Exception as e:
+                st.error(f"Could not generate main workflow PNG: {str(e)}")
+                
+    except Exception as e:
+        st.error(f"Error generating workflow visualization: {str(e)}")
+
+def generate_workflow_visualization(researcher, return_mermaid_only=False):
+    """
+    Generate a visualization of the LangGraph workflow.
+    If return_mermaid_only is True, it will only return the Mermaid representation.
+    Otherwise, it returns the Mermaid representation.
+    """
+    return create_mermaid_representation(researcher)
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'dev'))
+from basic_HITL_app import detect_language
+
+# Import from hyphenated filename using importlib
+import importlib.util
+rerank_reporter_path = os.path.join(os.path.dirname(__file__), '..', 'dev', 'basic_rerank-reporter_app.py')
+spec = importlib.util.spec_from_file_location("basic_rerank_reporter_app", rerank_reporter_path)
+basic_rerank_reporter_app = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(basic_rerank_reporter_app)
+create_rerank_reporter_graph = basic_rerank_reporter_app.create_rerank_reporter_graph
+from src.graph_v2_0 import (
+    analyse_user_feedback as _analyse_user_feedback,
+    generate_follow_up_questions as _generate_follow_up_questions,
+    generate_knowledge_base_questions as _generate_knowledge_base_questions
+)
+from src.graph_retrieval_summarization import create_retrieval_summarization_graph
+from langchain_core.runnables.config import RunnableConfig
+
+# Create wrapper functions that handle the config parameter
+def analyse_user_feedback(state):
+    """Wrapper for analyse_user_feedback that handles config parameter"""
+    config = RunnableConfig(configurable={
+        "report_llm": state.get("report_llm", "deepseek-r1:latest"),
+        "summarization_llm": state.get("summarization_llm", "deepseek-r1:latest")
+    })
+    return _analyse_user_feedback(state, config)
+
+def generate_follow_up_questions(state):
+    """Wrapper for generate_follow_up_questions that handles config parameter"""
+    config = RunnableConfig(configurable={
+        "report_llm": state.get("report_llm", "deepseek-r1:latest"),
+        "summarization_llm": state.get("summarization_llm", "deepseek-r1:latest")
+    })
+    return _generate_follow_up_questions(state, config)
+
+def generate_knowledge_base_questions(state):
+    """Wrapper for generate_knowledge_base_questions that handles config parameter"""
+    config = RunnableConfig(configurable={
+        "report_llm": state.get("report_llm", "deepseek-r1:latest"),
+        "summarization_llm": state.get("summarization_llm", "deepseek-r1:latest"),
+        "max_search_queries": state.get("max_search_queries", 3)  # Add max_search_queries config
+    })
+    return _generate_knowledge_base_questions(state, config)
+
+def initialize_hitl_state(user_query, report_llm, summarization_llm, max_search_queries=3):
+    """
+    Initialize HITL state following the basic_HITL_app.py pattern.
+    """
+    return {
+        "user_query": user_query,
+        "current_position": 0,
+        "detected_language": "",
+        "additional_context": "",  # Will store annotated conversation history
+        "human_feedback": "",
+        "analysis": "",
+        "follow_up_questions": "",
+        "report_llm": report_llm,
+        "summarization_llm": summarization_llm,
+        "max_search_queries": max_search_queries  # Add max_search_queries to state
+    }
+
+def process_initial_query(state):
+    """
+    Process the initial user query following basic_HITL_app.py pattern.
+    """
+    # Detect language
+    with st.spinner("Detecting language..."):
+        detected_language = detect_language(state)
+        state["detected_language"] = detected_language
+    
+    # Generate initial follow-up questions
+    with st.spinner("Generating follow-up questions..."):
+        follow_up_result = generate_follow_up_questions(state)
+        state["follow_up_questions"] = follow_up_result["follow_up_questions"]
+    
+    # For initial query, we don't have analysis yet
+    state["analysis"] = ""
+    
+    # Format the combined response for initial query
+    combined_response = f"FOLLOW-UP:\n {state['follow_up_questions']}"
+    
+    # Store initial AI questions in additional_context
+    state["additional_context"] += f"Initial AI Question(s):\n{state['follow_up_questions']}"
+    
+    return combined_response
+
+def process_human_feedback(state, human_feedback):
+    """
+    Process human feedback following basic_HITL_app.py pattern.
+    """
+    # Update state with human feedback
+    state["human_feedback"] += human_feedback
+    
+    # Analyze user feedback first
+    with st.spinner("Analyzing feedback..."):
+        analysis_result = analyse_user_feedback(state)
+        state["analysis"] = analysis_result["analysis"]
+    
+    # Generate follow-up questions
+    with st.spinner("Generating follow-up questions..."):
+        follow_up_result = generate_follow_up_questions(state)
+        state["follow_up_questions"] = follow_up_result["follow_up_questions"]
+    
+    # Format the combined response with nicely formatted analysis
+    formatted_analysis = format_analysis_dict(state['analysis'])
+    combined_response = f"**ANALYSIS:**\n{formatted_analysis}\n\n**FOLLOW-UP:**\n{state['follow_up_questions']}"
+    
+    # Store the conversation turn in additional_context
+    conversation_turn = f"AI Question(s):\n{state['follow_up_questions']}\n\nHuman Answer:\n{human_feedback}"
+    state["additional_context"] += conversation_turn
+    
+    return combined_response
+
+def format_analysis_dict(analysis):
+    """
+    Format analysis dictionary into nice markdown with subheadings.
+    
+    Args:
+        analysis: Dictionary or string containing analysis results
+        
+    Returns:
+        str: Formatted markdown string
+    """
+    if not analysis:
+        return "No analysis available."
+    
+    # Handle string input (raw dict string)
+    if isinstance(analysis, str):
+        try:
+            # Try to evaluate if it's a string representation of a dict
+            import ast
+            analysis = ast.literal_eval(analysis)
+        except (ValueError, SyntaxError):
+            # If it's not a dict string, return as is
+            return analysis
+    
+    # Handle dictionary input
+    if isinstance(analysis, dict):
+        formatted_parts = []
+        
+        # Define the order and display names for keys
+        key_mapping = {
+            'Key Insights': '🔍 **Key Insights**',
+            'Research Focus': '🎯 **Research Focus**', 
+            'Constraints': '⚠️ **Constraints**',
+            'Additional Context': '📋 **Additional Context**',
+            'Recommendations': '💡 **Recommendations**',
+            'detected_language': '🌐 **Detected Language**',
+            'current_position': '📍 **Current Position**'
+        }
+        
+        # Process keys in preferred order
+        for key, display_name in key_mapping.items():
+            if key in analysis:
+                value = analysis[key]
+                formatted_parts.append(f"\n{display_name}")
+                
+                if isinstance(value, list):
+                    for item in value:
+                        formatted_parts.append(f"• {item}")
+                else:
+                    formatted_parts.append(f"{value}")
+                formatted_parts.append("")  # Add empty line
+        
+        # Process any remaining keys not in the mapping
+        processed_keys = set(key_mapping.keys())
+        for key, value in analysis.items():
+            if key not in processed_keys:
+                formatted_parts.append(f"\n**{key}:**")
+                if isinstance(value, list):
+                    for item in value:
+                        formatted_parts.append(f"• {item}")
+                else:
+                    formatted_parts.append(f"{value}")
+                formatted_parts.append("")  # Add empty line
+        
+        return "\n".join(formatted_parts).strip()
+    
+    # Fallback for other types
+    return str(analysis)
+
+def analyze_structured_output_with_llm(content, report_llm="qwen3:latest"):
+    """
+    Use LLM to analyze structured output and identify thinking vs answer parts.
+    
+    Args:
+        content: The content to analyze (string or dict)
+        report_llm: LLM model to use for analysis
+        
+    Returns:
+        tuple: (thinking_part, answer_part)
+    """
+    from src.utils_v1_1 import invoke_ollama
+    
+    # Convert content to string for analysis
+    if isinstance(content, dict):
+        content_str = str(content)
+    else:
+        content_str = str(content)
+    
+    analysis_prompt = f"""
+Analyze the following LLM output and identify two parts:
+1. THINKING/REASONING part (internal thought process, analysis, reasoning)
+2. FINAL ANSWER part (the actual response content for the user)
+
+Content to analyze:
+{content_str}
+
+Please extract and return ONLY:
+- THINKING: [the thinking/reasoning content, or "None" if not found]
+- ANSWER: [the final answer content, or the entire content if no clear separation]
+
+Be very precise in your extraction. Look for keys like 'thinking', 'reasoning', 'thought', 'analysis' for thinking parts, and 'final', 'answer', 'content', 'response' for answer parts."""
+    
+    try:
+        response = invoke_ollama(
+            model=report_llm,
+            system_prompt="You are an expert at analyzing structured LLM outputs. Extract thinking and answer parts precisely.",
+            user_prompt=analysis_prompt
+        )
+        
+        # Parse the LLM response
+        thinking_part = None
+        answer_part = content_str
+        
+        if "THINKING:" in response and "ANSWER:" in response:
+            lines = response.split('\n')
+            current_section = None
+            thinking_lines = []
+            answer_lines = []
+            
+            for line in lines:
+                if line.strip().startswith("THINKING:"):
+                    current_section = "thinking"
+                    thinking_content = line.replace("THINKING:", "").strip()
+                    if thinking_content and thinking_content.lower() != "none":
+                        thinking_lines.append(thinking_content)
+                elif line.strip().startswith("ANSWER:"):
+                    current_section = "answer"
+                    answer_content = line.replace("ANSWER:", "").strip()
+                    if answer_content:
+                        answer_lines.append(answer_content)
+                elif current_section == "thinking" and line.strip():
+                    thinking_lines.append(line.strip())
+                elif current_section == "answer" and line.strip():
+                    answer_lines.append(line.strip())
+            
+            if thinking_lines:
+                thinking_part = '\n'.join(thinking_lines)
+            if answer_lines:
+                answer_part = '\n'.join(answer_lines)
+        
+        return thinking_part, answer_part
+        
+    except Exception as e:
+        print(f"[DEBUG] LLM analysis failed: {e}")
+        return None, content_str
+
+def display_final_report_with_links(result, language="en", show_in_chat_message=True, show_buttons=True, key_prefix=""):
+    """
+    Unified function to display final report with source links, thinking process, and action buttons.
+    Handles all complexity of structured output, source linking, and quality assessment notices.
+    
+    Args:
+        result: The result dictionary from reporting phase
+        language: "en" or "de" for language-specific messages
+        show_in_chat_message: Whether to wrap content in st.chat_message
+        show_buttons: Whether to show action buttons
+        key_prefix: Prefix for Streamlit widget keys to avoid duplicates
+    """
+    # Get answers with proper fallback
+    original_answer = result.get("final_answer", "")
+    linked_answer = result.get("linked_final_answer", "")
+    
+    if not original_answer or not original_answer.strip():
+        warning_msg = "No report generated." if language == "en" else "Kein Bericht generiert."
+        st.warning(warning_msg)
+        return
+    
+    # Show improvement notice if quality checker triggered reflection loop
+    quality_check = result.get("quality_check", {})
+    if quality_check and quality_check.get("needs_improvement", False):
+        info_msg = ("ℹ️ This report has been regenerated based on quality assessment feedback through reflection loop." 
+                   if language == "en" else 
+                   "ℹ️ Dieser Bericht wurde aufgrund von Qualitätssicherungsfeedback durch den Reflexionszyklus erneut generiert.")
+        st.info(info_msg)
+    
+    # Get thinking process from structured output
+    thinking_process = result.get("thinking_process", "")
+    if thinking_process and thinking_process.strip():
+        expander_label = "🧠 LLM Thinking Process" if language == "en" else "🧠 LLM Denkprozess"
+        with st.expander(expander_label, expanded=False):
+            st.text(thinking_process.strip())
+    
+    # Parse structured output to separate thinking and final content
+    final_content, thinking_content = parse_structured_llm_output(original_answer)
+    
+    # Display function
+    def _display_content():
+        # Show thinking process in expander if available from parsing
+        if thinking_content:
+            expander_label = "🧠 LLM Thinking Process" if language == "en" else "🧠 LLM Denkprozess"
+            with st.expander(expander_label, expanded=False):
+                st.markdown(thinking_content)
+        
+        # Display the main content with HTML support for clickable links if available
+        if linked_answer and linked_answer.strip():
+            try:
+                # Parse linked version for final content
+                linked_content, _ = parse_structured_llm_output(linked_answer)
+                st.markdown(linked_content, unsafe_allow_html=True)
+            except Exception as e:
+                print(f"[DEBUG] Error displaying linked answer, using original: {e}")
+                st.markdown(final_content)
+        else:
+            # Use the regular version without links
+            st.markdown(final_content)
+    
+    # Display with or without chat message wrapper
+    if show_in_chat_message:
+        with st.chat_message("assistant"):
+            _display_content()
+    else:
+        _display_content()
+    
+    # Show action buttons if requested
+    if show_buttons:
+        col_btn1, col_btn2, col_btn3 = st.columns(3)
+        
+        copy_label = "📋 Copy Report to Clipboard" if language == "en" else "📋 Kopiere Bericht in die Zwischenablage"
+        download_label = "📥 Download Report" if language == "en" else "📥 Download Bericht"
+        new_research_label = "🔄 Start New Research" if language == "en" else "🔄 Starte neue Forschung"
+        
+        copy_success = "Report copied to clipboard!" if language == "en" else "Bericht kopiert in die Zwischenablage!"
+        copy_error = "Could not copy to clipboard." if language == "en" else "Konnte Bericht nicht in die Zwischenablage kopieren."
+        
+        with col_btn1:
+            if st.button(copy_label, key=f"{key_prefix}copy_btn"):
+                if copy_to_clipboard(original_answer):
+                    st.success(copy_success)
+                else:
+                    st.error(copy_error)
+        
+        with col_btn2:
+            from datetime import datetime
+            st.download_button(
+                label=download_label,
+                data=original_answer,
+                file_name=f"research_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                mime="text/markdown",
+                key=f"{key_prefix}download_btn"
+            )
+        
+        with col_btn3:
+            if st.button(new_research_label, key=f"{key_prefix}new_research_btn"):
+                clear_chat()
+                st.rerun()
+
+def _deep_search_dict(data, target_keys):
+    """
+    Recursively search through nested dicts/lists to find values for target keys.
+    Returns the deepest/most specific match found.
+    
+    Args:
+        data: Dict, list, or other data structure to search
+        target_keys: List of key names to search for (e.g., ['thinking', 'think'])
+        
+    Returns:
+        Found value or None
+    """
+    if isinstance(data, dict):
+        # First check current level
+        for key in target_keys:
+            if key in data and data[key]:
+                # If the value itself is a dict/list with the same keys, recurse deeper
+                value = data[key]
+                if isinstance(value, (dict, list)):
+                    deeper = _deep_search_dict(value, target_keys)
+                    if deeper is not None:
+                        return deeper
+                return value
+        
+        # Then search all nested values
+        for value in data.values():
+            if isinstance(value, (dict, list)):
+                result = _deep_search_dict(value, target_keys)
+                if result is not None:
+                    return result
+    
+    elif isinstance(data, list):
+        # Search through list items
+        for item in data:
+            if isinstance(item, (dict, list)):
+                result = _deep_search_dict(item, target_keys)
+                if result is not None:
+                    return result
+    
+    return None
+
+def parse_structured_llm_output(final_answer):
+    """
+    Parse structured LLM output that contains thinking and final answer parts.
+    Handles various formats including JSON strings, Python dict strings, and direct dicts.
+    Enhanced to RECURSIVELY search through deeply nested structures to find thinking/final content.
+    
+    Args:
+        final_answer: String, dict, or other format containing the structured output
+        
+    Returns:
+        tuple: (final_content, thinking_content) where thinking_content can be None
+    """
+    if not final_answer:
+        return "No final answer available.", None
+    
+    print(f"[DEBUG] Processing final_answer type: {type(final_answer)}")
+    print(f"[DEBUG] Final answer content preview: {str(final_answer)[:200]}...")
+    
+    thinking_content = None
+    final_content = final_answer
+    
+    # Handle string input that might be JSON or Python dict
+    if isinstance(final_answer, str):
+        # Check if it looks like a structured format
+        if final_answer.strip().startswith('{') and ('}' in final_answer):
+            try:
+                import json
+                import re
+                
+                # Clean up the JSON string - handle potential formatting issues
+                cleaned_json = final_answer.strip()
+                
+                # Handle cases where there might be multiple JSON objects or nested structures
+                # Try to extract the main JSON object
+                if cleaned_json.count('{') > 1:
+                    # Find the main JSON structure
+                    brace_count = 0
+                    start_idx = cleaned_json.find('{')
+                    end_idx = start_idx
+                    
+                    for i, char in enumerate(cleaned_json[start_idx:], start_idx):
+                        if char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                end_idx = i + 1
+                                break
+                    
+                    if end_idx > start_idx:
+                        cleaned_json = cleaned_json[start_idx:end_idx]
+                
+                # Try JSON parsing first
+                parsed = json.loads(cleaned_json)
+                if isinstance(parsed, dict):
+                    final_answer = parsed
+                    print(f"[DEBUG] Successfully parsed JSON dict with keys: {list(parsed.keys())}")
+                    
+            except (json.JSONDecodeError, ValueError) as json_error:
+                print(f"[DEBUG] JSON parsing failed: {json_error}")
+                try:
+                    # Try ast.literal_eval for Python dict strings
+                    import ast
+                    parsed = ast.literal_eval(final_answer)
+                    if isinstance(parsed, dict):
+                        final_answer = parsed
+                        print(f"[DEBUG] Successfully parsed Python dict string")
+                except (ValueError, SyntaxError) as e:
+                    print(f"[DEBUG] Failed to parse dict string: {e}")
+                    # Try to extract JSON from within the string using regex
+                    json_match = re.search(r'\{[^{}]*"thinking"[^{}]*"final"[^{}]*\}', final_answer, re.DOTALL)
+                    if json_match:
+                        try:
+                            parsed = json.loads(json_match.group())
+                            if isinstance(parsed, dict):
+                                final_answer = parsed
+                                print(f"[DEBUG] Successfully extracted and parsed JSON from text")
+                        except:
+                            print(f"[DEBUG] Failed to parse extracted JSON, using original string")
+                            final_content = final_answer
+                    else:
+                        # Return original string if all parsing fails
+                        final_content = final_answer
+        else:
+            # Regular string, apply cleanup and return
+            final_content = final_answer
+    
+    # Handle dictionary input - use RECURSIVE deep search
+    if isinstance(final_answer, dict):
+        print(f"[DEBUG] Processing dictionary with keys: {list(final_answer.keys())}")
+        
+        # Define possible key patterns for thinking and final content
+        thinking_keys = ['thinking', 'think', 'thought', 'reasoning', 'analysis', 'process']
+        final_keys = ['final', 'answer', 'content', 'response', 'result', 'report']
+        
+        # RECURSIVELY search for thinking content at any depth
+        thinking_content = _deep_search_dict(final_answer, thinking_keys)
+        if thinking_content:
+            print(f"[DEBUG] Found thinking content through deep search")
+        
+        # RECURSIVELY search for final content at any depth
+        final_content_from_search = _deep_search_dict(final_answer, final_keys)
+        if final_content_from_search:
+            final_content = final_content_from_search
+            print(f"[DEBUG] Found final content through deep search")
+        else:
+            # If no specific keys found, use the whole dict as final content
+            final_content = str(final_answer)
+            print(f"[DEBUG] Using entire dict as final content")
+    
+    # Clean up thinking content - don't show if it's too short or just placeholder text
+    if isinstance(thinking_content, str):
+        thinking_content = thinking_content.strip()
+        if len(thinking_content) < 10 or thinking_content.lower() in ["none", "null", "n/a", ""]:
+            thinking_content = None
+    
+    # Clean up final content - remove any remaining <think> blocks
+    if isinstance(final_content, str):
+        import re
+        # Remove <think>...</think> blocks from final content
+        final_content = re.sub(r'<think>.*?</think>', '', final_content, flags=re.DOTALL)
+        # Remove malformed <think> tags
+        final_content = re.sub(r'<think>.*', '', final_content, flags=re.DOTALL)
+        final_content = final_content.strip()
+    
+    print(f"[DEBUG] Final result - thinking: {thinking_content is not None}, content length: {len(str(final_content))}")
+    return final_content, thinking_content
+
+def format_final_answer_dict(final_answer, report_llm="qwen3:latest"):
+    """
+    Legacy wrapper for backward compatibility.
+    """
+    return parse_structured_llm_output(final_answer)
+
+def finalize_hitl_conversation(state):
+    """
+    Finalize HITL conversation and generate knowledge base questions.
+    """
+    # Generate knowledge base questions
+    with st.spinner("Generating knowledge base questions..."):
+        kb_questions_result = generate_knowledge_base_questions(state)
+        kb_questions_content = kb_questions_result["research_queries"]  # Use research_queries for main workflow
+    
+    # IMPORTANT: Use the deep_analysis returned from generate_knowledge_base_questions
+    # instead of the accumulated conversation history
+    state["additional_context"] = kb_questions_result["additional_context"]  # This is the deep_analysis
+    
+    # Store research queries for main workflow handover
+    state["research_queries"] = kb_questions_content if isinstance(kb_questions_content, list) else [kb_questions_content]
+    
+    return f"Based on our conversation, here are targeted knowledge base search questions:\n\n{kb_questions_content}"
+
+
+def execute_retrieval_summarization_phase(use_ext_database=False, selected_database=None, k_results=3):
+    """
+    Execute Phase 2: Retrieval-Summarization workflow using HITL results from session state.
+    Returns the state with retrieved documents and summaries.
+    """
+    if not st.session_state.hitl_result:
+        st.error("No HITL results found. Please complete the HITL workflow first.")
+        return None
+    
+    # Clear CUDA memory before starting
+    clear_cuda_memory()
+    
+    # Configuration for the retrieval-summarization graph
+    config = {
+        "configurable": {
+            "use_ext_database": use_ext_database,
+            "selected_database": selected_database,
+            "k_results": k_results
+        }
+    }
+    
+    try:
+        # Initialize retrieval-summarization state using HITL results
+        retrieval_state = ResearcherStateV2(
+            user_query=st.session_state.hitl_result["user_query"],
+            current_position=0,
+            detected_language=st.session_state.hitl_result["detected_language"],
+            research_queries=st.session_state.hitl_result["research_queries"],
+            retrieved_documents={},
+            search_summaries={},
+            final_answer="",
+            quality_check=None,
+            additional_context=st.session_state.hitl_result["additional_context"],
+            report_llm=st.session_state.hitl_result["report_llm"],
+            summarization_llm=st.session_state.hitl_result["summarization_llm"],
+            enable_quality_checker=False,  # Not used in this phase
+            # Transfer HITL fields
+            human_feedback=st.session_state.hitl_result["human_feedback"],
+            analysis=st.session_state.hitl_result["analysis"],
+            follow_up_questions=st.session_state.hitl_result["follow_up_questions"]
+        )
+        
+        # Create progress tracking
+        progress_container = st.container()
+        with progress_container:
+            retrieval_progress_bar = st.progress(0)
+            retrieval_status_text = st.empty()
+        
+        # Create retrieval-summarization graph
+        retrieval_graph = create_retrieval_summarization_graph()
+        
+        # Execute retrieval-summarization graph
+        retrieval_status_text.text("🔍 Retrieving relevant documents...")
+        
+        retrieval_final_state = retrieval_state
+        step_count = 0
+        total_steps = 2  # retrieve_documents, summarize_documents
+        
+        for step_output in retrieval_graph.stream(retrieval_state, config):
+            step_count += 1
+            progress = min(step_count / total_steps, 1.0)
+            retrieval_progress_bar.progress(progress)
+            
+            # Update status based on current step
+            if step_count == 1:
+                retrieval_status_text.text("📋 Summarizing research findings...")
+            elif step_count == 2:
+                retrieval_status_text.text("✅ Retrieval and summarization completed")
+            
+            # Get the latest state from the step output
+            for node_name, node_state in step_output.items():
+                if node_state is not None:
+                    retrieval_final_state = node_state
+        
+        # Complete retrieval-summarization phase
+        retrieval_progress_bar.progress(1.0)
+        retrieval_status_text.text("✅ Retrieval and summarization completed")
+        
+        # Display results
+        st.subheader("📋 Phase 2 Results")
+        
+        # Display retrieved documents
+        if "retrieved_documents" in retrieval_final_state and retrieval_final_state["retrieved_documents"]:
+            with st.expander("📄 Retrieved Documents by Query", expanded=False):
+                retrieved_docs = retrieval_final_state["retrieved_documents"]
+                for query, documents in retrieved_docs.items():
+                    st.markdown(f"**Query:** {query}")
+                    st.markdown(f"**Documents found:** {len(documents)}")
+                    
+                    for i, doc in enumerate(documents, 1):
+                        with st.expander(f"Document {i}", expanded=False):
+                            if hasattr(doc, 'page_content'):
+                                st.text_area(f"Content", doc.page_content, height=150, key=f"ret_doc_{hash(query)}_{i}")
+                            if hasattr(doc, 'metadata'):
+                                st.json(doc.metadata)
+                    st.divider()
+        
+        # Display summaries
+        if "search_summaries" in retrieval_final_state and retrieval_final_state["search_summaries"]:
+            search_summaries = retrieval_final_state["search_summaries"]
+            for query, summaries in search_summaries.items():
+                st.markdown(f"**Number of summaries for query {query}:** {len(summaries)}")
+            with st.expander("📝 Generated Summaries", expanded=False):    
+                for query, summaries in search_summaries.items():
+                    st.markdown(f"**Query:** {query}")
+                    for i, summary in enumerate(summaries, 1):
+                        if hasattr(summary, 'page_content'):
+                            st.markdown(f"**Summary {i}:**")
+                            st.markdown(summary.page_content)
+                        elif isinstance(summary, str):
+                            st.markdown(f"**Summary {i}:**")
+                            st.markdown(summary)
+                    st.divider()
+            
+        # Store results in session state for next phase
+        st.session_state.retrieval_summarization_result = retrieval_final_state
+        
+        return retrieval_final_state
+        
+    except Exception as e:
+        st.error(f"Error in retrieval-summarization phase: {str(e)}")
+        print(f"[ERROR] Retrieval-summarization phase error: {str(e)}")
+        return None
+
+
+def execute_reporting_phase(enable_web_search=False):
+    """
+    Execute Phase 3: Reporting workflow using results from Phase 2.
+    Returns the final research results with reranked summaries and final report.
+    """
+    if not st.session_state.retrieval_summarization_result:
+        st.error("No retrieval-summarization results found. Please complete Phase 2 first.")
+        return None
+    
+    # Clear CUDA memory before starting
+    clear_cuda_memory()
+    
+    try:
+        # Initialize reporting state using Phase 2 results
+        # First get the base state from Phase 2
+        base_state = dict(st.session_state.retrieval_summarization_result)
+        
+        # Update with reporting-specific fields (overwrite if necessary)
+        base_state.update({
+            "web_search_enabled": enable_web_search,
+            "enable_quality_checker": st.session_state.get("enable_quality_checker", True),
+            "reflection_count": 0,
+            "internet_result": None,
+            "internet_search_term": None,
+            "selected_database": st.session_state.get("selected_database", None),
+            "linked_final_answer": None
+        })
+        
+        reporting_state = ResearcherStateV2(**base_state)
+        
+        # Create progress tracking
+        progress_container = st.container()
+        with progress_container:
+            reporting_progress_bar = st.progress(0)
+            reporting_status_text = st.empty()
+        
+        # Use rerank-reporter graph (Phase 3 specific workflow)
+        reporting_graph = create_rerank_reporter_graph()
+        
+        # Execute rerank-reporter workflow graph
+        reporting_status_text.text("🚀 Starting reranking and report generation...")
+        reporting_final_state = reporting_state
+        step_count = 0
+        # Rerank-reporter graph steps: reranker, [web_tavily_searcher], report_writer, [quality_checker], source_linker
+        total_steps = 5  # Account for all possible steps including web search and quality checker
+        
+        for step_output in reporting_graph.stream(reporting_state):
+            step_count += 1
+            progress = min(step_count / total_steps, 1.0)
+            reporting_progress_bar.progress(progress)
+            
+            # Update status based on current step
+            for node_name, node_state in step_output.items():
+                if node_name == "reranker":
+                    reporting_status_text.text("📊 Reranking summaries by relevance...")
+                elif node_name == "web_tavily_searcher":
+                    reporting_status_text.text("🌐 Searching internet for additional information...")
+                elif node_name == "report_writer":
+                    reporting_status_text.text("✍️ Generating comprehensive report...")
+                elif node_name == "quality_checker":
+                    reporting_status_text.text("🔍 Performing quality assessment...")
+                elif node_name == "source_linker":
+                    reporting_status_text.text("🔗 Converting sources to clickable links...")
+                else:
+                    reporting_status_text.text(f"⚙️ Processing {node_name}...")
+                
+                # Get the latest state from the step output
+                if node_state is not None:
+                    reporting_final_state = node_state
+        
+        # Complete reporting phase
+        reporting_progress_bar.progress(1.0)
+        reporting_status_text.text("✅ Report generation completed")
+        
+        # Display results
+        if reporting_final_state:
+            # Store result in session state
+            st.session_state.reporting_result = reporting_final_state
+            st.session_state.workflow_phase = "complete"
+            
+            # Display the final answer with clickable sources
+            final_answer = reporting_final_state.get("linked_final_answer") or reporting_final_state.get("final_answer", "")
+            if final_answer:
+                st.success("✅ **Report Generated Successfully!**")
+                st.markdown("### 📄 Final Report")
+                
+                # Parse structured output to separate thinking and final content
+                final_content, thinking_content = parse_structured_llm_output(final_answer)
+                
+                # Show thinking process in expander if available
+                if thinking_content:
+                    with st.expander("🧠 LLM Thinking Process", expanded=False):
+                        st.markdown(thinking_content)
+                
+                # Display the main content as markdown
+                st.markdown(final_content, unsafe_allow_html=True)
+            else:
+                st.error("❌ No final answer was generated")
+        else:
+            st.error("❌ Reporting phase failed - no final state returned")
+        
+        return reporting_final_state
+        
+    except Exception as e:
+        st.error(f"❌ Error in reporting phase: {str(e)}")
+        return None
+
+
+def execute_all_phases_automatically():
+    """
+    Execute all phases automatically after HITL completion.
+    This creates a unified workflow that runs Phase 2 and Phase 3 sequentially.
+    """
+    try:
+        # Create main status container
+        with st.status("🚀 Executing Complete Research Workflow...", expanded=True) as status:
+            
+            # Phase 2: Retrieval & Summarization
+            st.write("### 📚 Phase 2: Retrieval & Summarization")
+            st.write("Retrieving relevant documents and generating summaries...")
+            
+            retrieval_result = execute_retrieval_summarization_phase(
+                use_ext_database=st.session_state.get("use_ext_database", False),
+                selected_database=st.session_state.get("selected_database", None),
+                k_results=st.session_state.get("k_results", 3)
+            )
+            
+            if not retrieval_result:
+                status.update(label="❌ Workflow failed at Phase 2", state="error")
+                st.error("Phase 2 failed. Please check the error messages above.")
+                return False
+            
+            st.success("✅ Phase 2 completed successfully!")
+            
+            # Phase 3: Reporting
+            st.write("### 📊 Phase 3: Reranking & Report Generation")
+            st.write("Reranking summaries and generating comprehensive report...")
+            
+            reporting_result = execute_reporting_phase(
+                enable_web_search=st.session_state.get("enable_web_search", False)
+            )
+            
+            if not reporting_result:
+                status.update(label="❌ Workflow failed at Phase 3", state="error")
+                st.error("Phase 3 failed. Please check the error messages above.")
+                return False
+            
+            st.success("✅ Phase 3 completed successfully!")
+            
+            # Update status to complete
+            status.update(label="✅ Complete Research Workflow Finished!", state="complete")
+            
+        st.session_state.workflow_phase = "completed"
+        return True
+        
+    except Exception as e:
+        st.error(f"❌ Error in automated workflow execution: {str(e)}")
+        return False
+
+
+# ========================================
+# WORKFLOW VISUALIZATION (Optional)
+# ========================================
+
+# Show workflow visualization in expandable section
+with st.expander("🔄 Show Workflow Graphs", expanded=False):
+    generate_langgraph_visualization()
+
+# ========================================
+# MAIN UNIFIED WORKFLOW INTERFACE
+# ========================================
+
+# Initialize session state variables
+if "workflow_phase" not in st.session_state:
+    st.session_state.workflow_phase = "hitl"
+
+if "input_counter" not in st.session_state:
+    st.session_state.input_counter = 0
+
+if "processing_initial_query" not in st.session_state:
+    st.session_state.processing_initial_query = False
+
+if "processing_feedback" not in st.session_state:
+    st.session_state.processing_feedback = False
+
+# Show current phase status banner
+if st.session_state.workflow_phase == "hitl":
+    st.info("🤝 **Current Phase: Human-in-the-Loop** - Interactive conversation to refine your research needs.")
+elif st.session_state.workflow_phase == "auto_executing":
+    st.warning("⚙️ **Automatic Execution in Progress** - Processing all workflow phases...")
+elif st.session_state.workflow_phase == "completed":
+    st.success("✅ **Workflow Completed** - All phases finished successfully!")
+
+# ========================================
+# PHASE 1: HITL (Human-in-the-Loop)
+# ========================================
+if st.session_state.workflow_phase == "hitl":
+    
+    # Initialize HITL session state variables
+    if "hitl_conversation_history" not in st.session_state:
+        st.session_state.hitl_conversation_history = []
+    
+    if "hitl_state" not in st.session_state:
+        st.session_state.hitl_state = None
+    
+    if "waiting_for_human_input" not in st.session_state:
+        st.session_state.waiting_for_human_input = False
+    
+    if "conversation_ended" not in st.session_state:
+        st.session_state.conversation_ended = False
+    
+    # Initial query input
+    if (len(st.session_state.hitl_conversation_history) == 0 and 
+        not st.session_state.processing_initial_query):
+        user_query = st.chat_input("Enter your initial research query")
+        
+        if user_query:
+            st.session_state.processing_initial_query = True
+            
+            # Initialize HITL state
+            st.session_state.hitl_state = initialize_hitl_state(
+                user_query, 
+                st.session_state.report_llm, 
+                st.session_state.summarization_llm,
+                st.session_state.max_search_queries
+            )
+            
+            # Add to conversation history
+            st.session_state.hitl_conversation_history.append({
+                "role": "user",
+                "content": user_query
+            })
+            
+            # Process initial query
+            combined_response = process_initial_query(st.session_state.hitl_state)
+            
+            st.session_state.hitl_conversation_history.append({
+                "role": "assistant",
+                "content": combined_response
+            })
+            
+            st.session_state.waiting_for_human_input = True
+            st.rerun()
+    
+    # Display conversation history
+    if st.session_state.hitl_conversation_history:
+        st.subheader("💬 Conversation History")
+        for message in st.session_state.hitl_conversation_history:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+    
+    # Handle human feedback
+    if (st.session_state.waiting_for_human_input and 
+        not st.session_state.conversation_ended and
+        not st.session_state.processing_feedback and
+        len(st.session_state.hitl_conversation_history) > 0 and 
+        st.session_state.hitl_conversation_history[-1]["role"] == "assistant"):
+        
+        human_feedback = st.chat_input(
+            "Your response (type '/end' to finish and proceed to main research)",
+            key=f"human_feedback_input_{st.session_state.input_counter}"
+        )
+        
+        if human_feedback:
+            st.session_state.processing_feedback = True
+            
+            if human_feedback.strip().lower() == "/end":
+                st.session_state.conversation_ended = True
+                
+                st.session_state.hitl_conversation_history.append({
+                    "role": "user",
+                    "content": "/end - Conversation ended"
+                })
+                
+                st.session_state.waiting_for_human_input = False
+                
+                # Finalize HITL
+                final_response = finalize_hitl_conversation(st.session_state.hitl_state)
+                
+                st.session_state.hitl_conversation_history.append({
+                    "role": "assistant",
+                    "content": final_response
+                })
+                
+                # Store HITL results
+                st.session_state.hitl_result = {
+                    "user_query": st.session_state.hitl_state["user_query"],
+                    "current_position": st.session_state.hitl_state["current_position"],
+                    "detected_language": st.session_state.hitl_state["detected_language"],
+                    "additional_context": st.session_state.hitl_state["additional_context"],
+                    "report_llm": st.session_state.hitl_state["report_llm"],
+                    "summarization_llm": st.session_state.hitl_state["summarization_llm"],
+                    "research_queries": st.session_state.hitl_state.get("research_queries", []),
+                    "analysis": st.session_state.hitl_state["analysis"],
+                    "follow_up_questions": st.session_state.hitl_state["follow_up_questions"],
+                    "human_feedback": st.session_state.hitl_state["human_feedback"]
+                }
+                
+                # Trigger automatic execution
+                st.session_state.workflow_phase = "auto_executing"
+                st.session_state.input_counter += 1
+                st.rerun()
+            else:
+                # Continue conversation
+                st.session_state.hitl_conversation_history.append({
+                    "role": "user",
+                    "content": human_feedback
+                })
+                
+                combined_response = process_human_feedback(st.session_state.hitl_state, human_feedback)
+                
+                st.session_state.hitl_conversation_history.append({
+                    "role": "assistant",
+                    "content": combined_response
+                })
+                
+                st.session_state.processing_feedback = False
+                st.session_state.waiting_for_human_input = True
+                st.session_state.input_counter += 1
+                st.rerun()
+
+# ========================================
+# PHASE 2 & 3: AUTOMATIC EXECUTION
+# ========================================
+elif st.session_state.workflow_phase == "auto_executing":
+    # Show HITL results summary
+    if st.session_state.hitl_result:
+        with st.expander("📋 HITL Phase Results (Completed)", expanded=False):
+            research_queries = st.session_state.hitl_result.get("research_queries", [])
+            st.markdown(f"**Original Query:** {st.session_state.hitl_result.get('user_query', 'N/A')}")
+            st.markdown(f"**Generated {len(research_queries)} Research Queries**")
+            for i, query in enumerate(research_queries, 1):
+                st.markdown(f"**{i}.** {query}")
+    
+    # Execute all remaining phases automatically
+    success = execute_all_phases_automatically()
+    
+    if success:
+        st.rerun()
+
+# ========================================
+# FINAL ANSWER DISPLAY
+# ========================================
+elif st.session_state.workflow_phase == "completed":
+    # Show HITL results summary
+    if st.session_state.hitl_result:
+        with st.expander("📋 HITL Phase Results (Completed)", expanded=False):
+            research_queries = st.session_state.hitl_result.get("research_queries", [])
+            st.markdown(f"**Original Query:** {st.session_state.hitl_result.get('user_query', 'N/A')}")
+            st.markdown(f"**Generated {len(research_queries)} Research Queries**")
+            for i, query in enumerate(research_queries, 1):
+                st.markdown(f"**{i}.** {query}")
+    
+    # Show Phase 2 results with detailed documents and summaries
+    if st.session_state.retrieval_summarization_result:
+        with st.expander("📚 Retrieval & Summarization Results (Completed)", expanded=False):
+            result = st.session_state.retrieval_summarization_result
+            retrieved_docs = result.get("retrieved_documents", {})
+            search_summaries = result.get("search_summaries", {})
+            
+            st.markdown(f"**Total Documents Retrieved:** {sum(len(docs) for docs in retrieved_docs.values())}")
+            st.markdown(f"**Total Summaries Generated:** {sum(len(sums) for sums in search_summaries.values())}")
+            st.divider()
+            
+            # Show retrieved documents per query
+            if retrieved_docs:
+                st.subheader("📄 Retrieved Documents")
+                for query, docs in retrieved_docs.items():
+                    with st.expander(f"Query: {query} ({len(docs)} documents)", expanded=False):
+                        for idx, doc in enumerate(docs, 1):
+                            st.markdown(f"**Document {idx}**")
+                            if hasattr(doc, 'page_content'):
+                                st.markdown(doc.page_content[:500] + "..." if len(doc.page_content) > 500 else doc.page_content)
+                                if hasattr(doc, 'metadata') and doc.metadata:
+                                    st.caption(f"Source: {doc.metadata.get('source', 'Unknown')}")
+                            else:
+                                st.markdown(str(doc)[:500])
+                            st.divider()
+            
+            # Show generated summaries per query
+            if search_summaries:
+                st.subheader("📝 Generated Summaries")
+                for query, summaries in search_summaries.items():
+                    with st.expander(f"Query: {query} ({len(summaries)} summaries)", expanded=False):
+                        for idx, summary in enumerate(summaries, 1):
+                            st.markdown(f"**Summary {idx}**")
+                            if isinstance(summary, dict):
+                                content = summary.get('Content', str(summary))
+                                st.markdown(content)
+                                if 'Source' in summary:
+                                    st.caption(f"Source: {summary['Source']}")
+                            else:
+                                st.markdown(str(summary))
+                            st.divider()
+    
+    # Show Phase 3 results - Reranked summaries and quality check
+    if st.session_state.reporting_result:
+        with st.expander("📊 Reranking & Quality Results (Completed)", expanded=False):
+            result = st.session_state.reporting_result
+            
+            # Show reranked summaries
+            reranked_summaries = result.get("all_reranked_summaries", [])
+            if reranked_summaries:
+                st.subheader("🏆 Reranked Documents")
+                st.markdown(f"**Total Reranked Documents:** {len(reranked_summaries)}")
+                
+                # Summary statistics
+                total_docs = len(reranked_summaries)
+                avg_score = sum(item.get('score', 0) for item in reranked_summaries) / total_docs if total_docs > 0 else 0
+                max_score = max([item.get('score', 0) for item in reranked_summaries], default=0)
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Total Documents", total_docs)
+                with col2:
+                    st.metric("Average Score", f"{avg_score:.2f}/10")
+                with col3:
+                    st.metric("Highest Score", f"{max_score:.2f}/10")
+                
+                st.divider()
+                
+                # Display top reranked documents
+                for rank, item in enumerate(reranked_summaries[:10], 1):  # Show top 10
+                    score = item.get('score', 0)
+                    summary_data = item.get('summary', {})
+                    
+                    with st.expander(f"🥇 Rank #{rank} (Score: {score:.2f}/10)", expanded=False):
+                        # Handle different summary formats
+                        if isinstance(summary_data, dict):
+                            content = summary_data.get('Content', str(summary_data))
+                            source = summary_data.get('Source', 'Unknown')
+                        else:
+                            if hasattr(summary_data, 'page_content'):
+                                content = summary_data.page_content
+                                source = summary_data.metadata.get('source', 'Unknown') if hasattr(summary_data, 'metadata') else 'Unknown'
+                            else:
+                                content = str(summary_data)
+                                source = 'Unknown'
+                        
+                        st.markdown(f"**Score:** {score:.2f}/10")
+                        st.markdown(f"**Query:** {item.get('query', 'N/A')}")
+                        st.markdown(f"**Source:** {source}")
+                        st.markdown("**Content:**")
+                        st.markdown(content)
+            
+            st.divider()
+            
+            # Show quality assessment details
+            quality_check = result.get("quality_check", {})
+            if quality_check:
+                st.subheader("✅ Quality Assessment")
+                if "overall_score" in quality_check:
+                    score = quality_check["overall_score"]
+                    max_score = 400
+                    score_percentage = (score / max_score) * 100
+                    
+                    if score >= 300:
+                        st.success(f"✅ Quality Score: {score}/{max_score} ({score_percentage:.1f}%) - PASSED")
+                    else:
+                        st.warning(f"⚠️ Quality Score: {score}/{max_score} ({score_percentage:.1f}%) - NEEDS IMPROVEMENT")
+                
+                # Show full assessment if available
+                full_assessment = quality_check.get("full_assessment", "")
+                if full_assessment:
+                    st.text_area("Full Quality Assessment", full_assessment, height=200)
+    
+    # Display final research report
+    if st.session_state.reporting_result:
+        result = st.session_state.reporting_result
+        final_answer = result.get("linked_final_answer") or result.get("final_answer", "")
+        
+        if final_answer and final_answer.strip():
+            st.markdown("---")
+            st.markdown("# 🎯 Final Research Report")
+            
+            # Parse structured output
+            final_content, thinking_content = parse_structured_llm_output(final_answer)
+            
+            # Show thinking in expander
+            if thinking_content:
+                with st.expander("🧠 LLM Thinking Process", expanded=False):
+                    st.markdown(thinking_content)
+            
+            # Display final answer
+            with st.chat_message("assistant"):
+                st.markdown(final_content, unsafe_allow_html=True)
+
+def main():
+    """Main application function"""
+    # Initialize workflow phase if not set
+    if "workflow_phase" not in st.session_state:
+        st.session_state.workflow_phase = "hitl"
+    
+    # Initialize other session state variables
+    if "input_counter" not in st.session_state:
+        st.session_state.input_counter = 0
+    if "processing_initial_query" not in st.session_state:
+        st.session_state.processing_initial_query = False
+    
+    # Main app content will be handled by the existing code structure
+    pass
+
+if __name__ == "__main__":
+    main()

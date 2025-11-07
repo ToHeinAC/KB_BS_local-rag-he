@@ -10,3 +10,6 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Temporary tunnel logs (contains temporary URLs)
+login/start-quick-tunnels_log.md

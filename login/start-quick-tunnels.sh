@@ -98,3 +98,62 @@ echo "To view logs:"
 echo "  tail -f /tmp/launcher-tunnel.log"
 echo "  tail -f /tmp/app-tunnel.log"
 echo ""
+
+# Save execution log to markdown file
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOG_FILE="$SCRIPT_DIR/start-quick-tunnels_log.md"
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+
+cat > "$LOG_FILE" << EOF
+# Quick Tunnels Execution Log
+
+**Last Updated:** $TIMESTAMP
+
+## 🚀 Starting Quick Cloudflare Tunnels
+=====================================
+
+🧹 Cleaning up existing tunnels...
+📝 Temporarily moved config.yml
+📝 Temporarily moved tunnel credentials
+📦 Starting launcher tunnel on port 8502...
+📦 Starting main app tunnel on port 8501...
+📝 Restored config.yml
+📝 Restored tunnel credentials
+
+⏳ Extracting tunnel URLs...
+
+======================================
+✅ Quick Tunnels Running!
+======================================
+
+🔐 Launcher URL:  $LAUNCHER_URL
+🚀 Main App URL:  $APP_URL
+
+⚠️  IMPORTANT: These URLs are temporary!
+   They will change each time you restart the tunnels.
+
+📋 URLs saved to:
+   /tmp/launcher-url.txt
+   /tmp/app-url.txt
+
+To stop tunnels:
+  pkill -f 'cloudflared tunnel'
+
+To view logs:
+  tail -f /tmp/launcher-tunnel.log
+  tail -f /tmp/app-tunnel.log
+
+---
+
+## Tunnel Details
+
+- **Launcher PID:** $LAUNCHER_PID
+- **App PID:** $APP_PID
+- **Launcher Port:** 8502
+- **Main App Port:** 8501
+- **Log Location:** $LOG_FILE
+
+EOF
+
+echo "📝 Execution log saved to: $LOG_FILE"
+echo ""
