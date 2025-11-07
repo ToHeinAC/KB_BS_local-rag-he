@@ -54,17 +54,38 @@ from src.rag_helpers_v1_1 import (
     get_summarization_llm_models, 
     get_all_available_models,
     get_license_content,
-    extract_embedding_model
+    extract_embedding_model,
+    linkify_sources,
+    parse_structured_llm_output
 )
 
 # Set page configuration
 st.set_page_config(
-    page_title="RAG Forscher v2.0 - Human-in-the-Loop (HITL)",
+    page_title="RAG Forscher v2.1 - Human-in-the-Loop (HITL)",
     page_icon="🔍",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
 clear_cuda_memory()
+
+# Load LLM models
+report_llm_models = get_report_llm_models()
+summarization_llm_models = get_summarization_llm_models()
+
+# Create header with two columns (matching app_v1_1.py and v2_0g)
+header_col1, header_col2 = st.columns([0.5, 0.5])
+with header_col1:
+    st.markdown(
+        '<h1>🔍 Br<span style="color:darkorange;"><b>AI</b></span>n</h1>',
+        unsafe_allow_html=True, help="Human-In-The-Loop (HITL) RAG Forscher V2.1"
+    )
+    st.markdown("## Wissensdatenbank-Konnektor")
+    st.markdown('<p style="text-align: right; font-size:12px; font-weight:bold; color:darkorange; margin-top:0px;">LIZENZ</p>', 
+                unsafe_allow_html=True, help=get_license_content())    
+with header_col2:
+    st.image("Header für Chatbot.png", use_container_width=True)
+
 # Function to clean model names for display
 def clean_model_name(model_name):
     """Clean model name by removing common prefixes and suffixes for better display"""
@@ -925,7 +946,6 @@ def execute_retrieval_summarization_phase(use_ext_database=False, selected_datab
         # Create progress tracking
         progress_container = st.container()
         with progress_container:
-            st.subheader("🔍 Phase 2: Retrieval & Summarization")
             retrieval_progress_bar = st.progress(0)
             retrieval_status_text = st.empty()
         
@@ -1020,24 +1040,25 @@ def execute_reporting_phase(enable_web_search=False):
     
     try:
         # Initialize reporting state using Phase 2 results
-        reporting_state = ResearcherStateV2(
-            **st.session_state.retrieval_summarization_result,
-            # Add reporting-specific fields
-            web_search_enabled=enable_web_search,
-            reflection_count=0,
-            internet_result=None,
-            internet_search_term=None,
-            selected_database=st.session_state.get("selected_database", None),  # Pass database for source linking
-            linked_final_answer=None
-        )
+        # First get the base state from Phase 2
+        base_state = dict(st.session_state.retrieval_summarization_result)
         
-        # Update quality checker setting from sidebar if needed
-        reporting_state["enable_quality_checker"] = st.session_state.get("enable_quality_checker", True)
+        # Update with reporting-specific fields (overwrite if necessary)
+        base_state.update({
+            "web_search_enabled": enable_web_search,
+            "enable_quality_checker": st.session_state.get("enable_quality_checker", True),
+            "reflection_count": 0,
+            "internet_result": None,
+            "internet_search_term": None,
+            "selected_database": st.session_state.get("selected_database", None),
+            "linked_final_answer": None
+        })
+        
+        reporting_state = ResearcherStateV2(**base_state)
         
         # Create progress tracking
         progress_container = st.container()
         with progress_container:
-            st.subheader("📊 Phase 3: Reranking & Berichtserstellung")
             reporting_progress_bar = st.progress(0)
             reporting_status_text = st.empty()
         
@@ -1227,8 +1248,60 @@ def generate_response(user_input, enable_web_search, report_structure, max_searc
         # Execute reporting phase
         return execute_reporting_phase(enable_web_search)
     else:
-        st.error(f"Unknown workflow phase: {st.session_state.workflow_phase}")
+        st.error(f"Unbekannte Workflow-Phase: {st.session_state.workflow_phase}")
         return None
+
+
+def execute_all_phases_automatically():
+    """
+    Alle Phasen automatisch nach Abschluss von HITL ausführen.
+    Dies erzeugt einen einheitlichen Workflow, der Phase 2 und Phase 3 sequenziell ausführt.
+    """
+    try:
+        # Haupt-Statuscontainer erstellen
+        with st.status("🚀 Führe kompletten Forschungs-Workflow aus...", expanded=True) as status:
+            
+            # Phase 2: Retrieval & Summarization
+            st.write("### 📚 Phase 2: Retrieval & Summarization")
+            st.write("Rufe relevante Dokumente ab und generiere Zusammenfassungen...")
+            
+            retrieval_result = execute_retrieval_summarization_phase(
+                use_ext_database=st.session_state.get("use_ext_database", False),
+                selected_database=st.session_state.get("selected_database", None),
+                k_results=st.session_state.get("k_results", 3)
+            )
+            
+            if not retrieval_result:
+                status.update(label="❌ Workflow fehlgeschlagen in Phase 2", state="error")
+                st.error("Phase 2 fehlgeschlagen. Bitte überprüfen Sie die Fehlermeldungen oben.")
+                return False
+            
+            st.success("✅ Phase 2 erfolgreich abgeschlossen!")
+            
+            # Phase 3: Reporting
+            st.write("### 📊 Phase 3: Reranking & Berichterstellung")
+            st.write("Ordne Zusammenfassungen und generiere umfassenden Bericht...")
+            
+            reporting_result = execute_reporting_phase(
+                enable_web_search=st.session_state.get("enable_web_search", False)
+            )
+            
+            if not reporting_result:
+                status.update(label="❌ Workflow fehlgeschlagen in Phase 3", state="error")
+                st.error("Phase 3 fehlgeschlagen. Bitte überprüfen Sie die Fehlermeldungen oben.")
+                return False
+            
+            st.success("✅ Phase 3 erfolgreich abgeschlossen!")
+            
+            # Status auf komplett aktualisieren
+            status.update(label="✅ Kompletter Forschungs-Workflow beendet!", state="complete")
+            
+        st.session_state.workflow_phase = "completed"
+        return True
+        
+    except Exception as e:
+        st.error(f"❌ Fehler bei automatischer Workflow-Ausführung: {str(e)}")
+        return False
 
 
 def start_new_session():
@@ -1428,11 +1501,14 @@ def main():
             )
             
             # Max search queries
-            max_search_queries = st.slider(
+            if "max_search_queries" not in st.session_state:
+                st.session_state.max_search_queries = 3
+            
+            st.session_state.max_search_queries = st.slider(
                 "Maximale Anzahl der Forschungsabfragen",
                 min_value=1,
                 max_value=10,
-                value=3,
+                value=st.session_state.max_search_queries,
                 help="Maximale Anzahl der Forschungsabfragen"
             )
             
@@ -1535,567 +1611,372 @@ def main():
                 else:
                     st.error(f"Could not generate reporting graph: {str(e)}")
     
-    # Three-Phase Tabs
-    tab1, tab2, tab3 = st.tabs(["🤝 Phase 1: HITL", "📚 Phase 2: Retrieval-Summarization", "📄 Phase 3: Reporting"])
+    # ========================================
+    # WORKFLOW VISUALIZATION (Optional)
+    # ========================================
     
-    # Phase 1: HITL
-    with tab1:
-        # Dynamic phase info for HITL tab
-        st.warning("🤝 **Aktuelle Phase: Human-in-the-Loop** - Interaktive Konversation zum Anforderungsmanagement")
+    # Show workflow visualization in expandable section
+    with st.expander("🔄 Workflow-Graphen anzeigen", expanded=False):
+        st.markdown("### RAG Forscher v2.1 - Workflow-Visualisierung")
         
-        if st.session_state.workflow_phase == "hitl":
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("#### 🤝 Phase 1: HITL")
+            try:
+                hitl_graph = create_hitl_graph()
+                hitl_png = hitl_graph.get_graph(xray=True).draw_mermaid_png()
+                st.image(hitl_png, caption="HITL Graph", use_container_width=True)
+            except Exception as e:
+                if "502" in str(e) or "mermaid.ink" in str(e):
+                    st.warning("⚠️ **HITL Visualisierung temporär nicht verfügbar**")
+                else:
+                    st.error(f"Konnte HITL-Graph nicht generieren: {str(e)}")
+        
+        with col2:
+            st.markdown("#### 📚 Phase 2: Retrieval & Smry")
+            try:
+                retrieval_graph = create_retrieval_summarization_graph()
+                retrieval_png = retrieval_graph.get_graph(xray=True).draw_mermaid_png()
+                st.image(retrieval_png, caption="Retrieval & Summarization Graph", use_container_width=True)
+            except Exception as e:
+                if "502" in str(e) or "mermaid.ink" in str(e):
+                    st.warning("⚠️ **Retrieval-Summarization Visualisierung temporär nicht verfügbar**")
+                else:
+                    st.error(f"Konnte Retrieval-Summarization-Graph nicht generieren: {str(e)}")
+        
+        with col3:
+            st.markdown("#### 📄 Phase 3: QA & Reporting")
+            try:
+                reporting_graph = create_rerank_reporter_graph()
+                reporting_png = reporting_graph.get_graph(xray=True).draw_mermaid_png()
+                st.image(reporting_png, caption="QA & Reporting Graph", use_container_width=True)
+            except Exception as e:
+                if "502" in str(e) or "mermaid.ink" in str(e):
+                    st.warning("⚠️ **QA & Reporting Visualisierung temporär nicht verfügbar**")
+                else:
+                    st.error(f"Konnte Reporting-Graph nicht generieren: {str(e)}")
+    
+    # ========================================
+    # MAIN UNIFIED WORKFLOW INTERFACE
+    # ========================================
+    
+    # Initialize session state variables
+    if "workflow_phase" not in st.session_state:
+        st.session_state.workflow_phase = "hitl"
+    
+    if "input_counter" not in st.session_state:
+        st.session_state.input_counter = 0
+    
+    if "processing_initial_query" not in st.session_state:
+        st.session_state.processing_initial_query = False
+    
+    if "processing_feedback" not in st.session_state:
+        st.session_state.processing_feedback = False
+    
+    # Show current phase status banner
+    if st.session_state.workflow_phase == "hitl":
+        st.info("🤝 **Aktuelle Phase: Human-in-the-Loop** - Interaktive Konversation zur Anforderungsklärung.")
+    elif st.session_state.workflow_phase == "auto_executing":
+        st.warning("⚙️ **Automatische Ausführung läuft** - Verarbeite alle Workflow-Phasen...")
+    elif st.session_state.workflow_phase == "completed":
+        st.success("✅ **Workflow abgeschlossen** - Alle Phasen erfolgreich beendet!")
+    
+    # ========================================
+    # PHASE 1: HITL (Human-in-the-Loop)
+    # ========================================
+    if st.session_state.workflow_phase == "hitl":
+        
+        # Initialize HITL session state variables
+        if "hitl_conversation_history" not in st.session_state:
+            st.session_state.hitl_conversation_history = []
+        
+        if "hitl_state" not in st.session_state:
+            st.session_state.hitl_state = None
+        
+        if "waiting_for_human_input" not in st.session_state:
+            st.session_state.waiting_for_human_input = False
+        
+        if "conversation_ended" not in st.session_state:
+            st.session_state.conversation_ended = False
+        
+        # Initial query input
+        if (len(st.session_state.hitl_conversation_history) == 0 and 
+            not st.session_state.processing_initial_query):
+            user_query = st.chat_input("Geben Sie Ihre Forschungsanfrage ein")
             
-            # Initialize HITL session state variables if they don't exist
-            if "hitl_conversation_history" not in st.session_state:
-                st.session_state.hitl_conversation_history = []
-            
-            if "hitl_state" not in st.session_state:
-                st.session_state.hitl_state = None
-            
-            if "waiting_for_human_input" not in st.session_state:
-                st.session_state.waiting_for_human_input = False
-            
-            if "conversation_ended" not in st.session_state:
-                st.session_state.conversation_ended = False
-            
-            # Initial query input - only show if no conversation has started and not processing
-            if (len(st.session_state.hitl_conversation_history) == 0 and 
-                not st.session_state.processing_initial_query):  
-                #add a few blank lines          
-                st.markdown("\n\n\n\n\n")          
-                user_query = st.chat_input(
-                    "Gib eine Anfrage ein"
+            if user_query:
+                st.session_state.processing_initial_query = True
+                
+                # Initialize HITL state
+                st.session_state.hitl_state = initialize_hitl_state(
+                    user_query, 
+                    st.session_state.report_llm, 
+                    st.session_state.summarization_llm,
+                    st.session_state.max_search_queries
                 )
                 
-                if user_query:
-                    # Set processing flag to hide input on next render
-                    st.session_state.processing_initial_query = True
+                # Add to conversation history
+                st.session_state.hitl_conversation_history.append({
+                    "role": "user",
+                    "content": user_query
+                })
+                
+                # Process initial query
+                combined_response = process_initial_query(st.session_state.hitl_state)
+                
+                # Add AI response to conversation history
+                st.session_state.hitl_conversation_history.append({
+                    "role": "assistant",
+                    "content": combined_response
+                })
+                
+                # Set waiting for human input
+                st.session_state.waiting_for_human_input = True
+                
+                st.rerun()
+        
+        # Display conversation history
+        for message in st.session_state.hitl_conversation_history:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+        
+        # Human feedback input
+        if st.session_state.waiting_for_human_input and not st.session_state.conversation_ended:
+            human_feedback = st.chat_input(
+                "Ihre Antwort (Tippen Sie '/end' um fortzufahren)", 
+                key=f"hitl_feedback_{st.session_state.input_counter}"
+            )
+            
+            if human_feedback:
+                # Check if conversation should end
+                if human_feedback.strip().lower() == "/end":
+                    st.session_state.conversation_ended = True
                     
-                    # Initialize the HITL state
-                    st.session_state.hitl_state = initialize_hitl_state(
-                        user_query, 
-                        st.session_state.report_llm, 
-                        st.session_state.summarization_llm,
-                        max_search_queries  # Pass the max_search_queries parameter
-                    )
-                    
-                    # Add user message to conversation history
+                    # Add user message
                     st.session_state.hitl_conversation_history.append({
                         "role": "user",
-                        "content": user_query
+                        "content": "/end - Konversation beendet"
                     })
                     
-                    # Process initial query
-                    combined_response = process_initial_query(st.session_state.hitl_state)
+                    # Set flags
+                    st.session_state.waiting_for_human_input = False
                     
-                    # Add AI message to conversation history
+                    # Finalize HITL conversation
+                    final_response = finalize_hitl_conversation(st.session_state.hitl_state)
+                    
+                    # Add AI message
                     st.session_state.hitl_conversation_history.append({
                         "role": "assistant",
-                        "content": combined_response
+                        "content": final_response
                     })
                     
-                    # Set waiting for human input
-                    st.session_state.waiting_for_human_input = True
+                    # Store HITL results for handover
+                    st.session_state.hitl_result = {
+                        "user_query": st.session_state.hitl_state["user_query"],
+                        "current_position": st.session_state.hitl_state["current_position"],
+                        "detected_language": st.session_state.hitl_state["detected_language"],
+                        "additional_context": st.session_state.hitl_state["additional_context"],
+                        "report_llm": st.session_state.hitl_state["report_llm"],
+                        "summarization_llm": st.session_state.hitl_state["summarization_llm"],
+                        "research_queries": st.session_state.hitl_state.get("research_queries", []),
+                        "analysis": st.session_state.hitl_state["analysis"],
+                        "follow_up_questions": st.session_state.hitl_state["follow_up_questions"],
+                        "human_feedback": st.session_state.hitl_state["human_feedback"]
+                    }
                     
-                    # Force a rerun to update the UI
+                    # Automatically execute all remaining phases
+                    st.session_state.workflow_phase = "auto_executing"
+                    
+                    # Increment input counter
+                    st.session_state.input_counter += 1
                     st.rerun()
-            
-            # Display conversation history
-            if st.session_state.hitl_conversation_history:
-                st.subheader("💬 Konversationsverlauf")
-                for message in st.session_state.hitl_conversation_history:
-                    with st.chat_message(message["role"]):
-                        st.markdown(message["content"])
-            
-            #keep this for debugging if needed later
-            # Display debug information about the current state
-            def debug_hitl_state():
-                if st.session_state.hitl_state:
-                    with st.expander("Debug: Current HITL State", expanded=False):
-                        # Create a deep copy of the state to display
-                        display_state = {}
-                        for key, value in st.session_state.hitl_state.items():
-                            display_state[key] = value
-                        return st.json(display_state)
-            
-            # Handle human feedback - only show when waiting for input and not processing
-            if (st.session_state.waiting_for_human_input and 
-                not st.session_state.conversation_ended and
-                not st.session_state.processing_feedback and
-                len(st.session_state.hitl_conversation_history) > 0 and 
-                st.session_state.hitl_conversation_history[-1]["role"] == "assistant"):
                 
-                # Use a dynamic key that changes after each submission to force widget reset
-                human_feedback = st.chat_input(
-                    "Deine Antwort (Gib '/end' ein, um die Konversation zu beenden und zum weiteren Forschungsprozess zu wechseln)",
-                    key=f"human_feedback_input_{st.session_state.input_counter}"
-                )
+                else:
+                    # Continue HITL conversation
+                    st.session_state.hitl_state["human_feedback"] = human_feedback
+                    
+                    # Add to conversation history
+                    st.session_state.hitl_conversation_history.append({
+                        "role": "user",
+                        "content": human_feedback
+                    })
+                    
+                    # Process feedback
+                    follow_up_response = process_human_feedback(st.session_state.hitl_state)
+                    
+                    # Add AI response
+                    st.session_state.hitl_conversation_history.append({
+                        "role": "assistant",
+                        "content": follow_up_response
+                    })
+                    
+                    st.rerun()
+
+    # ========================================
+    # PHASE 2 & 3: AUTOMATIC EXECUTION
+    # ========================================
+    elif st.session_state.workflow_phase == "auto_executing":
+        # Show HITL results summary
+        if st.session_state.hitl_result:
+            with st.expander("📋 HITL-Phase Ergebnisse (Abgeschlossen)", expanded=False):
+                research_queries = st.session_state.hitl_result.get("research_queries", [])
+                st.markdown(f"**Ursprüngliche Anfrage:** {st.session_state.hitl_result.get('user_query', 'N/A')}")
+                st.markdown(f"**{len(research_queries)} Forschungsfragen generiert**")
+                for i, query in enumerate(research_queries, 1):
+                    st.markdown(f"**{i}.** {query}")
+        
+        # Execute all remaining phases automatically
+        success = execute_all_phases_automatically()
+        if success:
+            st.rerun()
+
+    # ========================================
+    # FINAL ANSWER DISPLAY
+    # ========================================
+    elif st.session_state.workflow_phase == "completed":
+        # Show HITL results summary
+        if st.session_state.hitl_result:
+            with st.expander("📋 HITL-Phase Ergebnisse (Abgeschlossen)", expanded=False):
+                research_queries = st.session_state.hitl_result.get("research_queries", [])
+                st.markdown(f"**Ursprüngliche Anfrage:** {st.session_state.hitl_result.get('user_query', 'N/A')}")
+                st.markdown(f"**{len(research_queries)} Forschungsfragen generiert**")
+                for i, query in enumerate(research_queries, 1):
+                    st.markdown(f"**{i}.** {query}")
+        
+        # Show Phase 2 results with detailed documents and summaries
+        if st.session_state.retrieval_summarization_result:
+            with st.expander("📚 Retrieval & Summarization Ergebnisse (Abgeschlossen)", expanded=False):
+                result = st.session_state.retrieval_summarization_result
+                retrieved_docs = result.get("retrieved_documents", {})
+                search_summaries = result.get("search_summaries", {})
                 
-                if human_feedback:
-                    # Set processing flag to hide input on next render
-                    st.session_state.processing_feedback = True
-                    
-                    # Check if the user wants to end the conversation
-                    if human_feedback.strip().lower() == "/end":
-                        st.session_state.conversation_ended = True
-                        
-                        # Add user message to conversation history
-                        st.session_state.hitl_conversation_history.append({
-                            "role": "user",
-                            "content": "/end - Konversation beendet"
-                        })
-                        
-                        # Set flags
-                        st.session_state.waiting_for_human_input = False
-                        
-                        # Finalize HITL conversation
-                        final_response = finalize_hitl_conversation(st.session_state.hitl_state)
-                        
-                        # Add AI message to conversation history
-                        st.session_state.hitl_conversation_history.append({
-                            "role": "assistant",
-                            "content": final_response
-                        })
-                        
-                        # Store HITL results in session state for handover to main workflow
-                        st.session_state.hitl_result = {
-                            "user_query": st.session_state.hitl_state["user_query"],
-                            "current_position": st.session_state.hitl_state["current_position"],
-                            "detected_language": st.session_state.hitl_state["detected_language"],
-                            "additional_context": st.session_state.hitl_state["additional_context"],
-                            "report_llm": st.session_state.hitl_state["report_llm"],
-                            "summarization_llm": st.session_state.hitl_state["summarization_llm"],
-                            "research_queries": st.session_state.hitl_state.get("research_queries", []),
-                            "analysis": st.session_state.hitl_state["analysis"],
-                            "follow_up_questions": st.session_state.hitl_state["follow_up_questions"],
-                            "human_feedback": st.session_state.hitl_state["human_feedback"]
-                        }
-                        
-                        # Move to retrieval-summarization workflow phase
-                        st.session_state.workflow_phase = "retrieval_summarization"
-                        
-                        # Increment input counter to reset widgets
-                        st.session_state.input_counter += 1
-                        st.rerun()
-                    else:
-                        # Add user message to conversation history
-                        st.session_state.hitl_conversation_history.append({
-                            "role": "user",
-                            "content": human_feedback
-                        })
-                        
-                        # Process human feedback
-                        combined_response = process_human_feedback(st.session_state.hitl_state, human_feedback)
-                        
-                        # Add AI message to conversation history
-                        st.session_state.hitl_conversation_history.append({
-                            "role": "assistant",
-                            "content": combined_response
-                        })
-                        
-                        # Reset processing flag and continue waiting for input
-                        st.session_state.processing_feedback = False
-                        st.session_state.waiting_for_human_input = True
-                        
-                        # Increment input counter to reset widgets
-                        st.session_state.input_counter += 1
-                        st.rerun()
-        else:
-            # HITL phase completed - show summary
-            st.success("✅ HITL Phase erfolgreich abgeschlossen!")
-            # Display the main results
-            research_queries = st.session_state.hitl_result.get("research_queries", [])
-            lenqueries = len(research_queries)
-            st.markdown(f"**Originalabfrage:** {st.session_state.hitl_result.get("user_query", "N/A")}")
-            st.markdown(f"**Generierte {lenqueries} Forschungsabfragen**")
-            st.markdown(f"**Generierter zusätzlicher Kontext** ")
-        
-            if st.session_state.hitl_result:
-                with st.expander("📋 HITL Phase Ergebnisse (Abgeschlossen)", expanded=False):
-                    st.markdown("**Generierte Forschungsabfragen:**")
-                    for i, query in enumerate(research_queries, 1):
-                        st.markdown(f"**{i}.** {query}")
-                    
-                    st.markdown("**Originalabfrage:**")
-                    st.markdown(st.session_state.hitl_result.get("user_query", "N/A"))
-                    
-                    st.markdown("**Generierter zusätzlicher Kontext:**")
-                    st.markdown(st.session_state.hitl_result.get("additional_context", "N/A"))
-    
-    # Phase 2: Retrieval-Summarization
-    with tab2:
-        # Dynamic phase info for Retrieval-Summarization tab
-        st.warning("📚 **Aktuelle Phase: Retrieval & Summarization** - Dokumente abrufen und Zusammenfassungen generieren.")
-        
-        if st.session_state.workflow_phase == "retrieval_summarization":
-            st.markdown("### 📚 Retrieval & Summarization Phase")
-            st.markdown("Das System wird nun relevante Dokumente abrufen und Zusammenfassungen basierend auf Ihrer HITL-Eingabe generieren.")
-            
-            if not st.session_state.hitl_result:
-                st.warning("⚠️ Bitte die HITL-Phase abschliessen.")
-            else:
-                # Show HITL context
-                with st.expander("🔗 Benutze HITL Ergebnisse", expanded=False):
-                    research_queries = st.session_state.hitl_result.get("research_queries", [])
-                    st.markdown(f"**Generierte Forschungsabfragen ({len(research_queries)}):**")
-                    for i, query in enumerate(research_queries, 1):
-                        st.markdown(f"**{i}.** {query}")
+                st.markdown(f"**Abgerufene Dokumente gesamt:** {sum(len(docs) for docs in retrieved_docs.values())}")
+                st.markdown(f"**Generierte Zusammenfassungen gesamt:** {sum(len(sums) for sums in search_summaries.values())}")
+                st.divider()
                 
-                # Execute button
-                if st.button("🔍 Start Retrieval & Summarization", type="primary"):
-                    result = execute_retrieval_summarization_phase(
-                        use_ext_database=use_ext_database,
-                        selected_database=selected_database,
-                        k_results=k_results
-                    )
-                    if result:
-                        st.session_state.workflow_phase = "reporting"
-                        st.rerun()
-        
-        elif st.session_state.workflow_phase in ["reporting", "completed"] and st.session_state.retrieval_summarization_result:
-            # Show completed retrieval-summarization results
-            st.success("✅ Retrieval & Summarization Phase abgeschlossen!")
-
-            # Display the main results
-            # Show retrieved documents summary
-            result = st.session_state.retrieval_summarization_result
-            retrieved_docs = result.get("retrieved_documents", {})
-            total_docs = sum(len(docs) for docs in retrieved_docs.values())
-            st.markdown(f"**Gesamtzahl der abgerufenen Dokumente:** {total_docs}")
-            
-            # Show summaries summary
-            search_summaries = result.get("search_summaries", {})
-            total_summaries = sum(len(summaries) for summaries in search_summaries.values())
-            st.markdown(f"**Gesamtzahl der generierten Summaries:** {total_summaries}")
-            
-
-
-            with st.expander("📚 Retrieval & Summarization Ergebnisse (abgeschlossen)", expanded=False):              
-                # Show detailed results for each research query
-                for i, (query, docs) in enumerate(retrieved_docs.items(), 1):
-                    st.markdown(f"### 🔍 Query {i}: {query[:100]}{'...' if len(query) > 100 else ''}")
-                    
-                    # Retrieved documents for this query
-                    with st.expander(f"📄 Abgerufene Dokumente ({len(docs)} Dokumente)", expanded=False):
-                        if docs:
-                            for j, doc in enumerate(docs):
-                                st.markdown(f"**Dokument {j+1}:**")
-                                # Show content preview
-                                content_preview = doc.page_content[:500] + "..." if len(doc.page_content) > 500 else doc.page_content
-                                st.text(content_preview)
-                                
-                                # Show metadata if available
-                                if hasattr(doc, 'metadata') and doc.metadata:
-                                    with st.expander(f"📋 Dokument {j+1} Metadata", expanded=False):
-                                        st.json(doc.metadata)
+                # Show retrieved documents per query
+                if retrieved_docs:
+                    st.subheader("📄 Abgerufene Dokumente")
+                    for query, docs in retrieved_docs.items():
+                        with st.expander(f"Anfrage: {query} ({len(docs)} Dokumente)", expanded=False):
+                            for idx, doc in enumerate(docs, 1):
+                                st.markdown(f"**Dokument {idx}**")
+                                if hasattr(doc, 'page_content'):
+                                    st.markdown(doc.page_content[:500] + "..." if len(doc.page_content) > 500 else doc.page_content)
+                                    if hasattr(doc, 'metadata') and doc.metadata:
+                                        st.caption(f"Quelle: {doc.metadata.get('source', 'Unbekannt')}")
+                                else:
+                                    st.markdown(str(doc)[:500])
                                 st.divider()
-                        else:
-                            st.warning("No documents retrieved for this query.")
-                    
-                    # Summary for this query
-                    query_summaries = search_summaries.get(query, [])
-                    if query_summaries:
-                        with st.expander(f"📝 Generierte Zusammenfassungen", expanded=True):
-                            for summary_doc in query_summaries:
-                                st.markdown("**Zusammenfassung:**")
-                                st.markdown(summary_doc.page_content)
-                                
-                                # Show summary metadata
-                                if hasattr(summary_doc, 'metadata') and summary_doc.metadata:
-                                    with st.expander("📊 Zusammenfassungs-Metadaten", expanded=False):
-                                        metadata_display = {
-                                            "LLM Model": summary_doc.metadata.get("llm_model", "N/A"),
-                                            "Language": summary_doc.metadata.get("language", "N/A"),
-                                            "Document Count": summary_doc.metadata.get("document_count", "N/A"),
-                                            "Source Documents": summary_doc.metadata.get("source_documents", []),
-                                            "Source Paths": summary_doc.metadata.get("source_paths", [])
-                                        }
-                                        st.json(metadata_display)
-                                
-                                # Copy button for summary
-                                if st.button(f"📋 Kopiere Zusammenfassung {i}", key=f"copy_summary_{i}"):
-                                    try:
-                                        import pyperclip
-                                        pyperclip.copy(summary_doc.page_content)
-                                        st.success(f"Zusammenfassung {i} kopiert!")
-                                    except ImportError:
-                                        st.warning("pyperclip not available. Please install it to enable copying.")
-                    else:
-                        st.warning("No summary generated for this query.")
-                    
-                    st.divider()
-        
-        else:
-            st.info("📝 Beende die HITL-Phase zuerst, um die Retrieval & Summarization Phase zu starten.")
-    
-    # Phase 3: Reporting
-    with tab3:
-        # Dynamic phase info for Reporting tab
-        st.warning("📄 **Aktuelle Phase: Reporting** - Ordnung der Summaries und Generierung des finalen Berichts.")
-        
-        if st.session_state.workflow_phase == "reporting":
-            st.markdown("### 📄 Reporting Phase")
-            st.markdown("Das System wird nun die Zusammenfassungen ordnen und einen umfassenden finalen Bericht generieren.")
-            
-            if not st.session_state.retrieval_summarization_result:
-                st.warning("⚠️ Bitte die Retrieval & Summarization Phase zuerst abschliessen.")
-            else:
-                # Show retrieval-summarization context
-                with st.expander("🔗 Benutze Retrieval & Summarization Ergebnisse", expanded=False):
-                    result = st.session_state.retrieval_summarization_result
-                    search_summaries = result.get("search_summaries", {})
-                    total_summaries = sum(len(summaries) for summaries in search_summaries.values())
-                    st.markdown(f"**Gesamtzahl der zu verarbeitenen Summaries:** {total_summaries}")
                 
-                # Execute button
-                if st.button("📊 Start der Reporting Phase", type="primary"):
-                    result = execute_reporting_phase(enable_web_search=st.session_state.enable_web_search)
-                    if result:
-                        st.success("✅ Alle Phasen erfolgreich abgeschlossen!")
-                        st.rerun()
-        
-        elif st.session_state.reporting_result:
-            # Show completed reporting results
-            st.success("✅ Reporting Phase erfolgreich abgeschlossen!")
-            
+                # Show generated summaries per query
+                if search_summaries:
+                    st.subheader("📝 Generierte Zusammenfassungen")
+                    for query, summaries in search_summaries.items():
+                        with st.expander(f"Anfrage: {query} ({len(summaries)} Zusammenfassungen)", expanded=False):
+                            for idx, summary in enumerate(summaries, 1):
+                                st.markdown(f"**Zusammenfassung {idx}**")
+                                if isinstance(summary, dict):
+                                    content = summary.get('Content', str(summary))
+                                    st.markdown(content)
+                                    if 'Source' in summary:
+                                        st.caption(f"Quelle: {summary['Source']}")
+                                else:
+                                    st.markdown(str(summary))
+                                st.divider()
+    
+    # Show Phase 3 results - Reranked summaries and quality check
+    if st.session_state.reporting_result:
+        with st.expander("📊 Reranking & Qualitätsergebnisse (Abgeschlossen)", expanded=False):
             result = st.session_state.reporting_result
             
-            # Processing details section
-            with st.expander("🔍 Verarbeitungs-Details", expanded=False):
-                st.write(f"**Aktuelle Position:** {result.get('current_position', 'unknown')}")
-                st.write(f"**Forschungsfragen verarbeitet:** {len(result.get('research_queries', []))}")
-                st.write(f"**Reflexionszahl:** {result.get('reflection_count', 0)}")
+            # Show reranked summaries
+            reranked_summaries = result.get("all_reranked_summaries", [])
+            if reranked_summaries:
+                st.subheader("🏆 Gerankte Dokumente")
+                st.markdown(f"**Gerankte Dokumente gesamt:** {len(reranked_summaries)}")
                 
-                # Show reranked summaries statistics
-                reranked_summaries = result.get("all_reranked_summaries", [])
-                if reranked_summaries:
-                    st.subheader("📊 Geordnete Dokumente")
+                # Summary statistics
+                total_docs = len(reranked_summaries)
+                avg_score = sum(item.get('score', 0) for item in reranked_summaries) / total_docs if total_docs > 0 else 0
+                max_score = max([item.get('score', 0) for item in reranked_summaries], default=0)
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Dokumente gesamt", total_docs)
+                with col2:
+                    st.metric("Durchschnittlicher Score", f"{avg_score:.2f}/10")
+                with col3:
+                    st.metric("Höchster Score", f"{max_score:.2f}/10")
+                
+                st.divider()
+                
+                # Display top reranked documents
+                for rank, item in enumerate(reranked_summaries[:10], 1):  # Show top 10
+                    score = item.get('score', 0)
+                    summary_data = item.get('summary', {})
                     
-                    # Summary statistics
-                    total_docs = len(reranked_summaries)
-                    avg_score = sum(item.get('score', 0) for item in reranked_summaries) / total_docs if total_docs > 0 else 0
-                    max_score = max([item.get('score', 0) for item in reranked_summaries], default=0)
-                    
-                    col_stats1, col_stats2, col_stats3 = st.columns(3)
-                    with col_stats1:
-                        st.metric("Gesamtzahl der Dokumente", total_docs)
-                    with col_stats2:
-                        st.metric("Durchschnittsscore", f"{avg_score:.2f}/10")
-                    with col_stats3:
-                        st.metric("Höchster Score", f"{max_score:.2f}/10")
-                    
-                    # Display reranked documents in ranked order
-                    for rank, item in enumerate(reranked_summaries, 1):
-                        score = item.get('score', 0)
-                        summary_data = item.get('summary', {})
-                        
+                    with st.expander(f"🥇 Rang #{rank} (Score: {score:.2f}/10)", expanded=False):
                         # Handle different summary formats
                         if isinstance(summary_data, dict):
                             content = summary_data.get('Content', str(summary_data))
-                            source = summary_data.get('Source', 'Unknown')
+                            source = summary_data.get('Source', 'Unbekannt')
                         else:
-                            # Handle Document objects or string content
                             if hasattr(summary_data, 'page_content'):
                                 content = summary_data.page_content
-                                source = summary_data.metadata.get('source', 'Unknown') if hasattr(summary_data, 'metadata') else 'Unknown'
+                                source = summary_data.metadata.get('source', 'Unbekannt') if hasattr(summary_data, 'metadata') else 'Unbekannt'
                             else:
                                 content = str(summary_data)
-                                source = 'Unknown'
+                                source = 'Unbekannt'
                         
-                        with st.expander(f"🥇 Rang #{rank} (Score: {score:.2f}/10)", expanded=rank <= 3):
-                            st.markdown(f"**Score:** {score:.2f}/10")
-                            st.markdown(f"**Query:** {item.get('query', 'N/A')}")
-                            st.markdown(f"**Quelle:** {source}")
-                            st.markdown(f"**Ursprünglicher Index:** {item.get('original_index', 'N/A')}")
-                            
-                            st.markdown("**Inhalt:**")
-                            st.markdown(content)
-                            
-                            # Add separator except for last item
-                            if rank < len(reranked_summaries):
-                                st.divider()
-                else:
-                    st.warning("No reranked summaries found. Check input data.")
+                        st.markdown(f"**Score:** {score:.2f}/10")
+                        st.markdown(f"**Anfrage:** {item.get('query', 'N/A')}")
+                        st.markdown(f"**Quelle:** {source}")
+                        st.markdown("**Inhalt:**")
+                        st.markdown(content)
             
-            # Internet search results section
-            internet_result = result.get("internet_result")
-            internet_search_term = result.get("internet_search_term")
-            if internet_result and internet_result.strip():
-                st.subheader("🌐 Internet Suchergebnisse")
-                
-                # Check if web search was enabled
-                web_search_enabled = result.get("web_search_enabled", False)
-                if web_search_enabled:
-                    st.success("✅ Websuche wurde aktiviert und erfolgreich ausgeführt")
-                else:
-                    st.info("ℹ️ Websuche wurde nicht aktiviert")
-                
-                # Display the generated search term if available
-                if internet_search_term:
-                    st.info(f"🔍 **Generierter Suchbegriff:** `{internet_search_term}`")
-                
-                # Display the internet search results
-                with st.expander("📄 Internet Suchergebnisse", expanded=False):
-                    st.markdown(internet_result)
-            elif result.get("web_search_enabled", False):
-                st.subheader("🌐 Internet Suchergebnisse")
-                st.warning("⚠️ Websuche wurde aktiviert, aber keine Ergebnisse erzielt. Überprüfen Sie Ihre Tavily API Key und Internetverbindung.")
+            st.divider()
             
-            # Quality assessment section
+            # Show quality assessment details
             quality_check = result.get("quality_check", {})
-            if quality_check and quality_check.get("enabled", False):
-                st.subheader("🔍 Qualitätssicherung")
-                
-                # Get values with backward compatibility
-                overall_score = quality_check.get("quality_score", quality_check.get("overall_score", 0))
-                max_score = quality_check.get("max_score", 400)
-                passes_quality = quality_check.get("is_accurate", quality_check.get("passes_quality", False))
-                needs_improvement = quality_check.get("improvement_needed", quality_check.get("needs_improvement", False))
-                improvement_suggestions = quality_check.get("improvement_suggestions", "")
-                
-                # New JSON structure fields
-                issues_found = quality_check.get("issues_found", [])
-                missing_elements = quality_check.get("missing_elements", [])
-                citation_issues = quality_check.get("citation_issues", [])
-                
-                # Display quality metrics
-                col_q1, col_q2, col_q3 = st.columns(3)
-                with col_q1:
-                    st.metric("Qualitätsbewertung", f"{overall_score}/{max_score}")
-                with col_q2:
-                    status_color = "🟢" if passes_quality else "🔴"
-                    st.metric("Resultat", f"{status_color} {'BESTANDEN' if passes_quality else 'NICHT BESTANDEN'}")
-                with col_q3:
-                    if passes_quality:
-                        improvement_status = "✅ Qualität ausreichend"
+            if quality_check:
+                st.subheader("✅ Qualitätsprüfung")
+                if "overall_score" in quality_check:
+                    score = quality_check["overall_score"]
+                    max_score = 400
+                    score_percentage = (score / max_score) * 100
+                    
+                    if score >= 300:
+                        st.success(f"✅ Qualitätsscore: {score}/{max_score} ({score_percentage:.1f}%) - BESTANDEN")
                     else:
-                        if needs_improvement:
-                            improvement_status = "🔄 Verbesserung notwendig"
-                        else:
-                            improvement_status = "✅ Qualität ausreichend"
-                    st.metric("Status", improvement_status)
-                
-                # Display detailed quality analysis if available
-                if issues_found or missing_elements or citation_issues:
-                    st.markdown("#### 📊 Detailierte Qualitätssicherungsanalyse")
-                    
-                    col_detail1, col_detail2, col_detail3 = st.columns(3)
-                    
-                    with col_detail1:
-                        if issues_found:
-                            st.markdown("**🚨 Probleme gefunden:**")
-                            # Handle both string and list formats
-                            if isinstance(issues_found, str):
-                                st.markdown(f"• {issues_found}")
-                            elif isinstance(issues_found, list):
-                                for issue in issues_found:
-                                    st.markdown(f"• {issue}")
-                            else:
-                                st.markdown(f"• {str(issues_found)}")
-                        else:
-                            st.markdown("**✅ Keine Probleme gefunden**")
-                    
-                    with col_detail2:
-                        if missing_elements:
-                            st.markdown("**❓ Fehlende Elemente:**")
-                            # Handle both string and list formats
-                            if isinstance(missing_elements, str):
-                                st.markdown(f"• {missing_elements}")
-                            elif isinstance(missing_elements, list):
-                                for element in missing_elements:
-                                    st.markdown(f"• {element}")
-                            else:
-                                st.markdown(f"• {str(missing_elements)}")
-                        else:
-                            st.markdown("**✅ Alle Elemente vorhanden**")
-                    
-                    with col_detail3:
-                        if citation_issues:
-                            st.markdown("**📚 Zitierprobleme:**")
-                            # Handle both string and list formats
-                            if isinstance(citation_issues, str):
-                                st.markdown(f"• {citation_issues}")
-                            elif isinstance(citation_issues, list):
-                                for citation in citation_issues:
-                                    st.markdown(f"• {citation}")
-                            else:
-                                st.markdown(f"• {str(citation_issues)}")
-                        else:
-                            st.markdown("**✅ Quellen OK**")
-                
-                # Show improvement suggestions if they were generated
-                if improvement_suggestions:
-                    with st.expander("📝 Verbesserungsvorschläge", expanded=False):
-                        st.markdown(improvement_suggestions)
+                        st.warning(f"⚠️ Qualitätsscore: {score}/{max_score} ({score_percentage:.1f}%) - VERBESSERUNG NÖTIG")
                 
                 # Show full assessment if available
                 full_assessment = quality_check.get("full_assessment", "")
                 if full_assessment:
-                    with st.expander("🔍 Vollständige Qualitätssicherungsanalyse", expanded=False):
-                        st.text(full_assessment)
-            
-            # Final report section
-            with st.expander("📋 Finaler Bericht", expanded=False):
-                display_final_report_with_links(
-                    result=result, 
-                    language="de", 
-                    show_in_chat_message=False, 
-                    show_buttons=True,
-                    key_prefix="tab_"
-                )
-        
-        else:
-            st.info("📚 Führen Sie zuerst die Retrieval & Summarization Phase durch, um mit der Berichterstellung fortzufahren.")
+                    st.text_area("Vollständige Qualitätsbewertung", full_assessment, height=200)
     
-    # ========================================
-    # FINAL ANSWER DISPLAY (MAIN WINDOW)
-    # ========================================
-    
-    # Check if we have a completed reporting phase with final answer
-    if ((st.session_state.workflow_phase in ["reporting", "completed"]) and 
-        hasattr(st.session_state, 'reporting_result') and 
-        st.session_state.reporting_result) or (
-        hasattr(st.session_state, 'reporting_result') and 
-        st.session_state.reporting_result and 
-        st.session_state.reporting_result.get("final_answer")):
-        
+    # Display final research report
+    if st.session_state.reporting_result:
         result = st.session_state.reporting_result
+        final_answer = result.get("linked_final_answer") or result.get("final_answer", "")
         
-        if result.get("final_answer") and result.get("final_answer").strip():
-            # Add some spacing
+        if final_answer and final_answer.strip():
             st.markdown("---")
+            st.markdown("# 🎯 Finaler Forschungsbericht")
             
-            # Main final answer section - prominently displayed
-            st.markdown("# 🎯 Finaler Research Bericht")
+            # Parse structured output
+            final_content, thinking_content = parse_structured_llm_output(final_answer)
             
-            # Use the unified display function
-            display_final_report_with_links(
-                result=result,
-                language="de",
-                show_in_chat_message=True,
-                show_buttons=True,
-                key_prefix="main_"
-            )
+            # Show thinking in expander
+            if thinking_content:
+                with st.expander("🧠 LLM Denkprozess", expanded=False):
+                    st.markdown(thinking_content)
             
-            # Show quality assessment details if available
-            quality_check = result.get("quality_check", {})
-            if quality_check:
-                with st.expander("📊 Qualitätssicherungsanalyse Details", expanded=False):
-                    if "overall_score" in quality_check:
-                        score = quality_check["overall_score"]
-                        max_score = 400  # Based on the 4-dimensional scoring system
-                        score_percentage = (score / max_score) * 100
-                        
-                        # Score display with color coding
-                        if score >= 300:
-                            st.success(f"✅ Qualitätssicherungsanalyse: {score}/{max_score} ({score_percentage:.1f}%) - erfolgreich")
-                        else:
-                            st.warning(f"⚠️ Qualitätssicherungsanalyse: {score}/{max_score} ({score_percentage:.1f}%) - nicht erfolgreich")
-                    
-                    # Show full assessment if available
-                    full_assessment = quality_check.get("full_assessment", "")
-                    if full_assessment:
-                        st.text(full_assessment)
+            # Display final answer
+            with st.chat_message("assistant"):
+                st.markdown(final_content, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
