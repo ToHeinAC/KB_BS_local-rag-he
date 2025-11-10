@@ -370,11 +370,38 @@ from langchain_core.runnables.config import RunnableConfig
 # Create wrapper functions that handle the config parameter
 def analyse_user_feedback(state):
     """Wrapper for analyse_user_feedback that handles config parameter"""
+    # Debug: Print state information
+    print(f"[DEBUG] analyse_user_feedback called with state keys: {list(state.keys())}")
+    print(f"[DEBUG] human_feedback length: {len(state.get('human_feedback', ''))}")
+    print(f"[DEBUG] detected_language: {state.get('detected_language', 'Not set')}")
+    print(f"[DEBUG] report_llm: {state.get('report_llm', 'Not set')}")
+    
+    # Ensure human_feedback is not empty
+    if not state.get("human_feedback", "").strip():
+        print("[DEBUG] Human feedback is empty, returning default analysis")
+        return {
+            "analysis": "Keine menschliche Rückmeldung für die Analyse bereitgestellt.",
+            "additional_context": state.get("additional_context", ""),
+            "current_position": "analyse_user_feedback"
+        }
+    
     config = RunnableConfig(configurable={
         "report_llm": state.get("report_llm", "deepseek-r1:latest"),
         "summarization_llm": state.get("summarization_llm", "deepseek-r1:latest")
     })
-    return _analyse_user_feedback(state, config)
+    
+    try:
+        result = _analyse_user_feedback(state, config)
+        print(f"[DEBUG] analyse_user_feedback completed successfully")
+        return result
+    except Exception as e:
+        print(f"[DEBUG] analyse_user_feedback failed with error: {str(e)}")
+        # Return a fallback response
+        return {
+            "analysis": f"Fehler bei der Analyse der Rückmeldung: {str(e)}",
+            "additional_context": state.get("additional_context", ""),
+            "current_position": "analyse_user_feedback"
+        }
 
 def generate_follow_up_questions(state):
     """Wrapper for generate_follow_up_questions that handles config parameter"""
@@ -1384,20 +1411,6 @@ def main():
         else:
             st.session_state.summarization_llm = summarization_llm_models[0] if summarization_llm_models else "deepseek-r1:latest"
     
-    # Create header with two columns (matching app_v1_1.py)
-    header_col1, header_col2 = st.columns([0.5, 0.5])
-    with header_col1:
-        st.markdown(
-            '<h1>🔍 Br<span style="color:darkorange;"><b>AI</b></span>n</h1>',
-            unsafe_allow_html=True, help="Human-In-The-Loop (HITL) RAG Researcher V2.1"
-        )
-        st.markdown("## Wissensdatenbank-Konnektor")
-        st.markdown('<p style="text-align: right; font-size:12px; font-weight:bold; color:darkorange; margin-top:0px;">LIZENZ</p>', 
-                    unsafe_allow_html=True, help=get_license_content())    
-    with header_col2:
-        st.image("Header für Chatbot.png", use_container_width=True)
-
-    
     # Load model options from global configuration
     report_llm_models = get_report_llm_models()
     summarization_llm_models = get_summarization_llm_models()
@@ -1612,52 +1625,6 @@ def main():
                     st.error(f"Could not generate reporting graph: {str(e)}")
     
     # ========================================
-    # WORKFLOW VISUALIZATION (Optional)
-    # ========================================
-    
-    # Show workflow visualization in expandable section
-    with st.expander("🔄 Workflow-Graphen anzeigen", expanded=False):
-        st.markdown("### RAG Forscher v2.1 - Workflow-Visualisierung")
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown("#### 🤝 Phase 1: HITL")
-            try:
-                hitl_graph = create_hitl_graph()
-                hitl_png = hitl_graph.get_graph(xray=True).draw_mermaid_png()
-                st.image(hitl_png, caption="HITL Graph", use_container_width=True)
-            except Exception as e:
-                if "502" in str(e) or "mermaid.ink" in str(e):
-                    st.warning("⚠️ **HITL Visualisierung temporär nicht verfügbar**")
-                else:
-                    st.error(f"Konnte HITL-Graph nicht generieren: {str(e)}")
-        
-        with col2:
-            st.markdown("#### 📚 Phase 2: Retrieval & Smry")
-            try:
-                retrieval_graph = create_retrieval_summarization_graph()
-                retrieval_png = retrieval_graph.get_graph(xray=True).draw_mermaid_png()
-                st.image(retrieval_png, caption="Retrieval & Summarization Graph", use_container_width=True)
-            except Exception as e:
-                if "502" in str(e) or "mermaid.ink" in str(e):
-                    st.warning("⚠️ **Retrieval-Summarization Visualisierung temporär nicht verfügbar**")
-                else:
-                    st.error(f"Konnte Retrieval-Summarization-Graph nicht generieren: {str(e)}")
-        
-        with col3:
-            st.markdown("#### 📄 Phase 3: QA & Reporting")
-            try:
-                reporting_graph = create_rerank_reporter_graph()
-                reporting_png = reporting_graph.get_graph(xray=True).draw_mermaid_png()
-                st.image(reporting_png, caption="QA & Reporting Graph", use_container_width=True)
-            except Exception as e:
-                if "502" in str(e) or "mermaid.ink" in str(e):
-                    st.warning("⚠️ **QA & Reporting Visualisierung temporär nicht verfügbar**")
-                else:
-                    st.error(f"Konnte Reporting-Graph nicht generieren: {str(e)}")
-    
-    # ========================================
     # MAIN UNIFIED WORKFLOW INTERFACE
     # ========================================
     
@@ -1803,7 +1770,7 @@ def main():
                     })
                     
                     # Process feedback
-                    follow_up_response = process_human_feedback(st.session_state.hitl_state)
+                    follow_up_response = process_human_feedback(st.session_state.hitl_state, human_feedback)
                     
                     # Add AI response
                     st.session_state.hitl_conversation_history.append({

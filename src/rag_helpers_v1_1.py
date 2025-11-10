@@ -998,3 +998,174 @@ def find_matching_pdf(short_ref: str, selected_database: str = None, kb_path="./
                 return pdf_file
     
     return None
+
+
+def _deep_search_dict(data, target_keys):
+    """
+    Recursively search through nested dicts/lists to find values for target keys.
+    Returns the deepest/most specific match found.
+    
+    Args:
+        data: Dict, list, or other data structure to search
+        target_keys: List of key names to search for (e.g., ['thinking', 'think'])
+        
+    Returns:
+        Found value or None
+    """
+    if isinstance(data, dict):
+        # First check current level
+        for key in target_keys:
+            if key in data and data[key]:
+                # If the value itself is a dict/list with the same keys, recurse deeper
+                value = data[key]
+                if isinstance(value, (dict, list)):
+                    deeper = _deep_search_dict(value, target_keys)
+                    if deeper is not None:
+                        return deeper
+                return value
+        
+        # Then search all nested values
+        for value in data.values():
+            if isinstance(value, (dict, list)):
+                result = _deep_search_dict(value, target_keys)
+                if result is not None:
+                    return result
+    
+    elif isinstance(data, list):
+        # Search through list items
+        for item in data:
+            if isinstance(item, (dict, list)):
+                result = _deep_search_dict(item, target_keys)
+                if result is not None:
+                    return result
+    
+    return None
+
+
+def parse_structured_llm_output(final_answer):
+    """
+    Parse structured LLM output that contains thinking and final answer parts.
+    Handles various formats including JSON strings, Python dict strings, and direct dicts.
+    Enhanced to RECURSIVELY search through deeply nested structures to find thinking/final content.
+    
+    Args:
+        final_answer: String, dict, or other format containing the structured output
+        
+    Returns:
+        tuple: (final_content, thinking_content) where thinking_content can be None
+    """
+    if not final_answer:
+        return "No final answer available.", None
+    
+    print(f"[DEBUG] Processing final_answer type: {type(final_answer)}")
+    print(f"[DEBUG] Final answer content preview: {str(final_answer)[:200]}...")
+    
+    thinking_content = None
+    final_content = final_answer
+    
+    # Handle string input that might be JSON or Python dict
+    if isinstance(final_answer, str):
+        # Check if it looks like a structured format
+        if final_answer.strip().startswith('{') and ('}' in final_answer):
+            try:
+                import json
+                import re
+                
+                # Clean up the JSON string - handle potential formatting issues
+                cleaned_json = final_answer.strip()
+                
+                # Handle cases where there might be multiple JSON objects or nested structures
+                # Try to extract the main JSON object
+                if cleaned_json.count('{') > 1:
+                    # Find the main JSON structure
+                    brace_count = 0
+                    start_idx = cleaned_json.find('{')
+                    end_idx = start_idx
+                    
+                    for i, char in enumerate(cleaned_json[start_idx:], start_idx):
+                        if char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                end_idx = i + 1
+                                break
+                    
+                    if end_idx > start_idx:
+                        cleaned_json = cleaned_json[start_idx:end_idx]
+                
+                # Try JSON parsing first
+                parsed = json.loads(cleaned_json)
+                if isinstance(parsed, dict):
+                    final_answer = parsed
+                    print(f"[DEBUG] Successfully parsed JSON dict with keys: {list(parsed.keys())}")
+                    
+            except (json.JSONDecodeError, ValueError) as json_error:
+                print(f"[DEBUG] JSON parsing failed: {json_error}")
+                try:
+                    # Try ast.literal_eval for Python dict strings
+                    import ast
+                    parsed = ast.literal_eval(final_answer)
+                    if isinstance(parsed, dict):
+                        final_answer = parsed
+                        print(f"[DEBUG] Successfully parsed Python dict string")
+                except (ValueError, SyntaxError) as e:
+                    print(f"[DEBUG] Failed to parse dict string: {e}")
+                    # Try to extract JSON from within the string using regex
+                    json_match = re.search(r'\{[^{}]*"thinking"[^{}]*"final"[^{}]*\}', final_answer, re.DOTALL)
+                    if json_match:
+                        try:
+                            parsed = json.loads(json_match.group())
+                            if isinstance(parsed, dict):
+                                final_answer = parsed
+                                print(f"[DEBUG] Successfully extracted and parsed JSON from text")
+                        except:
+                            print(f"[DEBUG] Failed to parse extracted JSON, using original string")
+                            final_content = final_answer
+                    else:
+                        # Return original string if all parsing fails
+                        final_content = final_answer
+        else:
+            # Regular string, apply cleanup and return
+            final_content = final_answer
+    
+    # Handle dictionary input - use RECURSIVE deep search
+    if isinstance(final_answer, dict):
+        print(f"[DEBUG] Processing dictionary with keys: {list(final_answer.keys())}")
+        
+        # Define possible key patterns for thinking and final content
+        thinking_keys = ['thinking', 'think', 'thought', 'reasoning', 'analysis', 'process']
+        final_keys = ['final', 'answer', 'content', 'response', 'result', 'report']
+        
+        # RECURSIVELY search for thinking content at any depth
+        thinking_content = _deep_search_dict(final_answer, thinking_keys)
+        if thinking_content:
+            print(f"[DEBUG] Found thinking content through deep search")
+        
+        # RECURSIVELY search for final content at any depth
+        final_content_from_search = _deep_search_dict(final_answer, final_keys)
+        if final_content_from_search:
+            final_content = final_content_from_search
+            print(f"[DEBUG] Found final content through deep search")
+        else:
+            # If no specific keys found, use the whole dict as final content
+            final_content = str(final_answer)
+            print(f"[DEBUG] Using entire dict as final content")
+    
+    # Clean up thinking content - don't show if it's too short or just placeholder text
+    if isinstance(thinking_content, str):
+        thinking_content = thinking_content.strip()
+        if len(thinking_content) < 10 or thinking_content.lower() in ["none", "null", "n/a", ""]:
+            thinking_content = None
+    
+    # Clean up final content - remove any remaining <think> blocks
+    if isinstance(final_content, str):
+        import re
+        # Remove <think>...</think> blocks from final content
+        final_content = re.sub(r'<think>.*?</think>', '', final_content, flags=re.DOTALL)
+        # Remove malformed <think> tags
+        final_content = re.sub(r'<think>.*', '', final_content, flags=re.DOTALL)
+        final_content = final_content.strip()
+    
+    print(f"[DEBUG] Final result - thinking: {thinking_content is not None}, content length: {len(str(final_content))}")
+    return final_content, thinking_content
