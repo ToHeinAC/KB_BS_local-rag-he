@@ -279,13 +279,13 @@ def generate_workflow_visualization_legacy(researcher, workflow_type="main", ret
         
         # Set title based on workflow type
         if workflow_type == "hitl":
-            plt.title("RAG Deep Researcher v2.0 - Human-in-the-Loop Initial Workflow", 
+            plt.title("RAG Deep Researcher v2.1 - Human-in-the-Loop Initial Workflow", 
                      fontsize=16, fontweight='bold', pad=20)
         elif workflow_type == "integrated":
-            plt.title("RAG Deep Researcher v2.0 - Complete Integrated Workflow", 
+            plt.title("RAG Deep Researcher v2.1 - Complete Integrated Workflow", 
                      fontsize=16, fontweight='bold', pad=20)
         else:
-            plt.title("RAG Deep Researcher v2.0 - Main Research Workflow", 
+            plt.title("RAG Deep Researcher v2.1 - Main Research Workflow", 
                      fontsize=16, fontweight='bold', pad=20)
         plt.axis('off')
         plt.tight_layout()
@@ -1405,11 +1405,11 @@ def main():
     
     if "summarization_llm" not in st.session_state:
         summarization_llm_models = get_summarization_llm_models()
-        # Set default to qwen3:latest if available, otherwise first model
-        if "qwen3:latest" in summarization_llm_models:
-            st.session_state.summarization_llm = "qwen3:latest"
+        # Set default to gpt-oss:20b if available, otherwise first model
+        if "gpt-oss:20b" in summarization_llm_models:
+            st.session_state.summarization_llm = "gpt-oss:20b"
         else:
-            st.session_state.summarization_llm = summarization_llm_models[0] if summarization_llm_models else "deepseek-r1:latest"
+            st.session_state.summarization_llm = summarization_llm_models[0] if summarization_llm_models else "gpt-oss:20b"
     
     # Load model options from global configuration
     report_llm_models = get_report_llm_models()
@@ -1421,14 +1421,14 @@ def main():
         # Define DATABASE_PATH like in app_v1_1.py
         DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "kb", "database")
     
-        with st.expander("🗄️ Wissensdatenbank", expanded=False): # External Database Configuration (moved to top)    
+        with st.expander("🗄️ Wissensdatenbank", expanded=True): # External Database Configuration (moved to top)    
             # Initialize session state for external database
             if "use_ext_database" not in st.session_state:
                 st.session_state.use_ext_database = True
             if "selected_database" not in st.session_state:
                 st.session_state.selected_database = ""
             if "k_results" not in st.session_state:
-                st.session_state.k_results = 3
+                st.session_state.k_results = 5
 
             # Enable external database checkbox
             st.session_state.use_ext_database = st.checkbox(
@@ -1464,10 +1464,11 @@ def main():
                     
                     # Number of results to retrieve
                     st.session_state.k_results = st.slider(
-                        "Anzahl der Abfrageergebnisse", 
+                        "# Abfrageergebnisse pro Frage", 
                         min_value=1, 
                         max_value=10, 
-                        value=st.session_state.k_results
+                        value=st.session_state.k_results,
+                        help="Anzahl der Abfrageergebnisse pro Forschungsfrage"
                     )
                     
                     selected_database = st.session_state.selected_database
@@ -1496,26 +1497,17 @@ def main():
             st.session_state.summarization_llm = st.selectbox(
                 "LLM für Erstzusammenfassungen",
                 options=summarization_llm_models,
-                index=summarization_llm_models.index(st.session_state.summarization_llm) if st.session_state.summarization_llm in summarization_llm_models else (summarization_llm_models.index("qwen3:latest") if "qwen3:latest" in summarization_llm_models else 0),
+                index=summarization_llm_models.index(st.session_state.summarization_llm) if st.session_state.summarization_llm in summarization_llm_models else (summarization_llm_models.index("gpt-oss:20b") if "gpt-oss:20b" in summarization_llm_models else 0),
                 help="Wählen Sie das LLM Modell aus, das für die Dokumentenabfrage verwendet werden soll"
             )
         
         use_ext_database = st.session_state.use_ext_database
    
         # Research Configuration
-        with st.expander("🔬 Advanced Research Settings", expanded=False):
-            # Report structure
-            report_structures = get_report_structures()
-            report_structure = st.selectbox(
-                "Berichtstruktur",
-                options=list(report_structures.keys()),
-                index=0,
-                help="Wählen Sie die Struktur für den Endbericht aus"
-            )
-            
+        with st.expander("🔧 Erweiterte Einstellungen", expanded=False):
             # Max search queries
             if "max_search_queries" not in st.session_state:
-                st.session_state.max_search_queries = 3
+                st.session_state.max_search_queries = 5
             
             st.session_state.max_search_queries = st.slider(
                 "Maximale Anzahl der Forschungsabfragen",
@@ -1565,7 +1557,7 @@ def main():
        
     # Three-Phase Workflow Visualization Expander (moved here to be visible from the beginning)
     with st.expander("🔄 Zeige dreiphasigen Workflow Graph an", expanded=False):
-        st.markdown("### RAG Deep Researcher v2.0 - Dreiphasiger Workflow")
+        st.markdown("### RAG Deep Researcher v2.1 - Dreiphasiger Workflow")
         
         # Display embedding model information
         try:

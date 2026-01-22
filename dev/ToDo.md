@@ -3,7 +3,7 @@
     - cloudflare handling for the start of the app
     - additional cloudflare handling for the restart of the app
     - additional (not this version): cloudflare handling for the dynamic document links
-- [ ] clear button resolved
+- [x] clear button resolved ✅ COMPLETED
     - priority: high (current version)
     - clear button shall be changed to start new button which starts a complete new session
 - [x] simplified GUI ✅ COMPLETED
@@ -23,6 +23,12 @@
     - priority: medium (future version)
     - 1 stage: other text based data as .doc, .docx, .ppt, .pptx, .txt, .md, .csv, .xls, .xlsx
     - 2 stage: images as .png, .jpg, .jpeg, .gif, .bmp, .webp, .svg, .tiff, .heic, .heif
+- [x] optimized default configuration values ✅ COMPLETED
+    - priority: high (current version)
+    - tasks (both English (app_v2_1.py) and German (app_v2_1g.py) versions): Sidebar in the GUI and default value optimization:
+        - auto-expand sidebar "Wissensdatenbank", rename "Anzahl der Abfrageergebnisse" to "# Abfrageergebnisse pro Frage", set default value "# Abfrageergebnisse pro Frage" to 5
+        - 🤖 LLM Model Selection: make default value "LLM für Erstzusammenfassungen" to "gpt-oss:20b" (as is for LLM für Berichterstellung)
+        - Advanced Research Settings: Rename in the german version to "Erweiterte Einstellungen", remove Berichtstruktur selection (as it is not used in the app, correct?), set "Maximale Anzahl der Forschungsabfragen" to 5
 
 
 

@@ -8,3 +8,4 @@ deepseek-r1:70b
 atombuild/deepseek-r1-claude3.7:14b
 qwen3:latest
 qwq:latest
+ministral-3:8b

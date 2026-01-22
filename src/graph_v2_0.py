@@ -966,18 +966,24 @@ def generate_final_answer(state: ResearcherStateV2, config: RunnableConfig):
             for summary_doc in summaries:
                 # Extract rerank score and content
                 rerank_score = summary_doc.metadata.get('rerank_score', 0.0)
-                
+
                 # Extract content from the formatted summary
                 content = summary_doc.page_content
                 if "Content: " in content:
                     summary_text = content.split("Content: ")[1].split("\n")[0]
                 else:
                     summary_text = content
-                
+
+                # Extract source filename for proper citation
+                source_filename = ""
+                if "Source_filename: " in content:
+                    source_filename = content.split("Source_filename: ")[1].split("\n")[0]
+
                 all_reranked_summaries.append({
                     'score': rerank_score,
                     'summary': {
                         'Content': summary_text,
+                        'Source': source_filename,
                         'query': query
                     },
                     'original_index': summary_doc.metadata.get('original_index', 0)
@@ -1082,22 +1088,34 @@ Do not include any text outside the JSON object. The 'content' field should cont
         return {"final_answer": f"Error occurred during final answer generation: {error_str}. Please try a different LLM model or check if the model is available."}
 
 
-def _generate_final_answer_prompt(initial_query: str, reranked_summaries: list[dict], 
+def _format_summary_with_source(item: dict) -> str:
+    """Format a summary item with its source filename for citation."""
+    summary = item['summary']
+    if isinstance(summary, dict):
+        content = summary.get('Content', '')
+        source = summary.get('Source', '')
+        if source:
+            return f"{content}\n[Source: {source}]"
+        return content
+    return str(summary)
+
+
+def _generate_final_answer_prompt(initial_query: str, reranked_summaries: list[dict],
                                  additional_context: str = "", language: str = "English", internet_result: str = "") -> str:
     """
     Create a prompt for generating the final answer using reranked summaries.
-    
+
     Args:
         initial_query: The original user question
         reranked_summaries: List of summaries sorted by relevance score (highest first)
         additional_context: Conversation history or domain context
         language: Detected language for the response
         internet_result: Internet search results to include in the prompt
-    
+
     Returns:
         Formatted prompt string for the LLM
     """
-    
+
     prompt = f"""# ROLE
 You are an expert assistant providing deep and extensive answer based on ranked document summaries.
 
@@ -1114,7 +1132,7 @@ CONTEXT:
 RANKED SUMMARIES (ordered by relevance):
 
 PRIMARY SOURCE (Highest Relevance - Score: {reranked_summaries[0]['score']:.1f}):
-{reranked_summaries[0]['summary']}
+{_format_summary_with_source(reranked_summaries[0])}
 
 SUPPORTING SOURCES:"""
 
@@ -1123,7 +1141,7 @@ SUPPORTING SOURCES:"""
         prompt += f"""
 
 Source {i} (Score: {item['score']:.1f}):
-{item['summary']}"""
+{_format_summary_with_source(item)}"""
 
     # Add internet results section if available
     if internet_result and internet_result.strip():
@@ -1166,6 +1184,7 @@ def query_router(state: ResearcherStateV2):
 def source_linker(state: ResearcherStateV2, config: RunnableConfig = None) -> ResearcherStateV2:
     """
     Convert source references in the final answer to clickable PDF links.
+    Handles structured LLM output with "thinking" and "final" keys.
     
     Args:
         state: ResearcherStateV2 containing final_answer and selected_database
@@ -1176,8 +1195,8 @@ def source_linker(state: ResearcherStateV2, config: RunnableConfig = None) -> Re
     """
     print("\n=== SOURCE LINKER NODE ===")
     
-    # Import the linkify_sources function
-    from src.rag_helpers_v1_1 import linkify_sources
+    # Import required functions
+    from src.rag_helpers_v1_1 import linkify_sources, parse_structured_llm_output
     
     try:
         # Get final answer and database context from state
@@ -1192,10 +1211,23 @@ def source_linker(state: ResearcherStateV2, config: RunnableConfig = None) -> Re
             print("  [WARNING] No final answer found in state")
             return {**state, "linked_final_answer": ""}
         
-        # Check for source references in the final answer
+        # Parse structured output to separate thinking and final content
+        final_content, thinking_content = parse_structured_llm_output(final_answer)
+        
+        if thinking_content:
+            print(f"  [DEBUG] Found structured output with thinking ({len(thinking_content)} chars) and final ({len(final_content)} chars) parts")
+            # Process only the final content for source linking
+            content_to_link = final_content
+        else:
+            print(f"  [DEBUG] No structured output detected, processing entire answer")
+            # No structured output, process the entire answer
+            content_to_link = final_answer
+        
+        # Check for source references in the content
         import re
+        import json
         source_pattern = re.compile(r'\[([^[\]]+?\.pdf)\]')
-        source_matches = source_pattern.findall(final_answer)
+        source_matches = source_pattern.findall(content_to_link)
         print(f"  [DEBUG] Found {len(source_matches)} source references: {source_matches}")
         
         if not source_matches:
@@ -1204,13 +1236,24 @@ def source_linker(state: ResearcherStateV2, config: RunnableConfig = None) -> Re
         
         # Convert source references to clickable links
         print(f"  [DEBUG] Converting {len(source_matches)} source references to clickable links...")
-        linked_answer = linkify_sources(final_answer, selected_database)
+        linked_content = linkify_sources(content_to_link, selected_database)
+        
+        # Reconstruct the structured output if it was originally structured
+        if thinking_content:
+            # Create a JSON structure with thinking and linked final content
+            linked_answer = json.dumps({
+                "thinking": thinking_content,
+                "final": linked_content
+            }, ensure_ascii=False)
+            print(f"  [DEBUG] Reconstructed structured output with linked content")
+        else:
+            linked_answer = linked_content
         
         print(f"  [DEBUG] Linked answer length: {len(linked_answer)} characters")
         print(f"  [DEBUG] Linked answer preview: {linked_answer[:300]}...")
         
         # Check if linking actually happened
-        if linked_answer != final_answer:
+        if linked_content != content_to_link:
             print("  [SUCCESS] Source linking completed - content was modified")
         else:
             print("  [WARNING] Source linking completed but content was not modified")
@@ -1220,6 +1263,8 @@ def source_linker(state: ResearcherStateV2, config: RunnableConfig = None) -> Re
         
     except Exception as e:
         print(f"  [ERROR] Source linking failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
         # Fallback: return original final answer as linked answer
         return {**state, "linked_final_answer": state.get("final_answer", "")}
 
